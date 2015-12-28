@@ -1,6 +1,10 @@
 package me.megamichiel.animatedmenu;
 
+import static org.bukkit.ChatColor.DARK_AQUA;
+import static org.bukkit.ChatColor.GOLD;
+import static org.bukkit.ChatColor.GREEN;
 import static org.bukkit.ChatColor.RED;
+import static org.bukkit.ChatColor.YELLOW;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,10 +23,10 @@ import org.bukkit.entity.Player;
 public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
 	
 	private final String[] messages = {
-			"§3-=§6Animated Menu - Help§3=-",
-			"§a/%s open <menu>§e: Open a specific menu",
-			"§a/%s item <menu>§e: Get a menu's menu opener",
-			"§a/%s reload§e: Reload the plugin"
+			DARK_AQUA + "-=" + GOLD + "Animated Menu - Help" + DARK_AQUA + "=-",
+			GREEN + "/%s open <menu>" + YELLOW + ": Open a specific menu",
+			GREEN + "/%s item <menu>" + YELLOW + ": Get a menu's menu opener",
+			GREEN + "/%s reload" + YELLOW + ": Reload the plugin"
 	};
 	private final String[] permissions = new String[] {
 			"animatedmenu.command.help",

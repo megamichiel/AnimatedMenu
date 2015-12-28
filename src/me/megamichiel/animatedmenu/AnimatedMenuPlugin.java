@@ -10,8 +10,18 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import lombok.Getter;
+import me.megamichiel.animatedmenu.command.BroadcastCommand;
+import me.megamichiel.animatedmenu.command.Command;
+import me.megamichiel.animatedmenu.command.CommandHandler;
+import me.megamichiel.animatedmenu.command.ConsoleCommand;
+import me.megamichiel.animatedmenu.command.MenuOpenCommand;
+import me.megamichiel.animatedmenu.command.MessageCommand;
+import me.megamichiel.animatedmenu.command.OpCommand;
+import me.megamichiel.animatedmenu.command.ServerCommand;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.placeholder.PlaceHolder;
 import me.megamichiel.animatedmenu.placeholder.PlaceHolderInfo;
@@ -29,6 +39,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -54,6 +65,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 	@Getter
 	private final List<PlaceHolderInfo> placeHolders = new ArrayList<>();
 	@Getter
+	private final List<CommandHandler> commandHandlers = new ArrayList<>();
+	@Getter
 	private final MenuRegistry menuRegistry = new MenuRegistry(this);
 	
 	private String update;
@@ -75,6 +88,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 		/* Config / API */
 		Connection.init();
 		registerDefaultPlaceHolders();
+		registerDefaultCommandHandlers();
 		try {
 			Class.forName("net.milkbowl.vault.economy.Economy");
 			economy = Bukkit.getServicesManager().getRegistration(Economy.class).getProvider();
@@ -89,8 +103,14 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 			Class.forName("com.comphenix.protocol.ProtocolLibrary");
 			MenuPacketListener.init(this); //NoClassDefFoundErrors if I create an instance from here
 		} catch (Exception ex) {}
-		menuRegistry.loadMenus();
-		Bukkit.getPluginManager().callEvent(new AnimatedMenuReloadEvent(this));
+		new BukkitRunnable() {
+			@Override
+			public void run() {
+				Bukkit.getPluginManager().callEvent(new AnimatedMenuPreLoadEvent(AnimatedMenuPlugin.this));
+				menuRegistry.loadMenus();
+				Bukkit.getPluginManager().callEvent(new AnimatedMenuPostLoadEvent(AnimatedMenuPlugin.this));
+			}
+		}.runTask(this);
 		
 		/* Other Stuff */
 		Bukkit.getScheduler().scheduleSyncRepeatingTask(this, menuRegistry, 0, 0);
@@ -110,27 +130,29 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 		new BukkitRunnable() {
 			@Override
 			public void run() {
+				String current = getDescription().getVersion();
 				try {
-					URLConnection connection = new URL("http://dev.bukkit.org/bukkit-plugins/animated-menu/files/").openConnection();
+					URLConnection connection = new URL("https://github.com/megamichiel/AnimatedMenu").openConnection();
 					Scanner scanner = new Scanner(connection.getInputStream());
 					scanner.useDelimiter("\\Z");
 					String content = scanner.next();
-					String version = content.substring(content.indexOf("AnimatedMenu"));
-					version = version.substring(0, version.indexOf("</a>")).split(" ")[1].substring(1);
-					String current = getDescription().getVersion();
+					Matcher matcher = Pattern.compile("Current\\sVersion:\\s([0-9]\\.[0-9]\\.[0-9])").matcher(content);
+					matcher.find();
+					String version = matcher.group(1);
 					update = current.equals(version) ? null : version;
 					scanner.close();
 				} catch (Exception ex) {
-					getLogger().warning("Failed to check for updates");
+					getLogger().warning("Failed to check for updates: " + ex.getMessage());
 				}
 				if(update != null) {
-					getLogger().info("A new version is available! (Current version: " + getDescription().getVersion() + ", new version: " + update + ")");
+					getLogger().info("A new version is available! (Current version: " + current + ", new version: " + update + ")");
 				}
 			}
 		}.runTaskAsynchronously(this);
 	}
 	
 	private void registerDefaultPlaceHolders() {
+		placeHolders.clear();
 		placeHolders.add(new PlaceHolderInfo("ping-online", "0", true) {
 			
 			@Override
@@ -451,6 +473,46 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 		});
 	}
 	
+	private void registerDefaultCommandHandlers() {
+		commandHandlers.clear();
+		commandHandlers.add(new CommandHandler("console") {
+			@Override
+			public Command getCommand(String command) {
+				return new ConsoleCommand(command);
+			}
+		});
+		commandHandlers.add(new CommandHandler("message") {
+			@Override
+			public Command getCommand(String command) {
+				return new MessageCommand(command);
+			}
+		});
+		commandHandlers.add(new CommandHandler("op") {
+			@Override
+			public Command getCommand(String command) {
+				return new OpCommand(command);
+			}
+		});
+		commandHandlers.add(new CommandHandler("broadcast") {
+			@Override
+			public Command getCommand(String command) {
+				return new BroadcastCommand(command);
+			}
+		});
+		commandHandlers.add(new CommandHandler("server") {
+			@Override
+			public Command getCommand(String command) {
+				return new ServerCommand(command);
+			}
+		});
+		commandHandlers.add(new CommandHandler("menu") {
+			@Override
+			public Command getCommand(String command) {
+				return new MenuOpenCommand(command);
+			}
+		});
+	}
+	
 	public List<String> applyPlayerPlaceHolders(Player p, List<String> list) {
 		List<String> out = new ArrayList<>();
 		for(String str : list)
@@ -477,12 +539,15 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 	void reload() {
 		placeHolders.clear();
 		registerDefaultPlaceHolders();
+		registerDefaultCommandHandlers();
+		Bukkit.getPluginManager().callEvent(new AnimatedMenuPreLoadEvent(this));
 		menuRegistry.loadMenus();
+		Bukkit.getPluginManager().callEvent(new AnimatedMenuPostLoadEvent(this));
 	}
 	
 	/* Listeners */
 	
-	@EventHandler
+	@EventHandler(priority = EventPriority.MONITOR)
 	public void onPlayerJoin(PlayerJoinEvent e) {
 		if(update != null && e.getPlayer().hasPermission("animatedmenu.seeupdate")) {
 			e.getPlayer().sendMessage("§8[§6AnimatedMenu§8] §aA new version is available! (Current version: " + getDescription().getVersion() + ", new version: " + update + ")");
@@ -524,7 +589,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 					return;
 				}
 			}
-			e.getPlayer().sendMessage(String.valueOf(e.getItem().getItemMeta()));
 		}
 	}
 	

@@ -19,4 +19,20 @@ public class ClickExclusiveCommandExecutor extends CommandExecutor {
 		if((click.isRightClick() && rightClick) || (click.isLeftClick() && !rightClick))
 			super.execute(p, click);
 	}
+	
+	public static class ClickExclusiveShiftCommandExecutor extends ClickExclusiveCommandExecutor {
+		
+		private final boolean shiftClick;
+		
+		public ClickExclusiveShiftCommandExecutor(List<String> commands, boolean rightClick, boolean shiftClick) {
+			super(commands, rightClick);
+			this.shiftClick = shiftClick;
+		}
+		
+		@Override
+		public void execute(Player p, ClickType click) {
+			if(click.isShiftClick() == shiftClick)
+				super.execute(p, click);
+		}
+	}
 }

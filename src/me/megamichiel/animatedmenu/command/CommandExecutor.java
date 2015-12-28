@@ -3,6 +3,8 @@ package me.megamichiel.animatedmenu.command;
 import java.util.ArrayList;
 import java.util.List;
 
+import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -15,6 +17,10 @@ public class CommandExecutor {
 		this.commands = parseCommands(commands);
 	}
 	
+	public boolean isEmpty() {
+		return commands.isEmpty();
+	}
+	
 	public void execute(Player p, ClickType click) {
 		for(Command command : commands)
 			command.execute(p);
@@ -24,20 +30,15 @@ public class CommandExecutor {
 		List<Command> list = new ArrayList<Command>();
 		for(String str : commands) {
 			str = ChatColor.translateAlternateColorCodes('&', str);
-			if(str.startsWith("console:")) {
-				list.add(new ConsoleCommand(str.substring("console:".length()).trim()));
-			} else if(str.startsWith("message:")) {
-				list.add(new MessageCommand(str.substring("message:".length()).trim()));
-			} else if(str.startsWith("op:")) {
-				list.add(new OpCommand(str.substring("op:".length()).trim()));
-			} else if(str.startsWith("broadcast:")) {
-				list.add(new BroadcastCommand(str.substring("op:".length()).trim()));
-			} else if(str.startsWith("server:")) {
-				list.add(new ServerCommand(str.substring("server:".length()).trim()));
-			} else if(str.startsWith("menu:")) {
-				list.add(new MenuOpenCommand(str.substring("menu:".length()).trim()));
+			boolean handled = false;
+			for(CommandHandler commandHandler : AnimatedMenuPlugin.getInstance().getCommandHandlers()) {
+				if(str.toLowerCase().startsWith(commandHandler.getPrefix().toLowerCase() + ":")) {
+					list.add(commandHandler.getCommand(str.substring(commandHandler.getPrefix().length() + 1).trim()));
+					handled = true;
+					break;
+				}
 			}
-			else {
+			if(!handled) {
 				list.add(new Command(str));
 			}
 		}

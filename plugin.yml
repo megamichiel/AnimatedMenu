@@ -3,6 +3,7 @@ version: 2.0.7
 main: me.megamichiel.animatedmenu.AnimatedMenuPlugin
 author: megamichiel
 softdepend: [Vault, PlayerPoints, Multiverse-Core, WorldGuard, ProtocolLib]
+load: STARTUP
 
 commands:
   animatedmenu:

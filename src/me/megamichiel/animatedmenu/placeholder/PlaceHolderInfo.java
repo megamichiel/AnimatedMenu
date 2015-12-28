@@ -11,7 +11,7 @@ public abstract class PlaceHolderInfo implements Cloneable {
 	private final String name, defaultValue;
 	private final boolean requiresArgs;
 	
-	public boolean requiresArgs() {
+	public final boolean requiresArgs() {
 		return requiresArgs;
 	}
 	
@@ -22,8 +22,8 @@ public abstract class PlaceHolderInfo implements Cloneable {
 	public abstract String getReplacement(PlaceHolder placeHolder);
 	
 	@Override
-	public String toString() {
-		throw new UnsupportedOperationException("EWWW");
+	public final String toString() {
+		throw new UnsupportedOperationException();
 		//return getReplacement(null);
 	}
 }

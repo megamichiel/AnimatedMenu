@@ -7,6 +7,7 @@ import java.util.List;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.command.ClickExclusiveCommandExecutor;
+import me.megamichiel.animatedmenu.command.ClickExclusiveCommandExecutor.ClickExclusiveShiftCommandExecutor;
 import me.megamichiel.animatedmenu.command.CommandExecutor;
 import net.milkbowl.vault.economy.Economy;
 
@@ -18,17 +19,28 @@ public class DefaultClickListener implements ItemClickListener {
 	
 	private final AnimatedMenuPlugin plugin = AnimatedMenuPlugin.getInstance();
 	private final List<CommandExecutor> commandExecutors = new ArrayList<CommandExecutor>();
-	private CommandExecutor buyCommandExecutor;
-	private String permission, permissionMessage = "&cYou are not permitted to do that!", bypassPermission;
-	private int price, pointPrice;
-	private String priceMessage = "&cYou don't have enough money for that!",
+	private final CommandExecutor buyCommandExecutor;
+	private final String permission, bypassPermission;
+	private String permissionMessage = "&cYou are not permitted to do that!",
+			priceMessage = "&cYou don't have enough money for that!",
 			pointsMessage = "&cYou don't have enough points for that!";
-	private boolean close, hidden;
+	private final int price, pointPrice;
+	private final boolean close, hidden;
 	
 	public DefaultClickListener(ConfigurationSection section) {
-		commandExecutors.add(new CommandExecutor(section.getStringList("Commands")));
-		commandExecutors.add(new ClickExclusiveCommandExecutor(section.getStringList("Right-Click-Commands"), true));
-		commandExecutors.add(new ClickExclusiveCommandExecutor(section.getStringList("Left-Click-Commands"), false));
+		CommandExecutor[] executors = {
+				new CommandExecutor(section.getStringList("Commands")),
+				new ClickExclusiveCommandExecutor(section.getStringList("Right-Click-Commands"), true),
+				new ClickExclusiveCommandExecutor(section.getStringList("Left-Click-Commands"), false),
+				new ClickExclusiveShiftCommandExecutor(section.getStringList("Shift-Right-Click-Commands"), true, true),
+				new ClickExclusiveShiftCommandExecutor(section.getStringList("Shift-Left-Click-Commands"), false, true),
+				new ClickExclusiveShiftCommandExecutor(section.getStringList("Non-Shift-Right-Click-Commands"), true, false),
+				new ClickExclusiveShiftCommandExecutor(section.getStringList("Non-Shift-Left-Click-Commands"), false, false) };
+		for(CommandExecutor executor : executors) {
+			if(!executor.isEmpty()) {
+				commandExecutors.add(executor);
+			}
+		}
 		buyCommandExecutor = new CommandExecutor(section.getStringList("Buy-Commands"));
 		permission = section.getString("Permission");
 		permissionMessage = get(section.getString("Permission-Message"), permissionMessage);

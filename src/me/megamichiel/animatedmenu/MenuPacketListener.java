@@ -5,7 +5,6 @@ import java.util.List;
 import lombok.Getter;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuItem;
-import me.megamichiel.animatedmenu.util.StringUtil;
 
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -49,8 +48,6 @@ public class MenuPacketListener implements PacketListener {
 		Player p = event.getPlayer();
 		PacketContainer packet = event.getPacket();
 		int size = menu.getType().getSize();
-		System.out.println("-------------------------------------");
-		System.out.println(StringUtil.join(Thread.currentThread().getStackTrace(), "\n", true));
 		if(packet.getType() == PacketType.Play.Server.WINDOW_ITEMS) {
 			ItemStack[] items = packet.getItemArrayModifier().read(0);
 			for(int i=0;i<items.length;i++) {
