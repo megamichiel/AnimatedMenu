@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 
 import lombok.Getter;
 import me.megamichiel.animatedmenu.command.BroadcastCommand;
+import me.megamichiel.animatedmenu.command.BungeeCommand;
 import me.megamichiel.animatedmenu.command.Command;
 import me.megamichiel.animatedmenu.command.CommandHandler;
 import me.megamichiel.animatedmenu.command.ConsoleCommand;
@@ -113,7 +114,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 		}.runTask(this);
 		
 		/* Other Stuff */
-		Bukkit.getScheduler().scheduleSyncRepeatingTask(this, menuRegistry, 0, 0);
+		Bukkit.getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
 		checkForUpdate();
 	}
 	
@@ -121,7 +122,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 	public void onDisable() {
 		instance = null;
 		placeHolders.clear();
-		for(Player p : menuRegistry.getOpenMenu().keySet()) {
+		for (Player p : menuRegistry.getOpenMenu().keySet()) {
 			p.closeInventory();
 		}
 	}
@@ -136,9 +137,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 					Scanner scanner = new Scanner(connection.getInputStream());
 					scanner.useDelimiter("\\Z");
 					String content = scanner.next();
-					Matcher matcher = Pattern.compile("Current\\sVersion:\\s([0-9]\\.[0-9]\\.[0-9])").matcher(content);
+					Matcher matcher = Pattern.compile("Current\\sVersion:\\s(<b>)?([0-9]\\.[0-9]\\.[0-9])(</b>)?").matcher(content);
 					matcher.find();
-					String version = matcher.group(1);
+					String version = matcher.group(2);
 					update = current.equals(version) ? null : version;
 					scanner.close();
 				} catch (Exception ex) {
@@ -511,6 +512,18 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 				return new MenuOpenCommand(command);
 			}
 		});
+		commandHandlers.add(new CommandHandler("bcmd") {
+			@Override
+			public Command getCommand(String command) {
+				return new BungeeCommand(command, false);
+			}
+		});
+		commandHandlers.add(new CommandHandler("bpcmd") {
+			@Override
+			public Command getCommand(String command) {
+				return new BungeeCommand(command, true);
+			}
+		});
 	}
 	
 	public List<String> applyPlayerPlaceHolders(Player p, List<String> list) {
@@ -535,7 +548,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 			return ((Collection<?>) online).toArray(new Player[0]);
 		return (Player[]) online;
 	}
-
+	
 	void reload() {
 		placeHolders.clear();
 		registerDefaultPlaceHolders();
@@ -557,7 +570,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener {
 				e.getPlayer().getInventory().setItem(menu.getSettings().getOpenerJoinSlot(), menu.getSettings().getOpener());
 			}
 		}
-		/*// TODO remove after testing
+		/* TODO remove after testing
 		MenuItem item = new MenuItem(MenuItemSettings.builder("Test")
 				.material(new AnimatedMaterial(new ItemStack[] {new ItemStack(Material.STONE)}))
 				.displayName(new AnimatedName(StringBundle.fromArray("§6test", "§atest")))

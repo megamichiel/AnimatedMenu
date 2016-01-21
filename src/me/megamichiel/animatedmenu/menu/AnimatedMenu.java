@@ -47,8 +47,8 @@ public class AnimatedMenu {
 			who.playSound(who.getLocation(), settings.getOpenSound(), 1F, settings.getOpenSoundPitch());
 	}
 	
-	public void load(ConfigurationSection cfg) {
-		settings.load(cfg);
+	public void load(AnimatedMenuPlugin plugin, ConfigurationSection cfg) {
+		settings.load(plugin, cfg);
 		ConfigurationSection items = cfg.getConfigurationSection("Items");
 		if(items == null) {
 			AnimatedMenuPlugin.getInstance().getLogger().warning("No items specified for " + name + "!");
@@ -56,7 +56,7 @@ public class AnimatedMenu {
 		}
 		for(String key : items.getKeys(false)) {
 			ConfigurationSection itemSection = items.getConfigurationSection(key);
-			MenuItem item = new MenuItem(MenuItemSettings.parse(this, key, itemSection));
+			MenuItem item = new MenuItem(MenuItemSettings.parse(plugin, this, key, itemSection));
 			int slot = itemSection.getInt("Slot", -1);
 			if(slot == -1) {
 				AnimatedMenuPlugin.getInstance().getLogger().warning("No slot specified for item " + key + " in menu " + name + "!");

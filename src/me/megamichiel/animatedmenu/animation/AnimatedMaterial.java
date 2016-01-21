@@ -22,7 +22,7 @@ public class AnimatedMaterial extends Animatable<ItemStack> {
 	}
 	
 	@Override
-	ItemStack convert(AnimatedMenu menu, String str) {
+	protected ItemStack convert(AnimatedMenu menu, String str) {
 		String[] split = str.split(":");
 		MaterialMatcher matcher = MaterialMatcher.matcher(split[0]);
 		if(!matcher.matches()) {

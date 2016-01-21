@@ -61,11 +61,6 @@ public class AnimatedLore extends Animatable<Frame> {
 		}
 	}
 	
-	@Override
-	Frame convert(AnimatedMenu menu, String str) {
-		return null;
-	}
-	
 	public static class Frame extends ArrayList<StringBundle> {
 		
 		private static final long serialVersionUID = 3655877616632972680L;

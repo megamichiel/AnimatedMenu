@@ -29,21 +29,18 @@ public abstract class Animatable<E> extends ArrayList<E> {
 	
 	public E next() {
 		E current = get();
-		frame++;
-		if(frame == size())
+		if ((++frame) == size())
 			frame = 0;
 		return current;
 	}
 	
-	abstract E convert(AnimatedMenu menu, String str);
+	protected E convert(AnimatedMenu menu, String str)
+	{
+		return null;
+	}
 	
 	public void load(AnimatedMenu menu, ConfigurationSection section) {
-		int num = 1;
-		while(true) {
-			String str = section.getString(String.valueOf(num));
-			if(str == null) break;
-			add(convert(menu, str));
-			num++;
-		}
+		String str;
+		for (int num = 1; (str = section.getString(String.valueOf(num))) != null; num++, add(convert(menu, str)));
 	}
 }

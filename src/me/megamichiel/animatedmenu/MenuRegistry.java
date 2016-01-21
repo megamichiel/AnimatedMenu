@@ -141,7 +141,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 			type = MenuType.chest(cfg.getInt("Rows", 6));
 		}
 		AnimatedMenu menu = type.newMenu(name, title);
-		menu.load(cfg);
+		menu.load(plugin, cfg);
 		return menu;
 	}
 }

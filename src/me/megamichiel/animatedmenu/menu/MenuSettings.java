@@ -30,10 +30,10 @@ public class MenuSettings {
 	@Getter @Setter
 	private int connectionDelay;
 	
-	public void load(ConfigurationSection section) {
-		Logger logger = AnimatedMenuPlugin.getInstance().getLogger();
+	public void load(AnimatedMenuPlugin plugin, ConfigurationSection section) {
+		Logger logger = plugin.getLogger();
 		if(section.isSet("Menu-Opener")) {
-			opener = MenuItemSettings.parseItemStack(section.getString("Menu-Opener"));
+			opener = MenuItemSettings.parseItemStack(plugin, section.getString("Menu-Opener"));
 			openerName = section.isSet("Menu-Opener-Name");
 			openerLore = section.isSet("Menu-Opener-Lore");
 			if(openerName || openerLore) {

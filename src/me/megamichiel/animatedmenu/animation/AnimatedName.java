@@ -21,7 +21,7 @@ public class AnimatedName extends Animatable<StringBundle> {
 	}
 	
 	@Override
-	StringBundle convert(AnimatedMenu menu, String str) {
+	protected StringBundle convert(AnimatedMenu menu, String str) {
 		return StringUtil.parseBundle(str).colorAmpersands().loadPlaceHolders(menu);
 	}
 }

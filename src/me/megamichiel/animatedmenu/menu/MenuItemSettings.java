@@ -1,6 +1,7 @@
 package me.megamichiel.animatedmenu.menu;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,6 +26,9 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.LeatherArmorMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 @AllArgsConstructor @Getter @Setter @ToString
 public class MenuItemSettings {
@@ -52,30 +56,47 @@ public class MenuItemSettings {
 	}
 	
 	@SuppressWarnings("deprecation")
-	public static MenuItemSettings parse(AnimatedMenu menu, String itemName, ConfigurationSection section) {
-		AnimatedMenuPlugin plugin = AnimatedMenuPlugin.getInstance();
-		
+	public static MenuItemSettings parse(AnimatedMenuPlugin plugin, AnimatedMenu menu, String itemName, ConfigurationSection section) {
 		AnimatedMaterial material = new AnimatedMaterial();
-		if(section.getBoolean("Change-Material")) {
+		if (section.isConfigurationSection("Material"))
+		{
 			material.load(menu, section.getConfigurationSection("Material"));
-		} else {
-			if(!section.contains("Material")) {
-				plugin.getLogger().warning("Item " + itemName + " doesn't contain Material!");
-				material.add(new ItemStack(Material.STONE));
-			} else {
-				material.add(parseItemStack(section.getString("Material")));
+		}
+		else if (section.contains("Material"))
+		{
+			Object o = section.get("Material");
+			if (!(o instanceof List<?>))
+			{
+				material.add(parseItemStack(plugin, String.valueOf(o)));
 			}
+			else material.add(new ItemStack(Material.STONE));
+		}
+		else
+		{
+			plugin.getLogger().warning("Item " + itemName + " in menu " + menu.getName() + " doesn't contain Material!");
+			material.add(new ItemStack(Material.STONE));
 		}
 		AnimatedName name = new AnimatedName();
-		if(section.getBoolean("Change-Name")) {
+		if (section.isConfigurationSection("Name"))
+		{
 			name.load(menu, section.getConfigurationSection("Name"));
-		} else {
-			if(!section.contains("Name")) {
-				plugin.getLogger().warning("Item " + itemName + " doesn't contain Name!");
-				name.add(new StringBundle());
-			} else {
-				name.add(StringUtil.parseBundle(section.getString("Name")).colorAmpersands().loadPlaceHolders(menu));
+		}
+		else if (section.contains("Name"))
+		{
+			Object o = section.get("Name");
+			if (!(o instanceof List<?>))
+			{
+				name.add(StringUtil.parseBundle(String.valueOf(o)).colorAmpersands().loadPlaceHolders(menu));
 			}
+			else
+			{
+				name.add(new StringBundle());
+			}
+		}
+		else
+		{
+			plugin.getLogger().warning("Item " + itemName + " in menu " + menu.getName() + " doesn't contain Name!");
+			name.add(new StringBundle());
 		}
 		AnimatedLore lore = new AnimatedLore();
 		lore.load(menu, section.getConfigurationSection("Lore"));
@@ -107,6 +128,30 @@ public class MenuItemSettings {
 				section.getString("Permission"), hide, color, owner);
 	}
 	
+	public ItemStack applyFirst(ItemStack handle)
+	{
+		handle.addUnsafeEnchantments(this.enchantments);
+		return handle;
+	}
+	
+	public ItemStack apply(ItemStack handle)
+	{
+		ItemStack material = getMaterial().next();
+		handle.setType(material.getType());
+		handle.setAmount(material.getAmount());
+		handle.setDurability(material.getDurability());
+		
+		ItemMeta meta = handle.getItemMeta();
+		meta.setDisplayName(getDisplayName().next().toString());
+		meta.setLore(getLore().next().toStringList());
+		if(meta instanceof LeatherArmorMeta) {
+			((LeatherArmorMeta) meta).setColor(getLeatherArmorColor());
+		} else if(meta instanceof SkullMeta) {
+			((SkullMeta) meta).setOwner(getSkullOwner());
+		}
+		return handle;
+	}
+	
 	private static final Pattern COLOR_PATTERN = Pattern.compile("([0-9]+),\\s*([0-9]+),\\s*([0-9]+)");
 	
 	private static Color getColor(String val) {
@@ -124,24 +169,24 @@ public class MenuItemSettings {
 		}
 	}
 	
-	static ItemStack parseItemStack(String str) {
+	static ItemStack parseItemStack(AnimatedMenuPlugin plugin, String str) {
 		String[] split = str.split(":");
 		MaterialMatcher matcher = MaterialMatcher.matcher(split[0]);
 		if(!matcher.matches()) {
-			System.err.println("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
+			plugin.getLogger().warning("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
 		}
 		ItemStack item = new ItemStack(matcher.get());
 		if(split.length > 1) {
 			try {
 				item.setAmount(Integer.parseInt(split[1]));
 			} catch (NumberFormatException ex) {
-				System.err.println("Invalid amount in " + str + "! Defaulting to 1");
+				plugin.getLogger().warning("Invalid amount in " + str + "! Defaulting to 1");
 			}
 			if(split.length > 2) {
 				try {
 					item.setDurability(Short.parseShort(split[2]));
 				} catch (NumberFormatException ex) {
-					System.err.println("Invalid data value in " + str + "! Defaulting to 0");
+					plugin.getLogger().warning("Invalid data value in " + str + "! Defaulting to 0");
 				}
 			}
 		}
