@@ -1,6 +1,7 @@
 package me.megamichiel.animatedmenu.menu;
 
 import lombok.Getter;
+import me.megamichiel.animatedmenu.util.Nagger;
 
 import org.bukkit.event.inventory.InventoryType;
 
@@ -28,8 +29,8 @@ public class MenuType {
 		this.size = rows * 9;
 	}
 	
-	public AnimatedMenu newMenu(String name, String title) {
-		return new AnimatedMenu(name, title, this);
+	public AnimatedMenu newMenu(Nagger nagger, String name, String title) {
+		return new AnimatedMenu(nagger, name, title, this);
 	}
 	
 	public static MenuType chest(int rows) {

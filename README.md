@@ -3,15 +3,13 @@ Current Version: <b>2.0.8</b><br>
 Feel free to have a look around or use the code for private use. A tutorial on how to use the AnimatedMenu API is soon to come!
 <br>
 <h3>Used Depencies</h3>
-AnimatedMenu utilises a few plugins for stuff like placeholders. These are the ones included in the project:
+AnimatedMenu utilises a few plugins for stuff like commands. These are the ones included in the project:
 <ul>
 	<li>Craftbukkit 1.8.8</li>
-	<li>Multiverse-Core 2.5</li>
-	<li>WorldGuard</li>
 	<li>Vault</li>
 	<li>PlayerPoints</li>
-	<li>ProtocolLib</li>
 	<li>lombok</li>
+	<li>PlaceholderAPI</li>
 </ul>
 <h3>AnimatedMenu API</h3>
 AnimatedMenu has a simple API to create your own menus, placeholders, command handlers and more to come!<br>

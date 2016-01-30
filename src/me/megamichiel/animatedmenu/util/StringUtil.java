@@ -9,10 +9,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.placeholder.PlaceHolder;
-import me.megamichiel.animatedmenu.placeholder.PlaceHolderInfo;
-
 public class StringUtil {
 	
 	static final char BOX = '\u2588';
@@ -33,13 +29,12 @@ public class StringUtil {
 		return sb.toString();
 	}
 	
-	public static StringBundle parseBundle(String str) {
-		StringBundle bundle = new StringBundle();
+	public static StringBundle parseBundle(Nagger nagger, String str) {
+		StringBundle bundle = new StringBundle(nagger);
 		StringBuilder builder = new StringBuilder();
 		char[] array = str.toCharArray();
 		int index = 0;
 		boolean escape = false;
-		AnimatedMenuPlugin plugin = AnimatedMenuPlugin.getInstance();
 		loop:
 			while(index < array.length) {
 				char c = array[index];
@@ -55,11 +50,11 @@ public class StringUtil {
 							index += 4;
 							builder.append((char) Integer.parseInt(new String(unicode), 16));
 						} catch (IndexOutOfBoundsException ex) {
-							plugin.getLogger().warning("Error on parsing unicode character in string " + str + ": "
+							nagger.nag("Error on parsing unicode character in string " + str + ": "
 									+ "Expected number to have 4 digits!");
 							break loop;
 						} catch (NumberFormatException ex) {
-							plugin.getLogger().warning("Error on parsing unicode character in string " + str + ": "
+							nagger.nag("Error on parsing unicode character in string " + str + ": "
 									+ "Invalid characters (Allowed: 0-9 and A-F)!");
 							break loop;
 						}
@@ -82,28 +77,12 @@ public class StringUtil {
 						while(index < array.length && array[index] != '%')
 							builder.append(array[index++]);
 						if(index == array.length) {
-							plugin.getLogger().warning("Placeholder " + builder + " wasn't closed off! Was it a mistake or "
+							nagger.nag("Placeholder " + builder + " wasn't closed off! Was it a mistake or "
 									+ "did you forget to escape the '%' symbol?");
 							break;
 						}
-						PlaceHolder placeHolder = null;
-						String[] split = builder.toString().split("/");
-						for(PlaceHolderInfo holder : plugin.getPlaceHolders())
-							if(holder.getName().equalsIgnoreCase(split[0])) {
-								if(holder.requiresArgs() && split.length == 1) {
-									plugin.getLogger().warning("Placeholder " + holder.getName() + " requires an argument, but got none!");
-									break;
-								} else if(!holder.requiresArgs() && split.length == 2) {
-									plugin.getLogger().warning("Placeholder " + holder.getName() + " doesn't require an argument, but got one!");
-								}
-								placeHolder = new PlaceHolder(holder, split.length == 1 ? null : split[1]);
-								break;
-							}
-						if(placeHolder != null) {
-							bundle.add(placeHolder);
-						} else {
-							plugin.getLogger().warning("Couldn't find a placeholder for " + builder.toString() + "!");
-						}
+						Placeholder placeholder = new Placeholder(builder.toString());
+						bundle.add(placeholder);
 						builder = new StringBuilder();
 						break;
 					default:

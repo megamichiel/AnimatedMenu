@@ -17,7 +17,7 @@ import org.bukkit.event.inventory.ClickType;
 
 public class DefaultClickListener implements ItemClickListener {
 	
-	private final AnimatedMenuPlugin plugin = AnimatedMenuPlugin.getInstance();
+	private final AnimatedMenuPlugin plugin;
 	private final List<CommandExecutor> commandExecutors = new ArrayList<CommandExecutor>();
 	private final CommandExecutor buyCommandExecutor;
 	private final String permission, bypassPermission;
@@ -27,21 +27,22 @@ public class DefaultClickListener implements ItemClickListener {
 	private final int price, pointPrice;
 	private final boolean close, hidden;
 	
-	public DefaultClickListener(ConfigurationSection section) {
+	public DefaultClickListener(AnimatedMenuPlugin plugin, ConfigurationSection section) {
+		this.plugin = plugin;
 		CommandExecutor[] executors = {
-				new CommandExecutor(section.getStringList("Commands")),
-				new ClickExclusiveCommandExecutor(section.getStringList("Right-Click-Commands"), true),
-				new ClickExclusiveCommandExecutor(section.getStringList("Left-Click-Commands"), false),
-				new ClickExclusiveShiftCommandExecutor(section.getStringList("Shift-Right-Click-Commands"), true, true),
-				new ClickExclusiveShiftCommandExecutor(section.getStringList("Shift-Left-Click-Commands"), false, true),
-				new ClickExclusiveShiftCommandExecutor(section.getStringList("Non-Shift-Right-Click-Commands"), true, false),
-				new ClickExclusiveShiftCommandExecutor(section.getStringList("Non-Shift-Left-Click-Commands"), false, false) };
+				new CommandExecutor(plugin, section.getList("Commands")),
+				new ClickExclusiveCommandExecutor(plugin, section.getList("Right-Click-Commands"), true),
+				new ClickExclusiveCommandExecutor(plugin, section.getList("Left-Click-Commands"), false),
+				new ClickExclusiveShiftCommandExecutor(plugin, section.getList("Shift-Right-Click-Commands"), true, true),
+				new ClickExclusiveShiftCommandExecutor(plugin, section.getList("Shift-Left-Click-Commands"), false, true),
+				new ClickExclusiveShiftCommandExecutor(plugin, section.getList("Non-Shift-Right-Click-Commands"), true, false),
+				new ClickExclusiveShiftCommandExecutor(plugin, section.getList("Non-Shift-Left-Click-Commands"), false, false) };
 		for(CommandExecutor executor : executors) {
 			if(!executor.isEmpty()) {
 				commandExecutors.add(executor);
 			}
 		}
-		buyCommandExecutor = new CommandExecutor(section.getStringList("Buy-Commands"));
+		buyCommandExecutor = new CommandExecutor(plugin, section.getStringList("Buy-Commands"));
 		permission = section.getString("Permission");
 		permissionMessage = get(section.getString("Permission-Message"), permissionMessage);
 		bypassPermission = section.getString("Bypass-Permission");
@@ -90,10 +91,10 @@ public class DefaultClickListener implements ItemClickListener {
 				}
 			}
 			if(bought)
-				buyCommandExecutor.execute(who, click);
+				buyCommandExecutor.execute(plugin, who, click);
 		}
 		for(CommandExecutor executor : commandExecutors)
-			executor.execute(who, click);
+			executor.execute(plugin, who, click);
 		if(close) {
 			who.closeInventory();
 		}

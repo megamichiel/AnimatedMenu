@@ -2,7 +2,6 @@ package me.megamichiel.animatedmenu.menu;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -27,11 +26,8 @@ public class MenuSettings {
 	private float openSoundPitch = 1F;
 	@Getter @Setter
 	private String openCommand;
-	@Getter @Setter
-	private int connectionDelay;
 	
 	public void load(AnimatedMenuPlugin plugin, ConfigurationSection section) {
-		Logger logger = plugin.getLogger();
 		if(section.isSet("Menu-Opener")) {
 			opener = MenuItemSettings.parseItemStack(plugin, section.getString("Menu-Opener"));
 			openerName = section.isSet("Menu-Opener-Name");
@@ -55,17 +51,12 @@ public class MenuSettings {
 				if(section.isSet("Open-Sound-Pitch"))
 					openSoundPitch = Float.parseFloat(section.getString("Open-Sound-Pitch"));
 			} catch (NumberFormatException ex) {
-				logger.warning("Invalid pitch: " + section.getString("Open-Sound-Pitch"));
+				plugin.nag("Invalid pitch: " + section.getString("Open-Sound-Pitch"));
 			} catch (Exception ex) {
-				logger.warning("Couldn't find a sound for name " + section.getString("Open-Sound") + "!");
+				plugin.nag("Couldn't find a sound for name " + section.getString("Open-Sound") + "!");
 			}
 		}
 		openCommand = section.contains("Command") ? section.getString("Command").toLowerCase() : null;
-		connectionDelay = section.getInt("Connection-Delay", 10 * 20);
-		if(connectionDelay < 0) {
-			logger.warning(connectionDelay + " is not a valid number!");
-			connectionDelay = 10 * 20;
-		}
 	}
 	
 	public boolean hasOpenerName() {

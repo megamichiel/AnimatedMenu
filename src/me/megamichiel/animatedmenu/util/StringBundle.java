@@ -3,23 +3,23 @@ package me.megamichiel.animatedmenu.util;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
-import me.megamichiel.animatedmenu.menu.AnimatedMenu;
-import me.megamichiel.animatedmenu.placeholder.PlaceHolder;
-
 import org.bukkit.ChatColor;
+import org.bukkit.entity.Player;
 
 public class StringBundle extends ArrayList<Object> {
 	
 	private static final Pattern COLOR_PATTERN = Pattern.compile("(?i)&([0-9a-fk-or])");
 	private static final long serialVersionUID = 5196073861968616865L;
 	
-	public StringBundle(String value) {
-		super();
+	private final Nagger nagger;
+	
+	public StringBundle(Nagger nagger, String value) {
+		this.nagger = nagger;
 		add(value);
 	}
 	
-	public StringBundle() {
-		super();
+	public StringBundle(Nagger nagger) {
+		this.nagger = nagger;
 	}
 	
 	public StringBundle colorAmpersands() {
@@ -29,25 +29,22 @@ public class StringBundle extends ArrayList<Object> {
 		return this;
 	}
 	
-	public StringBundle loadPlaceHolders(AnimatedMenu menu) {
-		for(Object o : this) {
-			if(o instanceof PlaceHolder) {
-				PlaceHolder placeHolder = (PlaceHolder) o;
-				placeHolder.init(menu);
-			}
+	public String toString(Player player)
+	{
+		StringBuilder sb = new StringBuilder();
+		for (Object o : this)
+		{
+			if (o instanceof Placeholder)
+				sb.append(((Placeholder) o).toString(nagger, player));
+			else sb.append(String.valueOf(o));
 		}
-		return this;
+		return sb.toString();
 	}
 	
-	@Override
-	public String toString() {
-		return StringUtil.join(this, "", false);
-	}
-	
-	public static StringBundle[] fromArray(String... array) {
+	public static StringBundle[] fromArray(Nagger nagger, String... array) {
 		StringBundle[] bundles = new StringBundle[array.length];
 		for(int i = 0; i < array.length; i++)
-			bundles[i] = new StringBundle(array[i]);
+			bundles[i] = new StringBundle(nagger, array[i]);
 		return bundles;
 	}
 }

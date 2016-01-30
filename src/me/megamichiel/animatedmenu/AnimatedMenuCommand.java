@@ -14,6 +14,7 @@ import java.util.Map;
 
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -68,6 +69,9 @@ public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
 			if(!(sender.hasPermission(permissions[1])))
 				return invalid(sender, "You don't have permission for that!");
 			plugin.reload();
+			sender.sendMessage("§8[§6" + plugin.getDescription().getName() + "§8] "
+					+ ChatColor.GREEN + "Plugin reloaded! "
+					+ plugin.getMenuRegistry().getMenus().size() + " menu(s) loaded.");
 			break;
 		case "open":
 			if(!(sender.hasPermission(permissions[2])))

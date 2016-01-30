@@ -1,8 +1,8 @@
 name: AnimatedMenu
-version: 2.0.8
+version: 2.1.0
 main: me.megamichiel.animatedmenu.AnimatedMenuPlugin
 author: megamichiel
-softdepend: [Vault, PlayerPoints, Multiverse-Core, WorldGuard, ProtocolLib]
+softdepend: [Vault, PlayerPoints, PlaceholderAPI]
 load: STARTUP
 
 commands:
@@ -36,5 +36,5 @@ permissions:
     description: Be able to spawn in menu openers
     defalt: op
   animatedmenu.seeupdate:
-    description: Recieve an update message on join if available
+    description: Receive an update message on join if available
     defalt: op

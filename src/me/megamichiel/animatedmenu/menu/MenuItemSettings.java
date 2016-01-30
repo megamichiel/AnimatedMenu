@@ -11,7 +11,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import lombok.ToString;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
@@ -25,12 +24,13 @@ import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
-@AllArgsConstructor @Getter @Setter @ToString
+@AllArgsConstructor @Getter @Setter
 public class MenuItemSettings {
 	
 	private final String name;
@@ -60,7 +60,7 @@ public class MenuItemSettings {
 		AnimatedMaterial material = new AnimatedMaterial();
 		if (section.isConfigurationSection("Material"))
 		{
-			material.load(menu, section.getConfigurationSection("Material"));
+			material.load(plugin, menu, section.getConfigurationSection("Material"));
 		}
 		else if (section.contains("Material"))
 		{
@@ -73,33 +73,33 @@ public class MenuItemSettings {
 		}
 		else
 		{
-			plugin.getLogger().warning("Item " + itemName + " in menu " + menu.getName() + " doesn't contain Material!");
+			plugin.nag("Item " + itemName + " in menu " + menu.getName() + " doesn't contain Material!");
 			material.add(new ItemStack(Material.STONE));
 		}
 		AnimatedName name = new AnimatedName();
 		if (section.isConfigurationSection("Name"))
 		{
-			name.load(menu, section.getConfigurationSection("Name"));
+			name.load(plugin, menu, section.getConfigurationSection("Name"));
 		}
 		else if (section.contains("Name"))
 		{
 			Object o = section.get("Name");
 			if (!(o instanceof List<?>))
 			{
-				name.add(StringUtil.parseBundle(String.valueOf(o)).colorAmpersands().loadPlaceHolders(menu));
+				name.add(StringUtil.parseBundle(plugin, String.valueOf(o)).colorAmpersands());
 			}
 			else
 			{
-				name.add(new StringBundle());
+				name.add(new StringBundle(plugin));
 			}
 		}
 		else
 		{
-			plugin.getLogger().warning("Item " + itemName + " in menu " + menu.getName() + " doesn't contain Name!");
-			name.add(new StringBundle());
+			plugin.nag("Item " + itemName + " in menu " + menu.getName() + " doesn't contain Name!");
+			name.add(new StringBundle(plugin));
 		}
 		AnimatedLore lore = new AnimatedLore();
-		lore.load(menu, section.getConfigurationSection("Lore"));
+		lore.load(plugin, menu, section.getConfigurationSection("Lore"));
 		Map<Enchantment, Integer> enchantments = new HashMap<>();
 		for(String str : section.getStringList("Enchantments")) {
 			String[] split = str.split(":");
@@ -107,7 +107,7 @@ public class MenuItemSettings {
 			try {
 				ench = Enchantment.getById(Integer.parseInt(split[0]));
 			} catch (Exception ex) {
-				plugin.getLogger().warning("Invalid enchantment id in " + str + "!");
+				plugin.nag("Invalid enchantment id in " + str + "!");
 				continue;
 			}
 			int level = 1;
@@ -115,11 +115,11 @@ public class MenuItemSettings {
 				if(split.length == 2)
 					level = Integer.parseInt(split[1]);
 			} catch (NumberFormatException ex) {
-				plugin.getLogger().warning("Invalid enchantment level in " + str + "!");
+				plugin.nag("Invalid enchantment level in " + str + "!");
 			}
 			enchantments.put(ench, level);
 		}
-		ItemClickListener clickListener = new DefaultClickListener(section);
+		ItemClickListener clickListener = new DefaultClickListener(plugin, section);
 		boolean hide = section.getBoolean("Hide");
 		Color color = getColor(section.getString("Color"));
 		String owner = section.getString("SkullOwner");
@@ -128,27 +128,40 @@ public class MenuItemSettings {
 				section.getString("Permission"), hide, color, owner);
 	}
 	
+	public boolean isHidden(Player p)
+	{
+		return hiddenWithoutPermission && permission != null && !p.hasPermission(permission);
+	}
+	
 	public ItemStack applyFirst(ItemStack handle)
 	{
 		handle.addUnsafeEnchantments(this.enchantments);
 		return handle;
 	}
 	
-	public ItemStack apply(ItemStack handle)
+	public void next()
 	{
-		ItemStack material = getMaterial().next();
+		getMaterial().next();
+		getDisplayName().next();
+		getLore().next();
+	}
+	
+	public ItemStack apply(Player p, ItemStack handle)
+	{
+		ItemStack material = getMaterial().get();
 		handle.setType(material.getType());
 		handle.setAmount(material.getAmount());
 		handle.setDurability(material.getDurability());
 		
 		ItemMeta meta = handle.getItemMeta();
-		meta.setDisplayName(getDisplayName().next().toString());
-		meta.setLore(getLore().next().toStringList());
+		meta.setDisplayName(getDisplayName().get().toString(p));
+		meta.setLore(getLore().get().toStringList(p));
 		if(meta instanceof LeatherArmorMeta) {
 			((LeatherArmorMeta) meta).setColor(getLeatherArmorColor());
 		} else if(meta instanceof SkullMeta) {
 			((SkullMeta) meta).setOwner(getSkullOwner());
 		}
+		handle.setItemMeta(meta);
 		return handle;
 	}
 	
@@ -173,20 +186,20 @@ public class MenuItemSettings {
 		String[] split = str.split(":");
 		MaterialMatcher matcher = MaterialMatcher.matcher(split[0]);
 		if(!matcher.matches()) {
-			plugin.getLogger().warning("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
+			plugin.nag("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
 		}
 		ItemStack item = new ItemStack(matcher.get());
 		if(split.length > 1) {
 			try {
 				item.setAmount(Integer.parseInt(split[1]));
 			} catch (NumberFormatException ex) {
-				plugin.getLogger().warning("Invalid amount in " + str + "! Defaulting to 1");
+				plugin.nag("Invalid amount in " + str + "! Defaulting to 1");
 			}
 			if(split.length > 2) {
 				try {
 					item.setDurability(Short.parseShort(split[2]));
 				} catch (NumberFormatException ex) {
-					plugin.getLogger().warning("Invalid data value in " + str + "! Defaulting to 0");
+					plugin.nag("Invalid data value in " + str + "! Defaulting to 0");
 				}
 			}
 		}

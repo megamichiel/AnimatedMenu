@@ -5,6 +5,6 @@ import org.bukkit.event.inventory.ClickType;
 
 public interface ItemClickListener {
 	
-	public abstract void onClick(Player who, ClickType click, MenuItem item);
+	void onClick(Player who, ClickType click, MenuItem item);
 	
 }

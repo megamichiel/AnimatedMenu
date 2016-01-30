@@ -22,7 +22,7 @@ import org.bukkit.entity.Player;
 
 public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 	
-	private final List<AnimatedMenu> menus = new ArrayList<>();
+	@Getter private final List<AnimatedMenu> menus = new ArrayList<>();
 	private final AnimatedMenuPlugin plugin;
 	@Getter
 	private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
@@ -39,8 +39,8 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 			try {
 				menu.tick();
 			} catch (Exception ex) {
-				plugin.getLogger().warning("An error occured on ticking " + menu.getName() + ":");
-				ex.printStackTrace();
+				plugin.nag("An error occured on ticking " + menu.getName() + ":");
+				plugin.nag(ex);
 			}
 		}
 		/*for(MenuItem item : singleItems) {
@@ -82,6 +82,11 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 	}
 	
 	public void openMenu(Player who, AnimatedMenu menu) {
+		AnimatedMenu prev = openMenu.remove(who);
+		if (prev != null)
+		{
+			prev.getOpenMenu().remove(who);
+		}
 		menu.open(who);
 		openMenu.put(who, menu);
 	}
@@ -104,7 +109,8 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 				yml.close();
 				ymlOut.close();
 			} catch (Exception ex) {
-				ex.printStackTrace();
+				logger.warning("Failed to create the default menu!");
+				plugin.nag(ex);
 			}
 		}
 		File images = new File(plugin.getDataFolder(), "images");
@@ -128,19 +134,18 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 	}
 	
 	public AnimatedMenu loadMenu(String name, ConfigurationSection cfg) {
-		Logger logger = plugin.getLogger();
 		String title = ChatColor.translateAlternateColorCodes('&', cfg.getString("Menu-Name", name));
 		MenuType type;
 		if(cfg.isSet("Menu-Type")) {
 			type = MenuType.fromName(cfg.getString("Menu-Type").toUpperCase());
 			if(type == null) {
-				logger.warning("Couldn't find a menu type by name " + cfg.getString("Menu-Type") + "!");
+				plugin.nag("Couldn't find a menu type by name " + cfg.getString("Menu-Type") + "!");
 				type = MenuType.DISPENSER;
 			}
 		} else {
 			type = MenuType.chest(cfg.getInt("Rows", 6));
 		}
-		AnimatedMenu menu = type.newMenu(name, title);
+		AnimatedMenu menu = type.newMenu(plugin, name, title);
 		menu.load(plugin, cfg);
 		return menu;
 	}

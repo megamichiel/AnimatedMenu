@@ -4,6 +4,7 @@ import java.util.Collection;
 
 import lombok.NoArgsConstructor;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
+import me.megamichiel.animatedmenu.util.Nagger;
 import me.megamichiel.animatedmenu.util.StringBundle;
 import me.megamichiel.animatedmenu.util.StringUtil;
 
@@ -21,7 +22,7 @@ public class AnimatedName extends Animatable<StringBundle> {
 	}
 	
 	@Override
-	protected StringBundle convert(AnimatedMenu menu, String str) {
-		return StringUtil.parseBundle(str).colorAmpersands().loadPlaceHolders(menu);
+	protected StringBundle convert(Nagger nagger, AnimatedMenu menu, String str) {
+		return StringUtil.parseBundle(nagger, str).colorAmpersands();
 	}
 }

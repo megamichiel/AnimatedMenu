@@ -1,6 +1,5 @@
 package me.megamichiel.animatedmenu.command;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
@@ -11,37 +10,54 @@ import org.bukkit.event.inventory.ClickType;
 
 public class CommandExecutor {
 	
-	private final List<Command> commands;
+	private final Command command;
 	
-	public CommandExecutor(List<String> commands) {
-		this.commands = parseCommands(commands);
+	public CommandExecutor(AnimatedMenuPlugin plugin, List<?> commands) {
+		this.command = parseCommands(plugin, commands);
 	}
 	
 	public boolean isEmpty() {
-		return commands.isEmpty();
+		return command != null;
 	}
 	
-	public void execute(Player p, ClickType click) {
-		for(Command command : commands)
-			command.execute(p);
+	public void execute(AnimatedMenuPlugin plugin, Player p, ClickType click) {
+		for (Command command = this.command; command != null; command = command.next)
+			command.execute(plugin, p);
 	}
 	
-	private static List<Command> parseCommands(List<String> commands) {
-		List<Command> list = new ArrayList<Command>();
-		for(String str : commands) {
-			str = ChatColor.translateAlternateColorCodes('&', str);
-			boolean handled = false;
-			for(CommandHandler commandHandler : AnimatedMenuPlugin.getInstance().getCommandHandlers()) {
-				if(str.toLowerCase().startsWith(commandHandler.getPrefix().toLowerCase() + ":")) {
-					list.add(commandHandler.getCommand(str.substring(commandHandler.getPrefix().length() + 1).trim()));
-					handled = true;
-					break;
+	private static boolean isPrimitiveWrapper(Object input) {
+		return input instanceof Integer || input instanceof Boolean
+				|| input instanceof Character || input instanceof Byte
+				|| input instanceof Short || input instanceof Double
+				|| input instanceof Long || input instanceof Float;
+	}
+	
+	private static Command parseCommands(AnimatedMenuPlugin plugin, List<?> commands) {
+		Command first = null, next = null;
+		for(Object o : commands) {
+			if (o instanceof String || isPrimitiveWrapper(o))
+			{
+				String str = ChatColor.translateAlternateColorCodes('&', String.valueOf(o));
+				Command cmd = null;
+				for(CommandHandler commandHandler : plugin.getCommandHandlers()) {
+					if(str.toLowerCase().startsWith(commandHandler.getPrefix().toLowerCase() + ":")) {
+						cmd = commandHandler.getCommand(plugin,
+								str.substring(commandHandler.getPrefix().length() + 1).trim());
+						break;
+					}
+				}
+				if(cmd == null) {
+					cmd = new Command(plugin, str);
+				}
+				if (first == null)
+					first = next = cmd;
+				else
+				{
+					next.next = cmd;
+					next = cmd;
 				}
 			}
-			if(!handled) {
-				list.add(new Command(str));
-			}
 		}
-		return list;
+		return first;
 	}
 }

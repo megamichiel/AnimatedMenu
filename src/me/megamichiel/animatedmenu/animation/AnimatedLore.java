@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import lombok.NoArgsConstructor;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
@@ -18,12 +16,12 @@ import me.megamichiel.animatedmenu.util.StringBundle;
 import me.megamichiel.animatedmenu.util.StringUtil;
 
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Player;
 
 @NoArgsConstructor
 public class AnimatedLore extends Animatable<Frame> {
 	
 	private static final long serialVersionUID = 6241886968360414688L;
-	private static final Pattern FILE_PATTERN = Pattern.compile("(?i)file:\\s*(\\w+)");
 	
 	public AnimatedLore(Collection<? extends Frame> c) {
 		super(c);
@@ -34,30 +32,27 @@ public class AnimatedLore extends Animatable<Frame> {
 	}
 	
 	@Override
-	public void load(AnimatedMenu menu, ConfigurationSection section) {
-		int num = 1;
-		while(true) {
-			List<String> list = section.getStringList(String.valueOf(num));
-			if(list.isEmpty()) break;
+	public void load(AnimatedMenuPlugin plugin, AnimatedMenu menu, ConfigurationSection section) {
+		List<String> list;
+		for (int num = 1; !(list = section.getStringList(String.valueOf(num))).isEmpty(); num++)
+		{
 			Frame frame = new Frame();
 			for(String item : list) {
-				Matcher m = FILE_PATTERN.matcher(item);
-				if(m.matches()) {
-					File file = new File(AnimatedMenuPlugin.getInstance().getDataFolder(), "images/" + m.group(1));
+				if(item.toLowerCase().startsWith("file: ")) {
+					File file = new File(plugin.getDataFolder(), "images/" + item.substring(6));
 					if(file.exists()) {
 						try {
-							frame.addAll(Arrays.asList(new Image(file).getLines()));
+							frame.addAll(Arrays.asList(new Image(plugin, file).getLines()));
 						} catch (IOException e) {
-							AnimatedMenuPlugin.getInstance().getLogger().warning("Failed to read file " + file.getName() + "! Please report this error:");
+							plugin.nag("Failed to read file " + file.getName() + "! Please report this error:");
 							e.printStackTrace();
 						}
 						continue;
 					}
 				}
-				frame.add(StringUtil.parseBundle(item).colorAmpersands().loadPlaceHolders(menu));
+				frame.add(StringUtil.parseBundle(plugin, item).colorAmpersands());
 			}
 			add(frame);
-			num++;
 		}
 	}
 	
@@ -77,13 +72,18 @@ public class AnimatedLore extends Animatable<Frame> {
 			super(Arrays.asList(bundles));
 		}
 		
-		public List<String> toStringList() {
-			return StringUtil.toStringList(this);
+		public List<String> toStringList(Player p) {
+			List<String> list = new ArrayList<String>(size());
+			for (StringBundle bundle : this)
+				list.add(bundle.toString(p));
+			return list;
 		}
 		
-		@Override
-		public String toString() {
-			return StringUtil.join(this, "\n", true);
+		public String toString(Player p) {
+			StringBuilder sb = new StringBuilder();
+			for (StringBundle bundle : this)
+				sb.append(bundle.toString(p));
+			return sb.toString();
 		}
 	}
 }

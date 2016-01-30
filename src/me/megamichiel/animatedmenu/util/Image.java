@@ -42,7 +42,7 @@ public class Image {
 	@Getter
 	private final StringBundle[] lines;
 	
-	public Image(File file) throws IOException {
+	public Image(Nagger nagger, File file) throws IOException {
 		BufferedImage img = ImageIO.read(file);
 		pixels = new ChatColor[img.getHeight()][img.getWidth()];
 		for(int y = 0; y < img.getHeight(); y++) {
@@ -53,7 +53,7 @@ public class Image {
 		}
 		lines = new StringBundle[pixels.length];
 		for(int i = 0; i < pixels.length; i++) {
-			lines[i] = new StringBundle(StringUtil.join(pixels[i], String.valueOf(StringUtil.BOX), false));
+			lines[i] = new StringBundle(nagger, StringUtil.join(pixels[i], String.valueOf(StringUtil.BOX), true));
 		}
 	}
 	

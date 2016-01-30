@@ -5,7 +5,9 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import lombok.NoArgsConstructor;
+import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
+import me.megamichiel.animatedmenu.util.Nagger;
 
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -34,13 +36,13 @@ public abstract class Animatable<E> extends ArrayList<E> {
 		return current;
 	}
 	
-	protected E convert(AnimatedMenu menu, String str)
+	protected E convert(Nagger nagger, AnimatedMenu menu, String str)
 	{
 		return null;
 	}
 	
-	public void load(AnimatedMenu menu, ConfigurationSection section) {
+	public void load(AnimatedMenuPlugin plugin, AnimatedMenu menu, ConfigurationSection section) {
 		String str;
-		for (int num = 1; (str = section.getString(String.valueOf(num))) != null; num++, add(convert(menu, str)));
+		for (int num = 1; (str = section.getString(String.valueOf(num))) != null; num++, add(convert(plugin, menu, str)));
 	}
 }

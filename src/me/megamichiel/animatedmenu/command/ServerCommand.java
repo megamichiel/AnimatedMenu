@@ -4,26 +4,29 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animatedmenu.util.Nagger;
 
 import org.bukkit.entity.Player;
 
 public class ServerCommand extends Command {
 	
-	public ServerCommand(String command) {
-		super(command);
+	public ServerCommand(Nagger nagger, String command) {
+		super(nagger, command);
 	}
 	
 	@Override
-	public void execute(Player p) {
+	public boolean execute(AnimatedMenuPlugin plugin, Player p) {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(out);
 		try {
 			dos.writeUTF("Connect");
-			dos.writeUTF(command);
+			dos.writeUTF(command.toString(p));
 		} catch (Exception ex) {
-			AnimatedMenuPlugin.getInstance().getLogger().warning("An error occured on trying to connect a player to '" + command + "'");
-			return;
+			plugin.nag("An error occured on trying to connect a player to '" + command + "'");
+			plugin.nag(ex);
+			return true;
 		}
-		p.sendPluginMessage(AnimatedMenuPlugin.getInstance(), "BungeeCord", out.toByteArray());
+		p.sendPluginMessage(plugin, "BungeeCord", out.toByteArray());
+		return true;
 	}
 }
