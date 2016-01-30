@@ -26,7 +26,7 @@ Now on to the config:
   <li>
     <b>Menu-Opener</b><br/>
     The item that can be used to open the menu. Format is:<br/>
-    \<type or id\>:\<amount\>:\<data value\><br/>
+    &lt;type or id&gt;:&lt;amount&gt;:&lt;data value&gt;&lt;br/&gt;
     e.g. Menu-Opener: stone:3:0<br/>
     Amount and data value are not required, so stone:3 will work fine as well.
   </li>
@@ -60,6 +60,6 @@ Now on to the config:
   </li>
   <li>
     <b>Items</b><br/>
-    In here you specify all the items. Visit <a href="">this</a> page for reference on how to setup items.
+    In here you specify all the items. Visit <a href="https://github.com/megamichiel/AnimatedMenu/blob/master/tutorials/Setting%20up%20menu%20items.md">this</a> page for reference on how to setup items.
   </li>
 </ul>
