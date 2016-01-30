@@ -1,5 +1,5 @@
 <h1>Welcome to the official AnimatedMenu repository!</h1><br>
-Current Version: <b>2.1.0</b><br>
+Current Version: <b>2.1.1</b><br>
 Feel free to have a look around or use the code for private use. A tutorial on how to use the AnimatedMenu API is soon to come!
 <br>
 <h3>Used Depencies</h3>

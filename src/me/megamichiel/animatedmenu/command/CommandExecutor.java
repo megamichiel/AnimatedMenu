@@ -33,6 +33,7 @@ public class CommandExecutor {
 	}
 	
 	private static Command parseCommands(AnimatedMenuPlugin plugin, List<?> commands) {
+		if (commands == null) return null;
 		Command first = null, next = null;
 		for(Object o : commands) {
 			if (o instanceof String || isPrimitiveWrapper(o))
