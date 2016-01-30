@@ -8,58 +8,58 @@ Now on to the config:
 
 <ul>
   <li>
-    <b>Menu-Type</b>
-    With this you can specify the menu type.
-    Currently supported: hopper, dispenser, dropper or crafting
+    <b>Menu-Type</b><br/>
+    With this you can specify the menu type.<br/>
+    Currently supported: hopper, dispenser, dropper or crafting<br/>
     This value is not neccassary.
   </li>
   <li>
-    <b>Rows</b>
-    Change this to specify the amount of rows in the menu (1-6)
+    <b>Rows</b><br/>
+    Change this to specify the amount of rows in the menu (1-6)<br/>
     If Menu-Type is set, this value will not be read, so be aware!
   </li>
   <li>
-    <b>Menu-Name</b>
-    This is the text that will be displayed above the menu (The title)
+    <b>Menu-Name</b><br/>
+    This is the text that will be displayed above the menu (The title)<br/>
     If this is not set, the menu's file name will be used
   </li>
   <li>
-    <b>Menu-Opener</b>
-    The item that can be used to open the menu. Format is:
-    <type or id>:<amount>:<data value>
-    e.g. Menu-Opener: stone:3:0
+    <b>Menu-Opener</b><br/>
+    The item that can be used to open the menu. Format is:<br/>
+    <type or id>:<amount>:<data value><br/>
+    e.g. Menu-Opener: stone:3:0<br/>
     Amount and data value are not required, so stone:3 will work fine as well.
   </li>
   <li>
-    <b>Menu-Opener-Name</b>
-    The name that the menu opener must have.
+    <b>Menu-Opener-Name</b><br/>
+    The name that the menu opener must have.<br/>
     If this is not specified, any name is allowed.
   </li>
   <li>
-    <b>Menu-Opener-Lore</b>
-    The lore the menu opener must have.
+    <b>Menu-Opener-Lore</b><br/>
+    The lore the menu opener must have.<br/>
     Again, if this is not specified, any lore is allowed.
   </li>
   <li>
-    <b>Menu-Opener-Slot</b>
-    If this is set, the item will be placed in a player's inventory at this slot when they join.
+    <b>Menu-Opener-Slot</b><br/>
+    If this is set, the item will be placed in a player's inventory at this slot when they join.<br/>
     Useful for lobbies.
   </li>
   <li>
-    <b>Open-Sound</b>
-    The sound to make when the menu opens (not required).
+    <b>Open-Sound</b><br/>
+    The sound to make when the menu opens (not required).<br/>
   </li>
   <li>
-    <b>Open-Sound-Pitch</b>
-    The pitch of the open sound (makes the sound higher or deeper).
+    <b>Open-Sound-Pitch</b><br/>
+    The pitch of the open sound (makes the sound higher or deeper).<br/>
   </li>
   <li>
-    <b>Command</b>
-    The command to be executed to open the menu (not required).
+    <b>Command</b><br/>
+    The command to be executed to open the menu (not required).<br/>
     For example, if set to 'apple' and the player types /apple this menu will be opened.
   </li>
   <li>
-    <b>Items</b>
+    <b>Items</b><br/>
     In here you specify all the items. Visit <a href="">this</a> page for reference on how to setup items.
   </li>
 </ul>
