@@ -109,7 +109,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 				yml.close();
 				ymlOut.close();
 			} catch (Exception ex) {
-				logger.warning("Failed to create the default menu!");
+				plugin.nag("Failed to create the default menu!");
 				plugin.nag(ex);
 			}
 		}
