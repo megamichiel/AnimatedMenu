@@ -17,7 +17,7 @@ public class CommandExecutor {
 	}
 	
 	public boolean isEmpty() {
-		return command != null;
+		return command == null;
 	}
 	
 	public void execute(AnimatedMenuPlugin plugin, Player p, ClickType click) {
