@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
+import me.megamichiel.animatedmenu.animation.AnimatedLore.Frame;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
 import me.megamichiel.animatedmenu.animation.AnimatedName;
 import me.megamichiel.animatedmenu.util.MaterialMatcher;
@@ -99,7 +100,11 @@ public class MenuItemSettings {
 			name.add(new StringBundle(plugin));
 		}
 		AnimatedLore lore = new AnimatedLore();
-		lore.load(plugin, menu, section.getConfigurationSection("Lore"));
+		if (section.isConfigurationSection("Lore"))
+			lore.load(plugin, menu, section.getConfigurationSection("Lore"));
+		else if (section.isList("Lore"))
+			lore.add(lore.loadFrame(plugin, section.getStringList("Lore")));
+		else lore.add(new Frame());
 		Map<Enchantment, Integer> enchantments = new HashMap<>();
 		for(String str : section.getStringList("Enchantments")) {
 			String[] split = str.split(":");

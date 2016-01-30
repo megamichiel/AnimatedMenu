@@ -1,65 +1,130 @@
-There are only a few steps required for creating a menu:
+What would a menu be without items?
 
-If you've just downloaded the plugin, start up your server once. It will create a bunch of files for you.
-You want to go into the plugin's folder and open up the 'menus' folder. There should be an example.yml in there.
-To create a new menu, you can copy another file and rename it.
+Settings up items can be done with ease, especially when you are used to it.
 
-Now on to the config:
+An example of how the Items section might look:<br/>
+Items:<br/>
+&nbsp;&nbsp;itemname:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;key: value<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;anotherkey: anothervalue<br/>
+&nbsp;&nbsp;anotheritem:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;key: value
 
+The Material, Name and Lore are optionally animated. Use this format:<br/>
+Material:<br/>
+&nbsp;&nbsp;1: stone:1:0<br/>
+&nbsp;&nbsp;2: stone:2:0<br/>
+Name:<br/>
+&nbsp;&nbsp;1: &6Hai<br/>
+&nbsp;&nbsp;2: &aHai<br/>
+Lore:<br/>
+&nbsp;&nbsp;1:<br/>
+&nbsp;&nbsp;- &aLine1<br/>
+&nbsp;&nbsp;- &bLine2<br/>
+&nbsp;&nbsp;2:<br/>
+&nbsp;&nbsp;- &bLine1<br/>
+&nbsp;&nbsp;- &aLine2<br/>
+to animate them, and use<br/>
+Material: stone:1:0<br/>
+Name: &6Hai<br/>
+Lore:<br/>
+- &aLine1<br/>
+- &bLine2<br/>
+to not use animations.
+
+There are a few keys where you can customize your item with:
 <ul>
   <li>
-    <b>Menu-Type</b>
-    With this you can specify the menu type.
-    Currently supported: hopper, dispenser, dropper or crafting
-    This value is not neccassary.
+    <b>Slot</b><br/>
+    The slot to place the item in. Starts at 1
   </li>
   <li>
-    <b>Rows</b>
-    Change this to specify the amount of rows in the menu (1-6)
-    If Menu-Type is set, this value will not be read, so be aware!
+    <b>Frame-Delay</b><br/>
+    The delay in ticks between item updates.
+    20 ticks = 1 second<br/>
+    Default value is 20
   </li>
   <li>
-    <b>Menu-Name</b>
-    This is the text that will be displayed above the menu (The title)
-    If this is not set, the menu's file name will be used
+    <b>Material</b><br/>
+    The material of the item, in format;
+    &lt;type or id&gt;:&lt;amount&gt;:&lt;data value&gt;<br/>
+    Default value is stone
   </li>
   <li>
-    <b>Menu-Opener</b>
-    The item that can be used to open the menu. Format is:
-    <type or id>:<amount>:<data value>
-    e.g. Menu-Opener: stone:3:0
-    Amount and data value are not required, so stone:3 will work fine as well.
+    <b>Name</b><br/>
+    The name of the item. Can be colored using & and supports placeholders
   </li>
   <li>
-    <b>Menu-Opener-Name</b>
-    The name that the menu opener must have.
-    If this is not specified, any name is allowed.
+    <b>Lore</b><br/>
+    The lore of the item. Each line can be colored using & and supports placeholders
   </li>
   <li>
-    <b>Menu-Opener-Lore</b>
-    The lore the menu opener must have.
-    Again, if this is not specified, any lore is allowed.
+    <b>Enchantments</b><br/>
+    The enchantments to be applied to the item, e.g:<br/>
+    Enchantments:<br/>
+    - 32:5<br/>
+    - 34:3<br/>
+    This adds efficiency (ID 32) level 5 and unbreaking (ID 34) level 3 to the item.
   </li>
   <li>
-    <b>Menu-Opener-Slot</b>
-    If this is set, the item will be placed in a player's inventory at this slot when they join.
-    Useful for lobbies.
+    <b>Permission</b><br/>
+    The permission to use this item
   </li>
   <li>
-    <b>Open-Sound</b>
-    The sound to make when the menu opens (not required).
+    <b>Permission-Message</b><br/>
+    The message to send if the player doesn't have the permission specified in Permission.<br/>
+    Default value is "&6You are not permitted to do that!"
   </li>
   <li>
-    <b>Open-Sound-Pitch</b>
-    The pitch of the open sound (makes the sound higher or deeper).
+    <b>Hide</b><br/>
+    If set to "true", the item will not be visible if the player does not have the permission specified in Permission.
   </li>
   <li>
-    <b>Command</b>
-    The command to be executed to open the menu (not required).
-    For example, if set to 'apple' and the player types /apple this menu will be opened.
+    <b>Price</b><br/>
+    The amount of money required to use this item (Uses Vault)<br/>
+    This removes the money from the user<br/>
   </li>
   <li>
-    <b>Items</b>
-    In here you specify all the items. Visit <a href="">this</a> page for reference on how to setup items.
+    <b>Price-Message</b><br/>
+    Sent to the player if their balance is lower than Price
+  </li>
+  <li>
+    <b>Points</b><br/>
+    The amount of points required to use this item (Uses PlayerPoints)<br/>
+    This, again, removes the points from the user.
+  </li>
+  <li>
+    <b>Points-Message</b><br/>
+    Sent to the player if their points balance is lower than Points
+  </li>
+  <li>
+    <b>Close</b><br/>
+    If set to "true", the player's inventory will be closed when the item is clicked.
+  </li>
+  <li>
+    <b>Bypass-Permission</b><br/>
+    If the player has this permission, the player does not have to have the permission or have the amount of money required.
+  </li>
+  <li>
+    <b>Commands</b><br/>
+    The commands to be performed when the item is clicked and the click is not stopped by things above.<br/>
+    e.g.:<br/>
+    Commands:<br/>
+    - 'say Hello everyone!'<br/>
+    - 'server: Lobby'<br/>
+    Alternative types:
+    <b>Right-Click-Commands</b>, <b>Left-Click-Commands</b>, <b>Shift-Right-Click-Commands</b>, <b>Shift-Left-Click-Commands</b>, <b>Non-Shift-Right-Click-Commands</b>, <b>Non-Shift-Left-Click-Commands</b><br/>
+    Special command prefixes:<br/>
+    - '<b>console</b>': Make the console execute a command, e.g. 'console: say Hello everybody!'<br/>
+    - '<b>message</b>': Send a message to the player, e.g. 'message: Hello person!'<br/>
+    - '<b>op</b>': Make the player perform a command as op, e.g. 'op: give %player_name% diamond_sword'<br/>
+    - '<b>broadcast</b>': Broadcast a message for everyone on the server, e.g. 'broadcast: Hello everybody!'<br/>
+    - '<b>server</b>': Send the player to a specific server, e.g. 'server: Lobby'<br/>
+    - '<b>menu</b>': Make the player open a specific menu, e.g. 'menu: example'<br/>
+    By default the player will perform the command
+  </li>
+  <li>
+    <b>Buy-Commands</b><br/>
+    The commands to perform if the player buys the item using Price or Points
   </li>
 </ul>

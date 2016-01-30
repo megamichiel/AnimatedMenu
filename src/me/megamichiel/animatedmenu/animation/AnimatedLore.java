@@ -36,24 +36,30 @@ public class AnimatedLore extends Animatable<Frame> {
 		List<String> list;
 		for (int num = 1; !(list = section.getStringList(String.valueOf(num))).isEmpty(); num++)
 		{
-			Frame frame = new Frame();
-			for(String item : list) {
-				if(item.toLowerCase().startsWith("file: ")) {
-					File file = new File(plugin.getDataFolder(), "images/" + item.substring(6));
-					if(file.exists()) {
-						try {
-							frame.addAll(Arrays.asList(new Image(plugin, file).getLines()));
-						} catch (IOException e) {
-							plugin.nag("Failed to read file " + file.getName() + "! Please report this error:");
-							e.printStackTrace();
-						}
-						continue;
-					}
-				}
-				frame.add(StringUtil.parseBundle(plugin, item).colorAmpersands());
-			}
+			Frame frame = loadFrame(plugin, list);
 			add(frame);
 		}
+	}
+	
+	public Frame loadFrame(AnimatedMenuPlugin plugin, List<String> list)
+	{
+		Frame frame = new Frame();
+		for(String item : list) {
+			if(item.toLowerCase().startsWith("file: ")) {
+				File file = new File(plugin.getDataFolder(), "images/" + item.substring(6));
+				if(file.exists()) {
+					try {
+						frame.addAll(Arrays.asList(new Image(plugin, file).getLines()));
+					} catch (IOException e) {
+						plugin.nag("Failed to read file " + file.getName() + "! Please report this error:");
+						e.printStackTrace();
+					}
+					continue;
+				}
+			}
+			frame.add(StringUtil.parseBundle(plugin, item).colorAmpersands());
+		}
+		return frame;
 	}
 	
 	public static class Frame extends ArrayList<StringBundle> {
