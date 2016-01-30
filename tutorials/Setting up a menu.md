@@ -26,7 +26,7 @@ Now on to the config:
   <li>
     <b>Menu-Opener</b><br/>
     The item that can be used to open the menu. Format is:<br/>
-    <type or id>:<amount>:<data value><br/>
+    \<type or id\>:\<amount\>:\<data value\><br/>
     e.g. Menu-Opener: stone:3:0<br/>
     Amount and data value are not required, so stone:3 will work fine as well.
   </li>
