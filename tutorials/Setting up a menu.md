@@ -24,7 +24,7 @@ Now on to the config:
     If this is not set, the menu's file name will be used<br/>
     This can be animated, using a format like this:<br/>
     Menu-Name:<br/>
-    &nbsp;&nbsp;1: '&6Title 1'
+    &nbsp;&nbsp;1: '&6Title 1'<br/>
     &nbsp;&nbsp;2: '&aTitle 2'
   </li>
   <li>
