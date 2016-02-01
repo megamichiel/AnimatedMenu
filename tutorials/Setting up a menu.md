@@ -21,7 +21,16 @@ Now on to the config:
   <li>
     <b>Menu-Name</b><br/>
     This is the text that will be displayed above the menu (The title)<br/>
-    If this is not set, the menu's file name will be used
+    If this is not set, the menu's file name will be used<br/>
+    This can be animated, using a format like this:<br/>
+    Menu-Name:<br/>
+    &nbsp;&nbsp;1: '&6Title 1'
+    &nbsp;&nbsp;2: '&aTitle 2'
+  </li>
+  <li>
+    <b>Title-Update-Delay</b></br>
+    The delay (in ticks, 20 ticks = 1 second) between the menu name switched frames.<br/>
+    Default value is 20
   </li>
   <li>
     <b>Menu-Opener</b><br/>

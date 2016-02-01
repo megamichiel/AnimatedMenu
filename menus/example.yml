@@ -29,6 +29,8 @@ Items:
     #Then ':', and then type a number for the amount,
     #And then another ':', after that the data value.
     Material: stone:1:0
+    #The delay between frames
+    Frame-Delay: 20
     #The commands it will run when right-clicked
     #Start with:
     #'console: ' to let the command be performed by console;
