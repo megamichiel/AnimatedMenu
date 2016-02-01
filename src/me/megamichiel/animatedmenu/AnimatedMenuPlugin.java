@@ -56,7 +56,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 	public PlayerPointsAPI playerPointsAPI;
 	
 	@Override
-	public void onEnable() {
+	public void onEnable()
+	{
 		/* Listeners */
 		getServer().getPluginManager().registerEvents(this, this);
 		getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
@@ -89,13 +90,15 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 	}
 	
 	@Override
-	public void onDisable() {
+	public void onDisable()
+	{
 		for (Player p : new HashSet<Player>(menuRegistry.getOpenMenu().keySet())) { // InventoryCloseEvent could cause ConcurrentModificationException
 			p.closeInventory();
 		}
 	}
 	
-	private void checkForUpdate() {
+	private void checkForUpdate()
+	{
 		new BukkitRunnable() {
 			@Override
 			public void run() {
@@ -125,7 +128,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		}.runTaskAsynchronously(this);
 	}
 	
-	protected void registerDefaultCommandHandlers() {
+	protected void registerDefaultCommandHandlers()
+	{
 		commandHandlers.clear();
 		commandHandlers.add(new CommandHandler("console") {
 			@Override
@@ -165,14 +169,16 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		});
 	}
 	
-	public Player[] getOnlinePlayers() {
+	public Player[] getOnlinePlayers()
+	{
 		Object online = Bukkit.getOnlinePlayers();
 		if(online instanceof Collection<?>)
 			return ((Collection<?>) online).toArray(new Player[0]);
 		return (Player[]) online;
 	}
 	
-	void reload() {
+	void reload()
+	{
 		registerDefaultCommandHandlers();
 		Bukkit.getPluginManager().callEvent(new AnimatedMenuPreLoadEvent(this));
 		menuRegistry.loadMenus();
@@ -182,12 +188,16 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 	/* Listeners */
 	
 	@EventHandler(priority = EventPriority.MONITOR)
-	public void onPlayerJoin(PlayerJoinEvent e) {
-		if(update != null && e.getPlayer().hasPermission("animatedmenu.seeupdate")) {
+	public void onPlayerJoin(PlayerJoinEvent e)
+	{
+		if(update != null && e.getPlayer().hasPermission("animatedmenu.seeupdate"))
+		{
 			e.getPlayer().sendMessage("§8[§6" + getDescription().getName() + "§8] §aA new version is available! (Current version: " + getDescription().getVersion() + ", new version: " + update + ")");
 		}
-		for(AnimatedMenu menu : menuRegistry) {
-			if(menu.getSettings().getOpener() != null && menu.getSettings().getOpenerJoinSlot() > -1) {
+		for(AnimatedMenu menu : menuRegistry)
+		{
+			if(menu.getSettings().getOpener() != null && menu.getSettings().getOpenerJoinSlot() > -1)
+			{
 				e.getPlayer().getInventory().setItem(menu.getSettings().getOpenerJoinSlot(), menu.getSettings().getOpener());
 			}
 		}
@@ -197,10 +207,13 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 	public void onPlayerInteract(PlayerInteractEvent e) {
 		if(!e.getPlayer().hasPermission("animatedmenu.open"))
 			return;
-		if(e.getItem() != null) {
-			for(AnimatedMenu menu : menuRegistry) {
+		if(e.getItem() != null)
+		{
+			for(AnimatedMenu menu : menuRegistry)
+			{
 				ItemStack item = menu.getSettings().getOpener();
-				if(item != null && item.getData().equals(e.getItem().getData())) {
+				if(item != null && item.getData().equals(e.getItem().getData()))
+				{
 					ItemMeta meta = e.getItem().getItemMeta();
 					ItemMeta meta1 = item.getItemMeta();
 					if(menu.getSettings().hasOpenerName() && !compare(meta.getDisplayName(), meta1.getDisplayName()))
@@ -215,30 +228,37 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		}
 	}
 	
-	private boolean compare(Object o1, Object o2) {
+	private boolean compare(Object o1, Object o2)
+	{
 		return o1 == null ? o2 == null : o1.equals(o2);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
-	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent e) {
+	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent e)
+	{
 		Player p = e.getPlayer();
 		String cmd = e.getMessage().substring(1).split(" ")[0].toLowerCase();
 		for(AnimatedMenu menu : menuRegistry)
-			if(cmd.equals(menu.getSettings().getOpenCommand())) {
+		{
+			if(cmd.equals(menu.getSettings().getOpenCommand()))
+			{
 				menuRegistry.openMenu(p, menu);
 				e.setCancelled(true);
 				return;
 			}
+		}
 	}
 	
 	@EventHandler(ignoreCancelled = true)
-	public void onInventoryClose(InventoryCloseEvent e) {
+	public void onInventoryClose(InventoryCloseEvent e)
+	{
 		AnimatedMenu menu = menuRegistry.getOpenMenu().remove(e.getPlayer());
 		if (menu != null) menu.getOpenMenu().remove(e.getPlayer());
 	}
 	
 	@EventHandler
-	public void onInventoryClick(InventoryClickEvent e) {
+	public void onInventoryClick(InventoryClickEvent e)
+	{
 		if(!(e.getWhoClicked() instanceof Player)) //Not sure if they can't be a player, but just for safety
 			return;
 		Player p = (Player) e.getWhoClicked();
@@ -247,18 +267,21 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		e.setCancelled(true);
 		int slot = e.getRawSlot();
 		InventoryView view = e.getView();
-		if ((view.getTopInventory() != null) && slot >= 0 && (slot < view.getTopInventory().getSize())) {
+		if ((view.getTopInventory() != null) && slot >= 0 && (slot < view.getTopInventory().getSize()))
+		{
 			open.getMenuGrid().click(p, e.getClick(), e.getSlot());
 		}
 	}
 	
 	@Override
-	public void nag(String message) {
+	public void nag(String message)
+	{
 		getLogger().warning(message);
 	}
 	
 	@Override
-	public void nag(Throwable throwable) {
+	public void nag(Throwable throwable)
+	{
 		getLogger().warning(throwable.getClass().getName() + ": " + throwable.getMessage());
 	}
 }

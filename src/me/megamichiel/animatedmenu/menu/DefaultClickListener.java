@@ -1,13 +1,13 @@
 package me.megamichiel.animatedmenu.menu;
 
+import static me.megamichiel.animatedmenu.util.StringUtil.parseBoolean;
 import static org.bukkit.ChatColor.translateAlternateColorCodes;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.command.ClickExclusiveCommandExecutor;
-import me.megamichiel.animatedmenu.command.ClickExclusiveCommandExecutor.ClickExclusiveShiftCommandExecutor;
 import me.megamichiel.animatedmenu.command.CommandExecutor;
 import net.milkbowl.vault.economy.Economy;
 
@@ -17,45 +17,41 @@ import org.bukkit.event.inventory.ClickType;
 
 public class DefaultClickListener implements ItemClickListener {
 	
-	private final AnimatedMenuPlugin plugin;
-	private final List<CommandExecutor> commandExecutors = new ArrayList<CommandExecutor>();
-	private final CommandExecutor buyCommandExecutor;
-	private final String permission, bypassPermission;
-	private String permissionMessage = "&cYou are not permitted to do that!",
-			priceMessage = "&cYou don't have enough money for that!",
-			pointsMessage = "&cYou don't have enough points for that!";
-	private final int price, pointPrice;
-	private final boolean close, hidden;
+	private static final String PERMISSION_MESSAGE = "&cYou are not permitted to do that!",
+			PRICE_MESSAGE = "&cYou don't have enough money for that!",
+			POINTS_MESSAGE = "&cYou don't have enough points for that!";
+	
+	private final List<ClickProcessor> clicks = new ArrayList<>();
 	
 	public DefaultClickListener(AnimatedMenuPlugin plugin, ConfigurationSection section) {
-		this.plugin = plugin;
-		CommandExecutor[] executors = {
-				new CommandExecutor(plugin, section.getList("Commands")),
-				new ClickExclusiveCommandExecutor(plugin, section.getList("Right-Click-Commands"), true),
-				new ClickExclusiveCommandExecutor(plugin, section.getList("Left-Click-Commands"), false),
-				new ClickExclusiveShiftCommandExecutor(plugin, section.getList("Shift-Right-Click-Commands"), true, true),
-				new ClickExclusiveShiftCommandExecutor(plugin, section.getList("Shift-Left-Click-Commands"), false, true),
-				new ClickExclusiveShiftCommandExecutor(plugin, section.getList("Non-Shift-Right-Click-Commands"), true, false),
-				new ClickExclusiveShiftCommandExecutor(plugin, section.getList("Non-Shift-Left-Click-Commands"), false, false) };
-		for(CommandExecutor executor : executors) {
-			if(!executor.isEmpty()) {
-				commandExecutors.add(executor);
+		if (section.isConfigurationSection("Commands"))
+		{
+			ConfigurationSection commandSection = section.getConfigurationSection("Commands");
+			for (String key : commandSection.getKeys(false))
+			{
+				if (commandSection.isConfigurationSection(key))
+				{
+					ConfigurationSection sec = commandSection.getConfigurationSection(key);
+					CommandExecutor commandExecutor = new CommandExecutor(plugin, sec.getList("Commands")),
+							buyCommandExecutor = new CommandExecutor(plugin, sec.getList("Buy-Commands"));
+					String click = sec.getString("Click-Type", "both").toLowerCase();
+					boolean rightClick = click.equals("both") || click.equals("right"),
+							leftClick = click.equals("both") || click.equals("left");
+					int shiftClick = sec.contains("Shift-Click") ? parseBoolean(sec, "Shift-Click", false) ? 2 : 1 : 0,
+							price = sec.getInt("Price", -1), points = sec.getInt("Points", -1);
+					String permission = sec.getString("Permission"),
+							permissionMessage = color(sec.getString("Permission-Message", PERMISSION_MESSAGE)),
+							bypassPermission = sec.getString("Bypass-Permission"),
+							priceMessage = color(sec.getString("Price-Message", PRICE_MESSAGE)),
+							pointsMessage = color(sec.getString("Points-Message", POINTS_MESSAGE));
+					boolean close = parseBoolean(sec, "Close", false);
+					ClickProcessor processor = new ClickProcessor(plugin, commandExecutor, buyCommandExecutor,
+							rightClick, leftClick, shiftClick, price, points, permission, permissionMessage,
+							bypassPermission, priceMessage, pointsMessage, close);
+					clicks.add(processor);
+				}
 			}
 		}
-		buyCommandExecutor = new CommandExecutor(plugin, section.getStringList("Buy-Commands"));
-		permission = section.getString("Permission");
-		permissionMessage = get(section.getString("Permission-Message"), permissionMessage);
-		bypassPermission = section.getString("Bypass-Permission");
-		price = section.getInt("Price", -1);
-		pointPrice = section.getInt("Points", -1);
-		priceMessage = get(section.getString("Price-Message"), priceMessage);
-		pointsMessage = get(section.getString("Points-Message"), pointsMessage);
-		close = section.getBoolean("Close");
-		hidden = section.getBoolean("Hide");
-	}
-	
-	private String get(String str, String def) {
-		return color(str == null ? def : str);
 	}
 	
 	private String color(String str) {
@@ -64,39 +60,67 @@ public class DefaultClickListener implements ItemClickListener {
 	
 	@Override
 	public void onClick(Player who, ClickType click, MenuItem item) {
-		if(bypassPermission == null || !who.hasPermission(bypassPermission)) {
-			if(permission != null && !who.hasPermission(permission)) {
-				if(!hidden) {
-					who.sendMessage(permissionMessage);
+		for (ClickProcessor cp : this.clicks)
+			cp.onClick(who, click, item);
+	}
+	
+	@RequiredArgsConstructor private static class ClickProcessor implements ItemClickListener
+	{
+		private final AnimatedMenuPlugin plugin;
+		private final CommandExecutor commandExecutor, buyCommandExecutor;
+		private final boolean rightClick, leftClick;
+		private final int shiftClick, price, pointPrice;
+		private final String permission, permissionMessage, bypassPermission, priceMessage, pointsMessage;
+		private final boolean close;
+		
+		@Override
+		public void onClick(Player who, ClickType click, MenuItem item) {
+			if (((rightClick && click.isRightClick()) || (leftClick && click.isLeftClick()))
+					&& (shiftClick == 0 || click.isShiftClick() == (shiftClick == 2)))
+			{
+				if (bypassPermission == null || !who.hasPermission(bypassPermission))
+				{
+					if (permission != null && !who.hasPermission(permission))
+					{
+						who.sendMessage(permissionMessage);
+						return;
+					}
+					boolean bought = false;
+					if (price != -1 && plugin.isVaultPresent() && !who.hasPermission("animatedmenu.economy.bypass"))
+					{
+						Economy econ = plugin.economy;
+						if (econ.getBalance(who) >= price)
+						{
+							econ.withdrawPlayer(who, price);
+							bought = true;
+						}
+						else
+						{
+							who.sendMessage(priceMessage);
+							return;
+						}
+					}
+					if (pointPrice != -1 && plugin.isPlayerPointsPresent()
+							&& !who.hasPermission("animatedmenu.points.bypass"))
+					{
+						if (plugin.playerPointsAPI.take(who.getUniqueId(), pointPrice))
+						{
+							bought = true;
+						}
+						else
+						{
+							who.sendMessage(pointsMessage);
+							return;
+						}
+					}
+					if (bought)
+						buyCommandExecutor.execute(plugin, who, click);
 				}
-				return;
-			}
-			boolean bought = false;
-			if(price != -1 && plugin.isVaultPresent() && !who.hasPermission("animatedmenu.economy.bypass")) {
-				Economy econ = plugin.economy;
-				if(econ.getBalance(who) >= price) {
-					econ.withdrawPlayer(who, price);
-					bought = true;
-				} else {
-					who.sendMessage(priceMessage);
-					return;
+				commandExecutor.execute(plugin, who, click);
+				if (close) {
+					who.closeInventory();
 				}
 			}
-			if(pointPrice != -1 && plugin.isPlayerPointsPresent() && !who.hasPermission("animatedmenu.points.bypass")) {
-				if(plugin.playerPointsAPI.take(who.getUniqueId(), pointPrice)) {
-					bought = true;
-				} else {
-					who.sendMessage(pointsMessage);
-					return;
-				}
-			}
-			if(bought)
-				buyCommandExecutor.execute(plugin, who, click);
-		}
-		for(CommandExecutor executor : commandExecutors)
-			executor.execute(plugin, who, click);
-		if(close) {
-			who.closeInventory();
 		}
 	}
 }

@@ -1,14 +1,16 @@
 package me.megamichiel.animatedmenu.menu;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.Getter;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animatedmenu.animation.AnimatedName;
 import me.megamichiel.animatedmenu.util.Nagger;
-import me.megamichiel.animatedmenu.util.StringBundle;
-import me.megamichiel.animatedmenu.util.StringUtil;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -21,21 +23,26 @@ public class AnimatedMenu {
 	@Getter
 	private final String name;
 	@Getter
-	private final StringBundle title;
+	private final AnimatedName title;
 	@Getter
 	private final MenuSettings settings;
 	@Getter
 	private final MenuType type;
 	@Getter
 	private final MenuGrid menuGrid;
+	private int titleUpdateTick = 0;
+	@Getter
+	private final int titleUpdateDelay;
 	
 	@Getter
 	private final Map<Player, Inventory> openMenu = new ConcurrentHashMap<>();
 	
-	public AnimatedMenu(Nagger nagger, String name, String title, MenuType type) {
+	public AnimatedMenu(Nagger nagger, String name, AnimatedName title, int titleUpdateDelay, MenuType type) {
 		this.name = name;
 		settings = new MenuSettings();
-		this.title = StringUtil.parseBundle(nagger, title);
+		this.title = title;
+		this.titleUpdateDelay = titleUpdateDelay;
+		
 		this.type = type;
 		this.menuGrid = new MenuGrid(type.getSize());
 	}
@@ -43,9 +50,9 @@ public class AnimatedMenu {
 	private Inventory createInventory(Player who)
 	{
 		Inventory inv;
-		if(type.getInventoryType() == InventoryType.CHEST) 
-			inv = Bukkit.createInventory(null, type.getSize(), title.toString(who));
-		else inv = Bukkit.createInventory(null, type.getInventoryType(), title.toString(who));
+		if(type.getInventoryType() == InventoryType.CHEST)
+			inv = Bukkit.createInventory(null, type.getSize(), title.get().toString(who));
+		else inv = Bukkit.createInventory(null, type.getInventoryType(), title.get().toString(who));
 		for (int slot = 0; slot < type.getSize(); slot++)
 		{
 			MenuItem item = menuGrid.getItem(slot);
@@ -86,7 +93,63 @@ public class AnimatedMenu {
 		}
 	}
 	
+	private static final Method GET_HANDLE, SEND_PACKET, UPDATE_INVENTORY;
+	private static final Field PLAYER_CONNECTION, ACTIVE_CONTAINER, WINDOW_ID;
+	private static final Constructor<?> OPEN_WINDOW, CHAT_MESSAGE;
+	
+	static
+	{
+		Method getHandle = null, sendPacket = null, updateInventory = null;
+		Field playerConnection = null, activeContainer = null, windowId = null;
+		Constructor<?> openWindow = null, chatMessage = null;
+		try
+		{
+			Class<?> clazz = Class.forName(Bukkit.getServer().getClass().getPackage().getName() + ".entity.CraftPlayer");
+			getHandle = clazz.getMethod("getHandle");
+			playerConnection = getHandle.getReturnType().getField("playerConnection");
+			Class<?> packet = Class.forName(playerConnection.getType().getPackage().getName() + ".PacketPlayOutOpenWindow");
+			for (Constructor<?> cnst : packet.getConstructors())
+				if (cnst.getParameterTypes().length == 5)
+					openWindow = cnst;
+			sendPacket = playerConnection.getType().getMethod("sendPacket", packet.getInterfaces()[0]);
+			Class<?> msg = Class.forName(packet.getPackage().getName() + ".ChatMessage");
+			chatMessage = msg.getConstructor(String.class, Object[].class);
+			Class<?> container = Class.forName(packet.getPackage().getName() + ".Container");
+			updateInventory = getHandle.getReturnType().getMethod("updateInventory", container);
+			activeContainer = getHandle.getReturnType().getSuperclass().getField("activeContainer");
+			windowId = activeContainer.getType().getField("windowId");
+		}
+		catch (Exception ex) {}
+		GET_HANDLE = getHandle;
+		SEND_PACKET = sendPacket;
+		PLAYER_CONNECTION = playerConnection;
+		OPEN_WINDOW = openWindow;
+		CHAT_MESSAGE = chatMessage;
+		UPDATE_INVENTORY = updateInventory;
+		ACTIVE_CONTAINER = activeContainer;
+		WINDOW_ID = windowId;
+	}
+	
 	public void tick() {
+		if (title.size() > 1 && titleUpdateTick++ == titleUpdateDelay)
+		{
+			titleUpdateTick = 0;
+			title.next();
+			try
+			{
+				for (Player player : openMenu.keySet())
+				{
+					Object handle = GET_HANDLE.invoke(player);
+					Object container = ACTIVE_CONTAINER.get(handle);
+					Object packet = OPEN_WINDOW.newInstance(WINDOW_ID.getInt(container), type.getNmsName(),
+							CHAT_MESSAGE.newInstance(title.get().toString(player), new Object[0]), type.getSize(), 0);
+					SEND_PACKET.invoke(PLAYER_CONNECTION.get(handle), packet);
+					UPDATE_INVENTORY.invoke(handle, container);
+				}
+			}
+			catch (Exception ex) {}
+		}
+		
 		for (int slot = 0; slot < type.getSize(); slot++)
 		{
 			MenuItem item = menuGrid.getItem(slot);

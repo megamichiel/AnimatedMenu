@@ -10,7 +10,6 @@ import java.util.List;
 import lombok.NoArgsConstructor;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore.Frame;
-import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.util.Image;
 import me.megamichiel.animatedmenu.util.StringBundle;
 import me.megamichiel.animatedmenu.util.StringUtil;
@@ -32,7 +31,7 @@ public class AnimatedLore extends Animatable<Frame> {
 	}
 	
 	@Override
-	public void load(AnimatedMenuPlugin plugin, AnimatedMenu menu, ConfigurationSection section) {
+	public void load(AnimatedMenuPlugin plugin, ConfigurationSection section) {
 		List<String> list;
 		for (int num = 1; !(list = section.getStringList(String.valueOf(num))).isEmpty(); num++)
 		{
@@ -51,8 +50,8 @@ public class AnimatedLore extends Animatable<Frame> {
 					try {
 						frame.addAll(Arrays.asList(new Image(plugin, file).getLines()));
 					} catch (IOException e) {
-						plugin.nag("Failed to read file " + file.getName() + "! Please report this error:");
-						e.printStackTrace();
+						plugin.nag("Failed to read file " + file.getName() + "!");
+						plugin.nag(e);
 					}
 					continue;
 				}

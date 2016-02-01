@@ -9,6 +9,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import org.bukkit.configuration.ConfigurationSection;
+
 public class StringUtil {
 	
 	static final char BOX = '\u2588';
@@ -117,5 +119,22 @@ public class StringUtil {
 			ex.printStackTrace();
 		}
 		return builder.toString();
+	}
+	
+	public static boolean parseBoolean(ConfigurationSection section, String key, boolean def)
+	{
+		return parseBoolean(section.getString(key), def);
+	}
+	
+	public static boolean parseBoolean(String str, boolean def)
+	{
+		if (str == null) return def;
+		switch (str.toLowerCase())
+		{
+		case "true": case "yes": case "on": case "enable":
+			return true;
+		default:
+			return false;
+		}
 	}
 }

@@ -67,64 +67,12 @@ There are a few keys where you can customize your item with:
     This adds efficiency (ID 32) level 5 and unbreaking (ID 34) level 3 to the item.
   </li>
   <li>
-    <b>Permission</b><br/>
-    The permission to use this item
-  </li>
-  <li>
-    <b>Permission-Message</b><br/>
-    The message to send if the player doesn't have the permission specified in Permission.<br/>
-    Default value is "&6You are not permitted to do that!"
-  </li>
-  <li>
-    <b>Hide</b><br/>
-    If set to "true", the item will not be visible if the player does not have the permission specified in Permission.
-  </li>
-  <li>
-    <b>Price</b><br/>
-    The amount of money required to use this item (Uses Vault)<br/>
-    This removes the money from the user<br/>
-  </li>
-  <li>
-    <b>Price-Message</b><br/>
-    Sent to the player if their balance is lower than Price
-  </li>
-  <li>
-    <b>Points</b><br/>
-    The amount of points required to use this item (Uses PlayerPoints)<br/>
-    This, again, removes the points from the user.
-  </li>
-  <li>
-    <b>Points-Message</b><br/>
-    Sent to the player if their points balance is lower than Points
-  </li>
-  <li>
-    <b>Close</b><br/>
-    If set to "true", the player's inventory will be closed when the item is clicked.
-  </li>
-  <li>
-    <b>Bypass-Permission</b><br/>
-    If the player has this permission, the player does not have to have the permission or have the amount of money required.
+    <b>Hide-Permission</b><br/>
+    If the player doesn't have this permission, the item is hidden
   </li>
   <li>
     <b>Commands</b><br/>
-    The commands to be performed when the item is clicked and the click is not stopped by things above.<br/>
-    e.g.:<br/>
-    Commands:<br/>
-    - 'say Hello everyone!'<br/>
-    - 'server: Lobby'<br/>
-    Alternative types:
-    <b>Right-Click-Commands</b>, <b>Left-Click-Commands</b>, <b>Shift-Right-Click-Commands</b>, <b>Shift-Left-Click-Commands</b>, <b>Non-Shift-Right-Click-Commands</b>, <b>Non-Shift-Left-Click-Commands</b><br/>
-    Special command prefixes:<br/>
-    - '<b>console</b>': Make the console execute a command, e.g. 'console: say Hello everybody!'<br/>
-    - '<b>message</b>': Send a message to the player, e.g. 'message: Hello person!'<br/>
-    - '<b>op</b>': Make the player perform a command as op, e.g. 'op: give %player_name% diamond_sword'<br/>
-    - '<b>broadcast</b>': Broadcast a message for everyone on the server, e.g. 'broadcast: Hello everybody!'<br/>
-    - '<b>server</b>': Send the player to a specific server, e.g. 'server: Lobby'<br/>
-    - '<b>menu</b>': Make the player open a specific menu, e.g. 'menu: example'<br/>
-    By default the player will perform the command
-  </li>
-  <li>
-    <b>Buy-Commands</b><br/>
-    The commands to perform if the player buys the item using Price or Points
+    This has been revamped from version 2.2.0<br/>
+    See <a href="https://github.com/megamichiel/AnimatedMenu/blob/master/tutorials/Setting%20up%20item%20commands.md">this</a> page
   </li>
 </ul>

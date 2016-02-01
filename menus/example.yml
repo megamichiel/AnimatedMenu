@@ -18,90 +18,82 @@ Rows: 1
 #The command to be performed to open the inventory(not neccasary)
 Command: 'openinv'
 Items:
-    #This can be any name
-    Example-item:
-        #The slot it will be set into
-        Slot: 1
-        #The display name of the item
-        Name: '&6Test'
-        #The material of the item,
-        #Put a material e.g. stone,
-        #Then ':', and then type a number for the amount,
-        #And then another ':', after that the data value.
-        Material: stone:1:0
-        #The commands it will run when right-clicked
-        #Start with:
-        #'console: ' to let the command be performed by console;
-        #'server: ' to send the player to the specified server;
-        #'broadcast: ' to broadcast a message to the server;
-        #'message: ' to send the player a message;
+  #This can be any name
+  Example-item:
+    #The slot it will be set into
+    Slot: 1
+    #The display name of the item
+    Name: '&6Test'
+    #The material of the item,
+    #Put a material e.g. stone,
+    #Then ':', and then type a number for the amount,
+    #And then another ':', after that the data value.
+    Material: stone:1:0
+    #The commands it will run when right-clicked
+    #Start with:
+    #'console: ' to let the command be performed by console;
+    #'server: ' to send the player to the specified server;
+    #'broadcast: ' to broadcast a message to the server;
+    #'message: ' to send the player a message;
+    Commands:
+      example:
         Commands:
         - 'say hi'
-        #The price to use the item
+        #The price to use these commands
         #This isn't neccasary
         Price: 100
         #When the player doesn't have enough money,
         #Send this message to him/her
         Price-Message: '&cYou do not have enough money!'
-        #The amount of frames
-        #of the item
-        Frames: 3
-        #The delay between frames
-        Frame-Delay: 20
-        #The item lores
-        #All lores support unlimited rows
-        Lore:
-            #The first lore it will play
-            1:
-            - 'test'
-            - 'test2'
-            - 'test3'
-            #The second lore it will play
-            2: 
-            - 'test2'
-            - 'test3'
-            - 'test'
-            3: 
-            #Etc.
-            - 'test3'
-            - 'test'
-            - 'test2'
-    Another-item:
-        Slot: 2
-        #Set this to true to change displayname on each frame
-        Change-Name: true
-        #This is how the names should look when Change-Name is true
-        Name:
-            1: '&1Test %ping%'
-            2: '&2Test %name%'
-            3: '&3Test %uuid%'
-            4: '&4Test'
-        #If you want to change material every frame, set this to true,
-        #If u don't want it, u can remove the line or set to false
-        Change-Material: true
-        #If u have Change-Material: true
-        #This is what the material setup will have to look like
-        Material:
-            1: wool:1:11
-            2: wool:2:11
-            3: wool:3:11
-            4: wool:4:11
+    #The item lores
+    #All lores support unlimited rows
+    Lore:
+      #The first lore it will play
+      1:
+      - 'test'
+      - 'test2'
+      - 'test3'
+      #The second lore it will play
+      2: 
+      - 'test2'
+      - 'test3'
+      - 'test'
+      3: 
+      #Etc.
+      - 'test3'
+      - 'test'
+      - 'test2'
+  Another-item:
+    Slot: 2
+    #This is how the names look when animated
+    Name:
+      1: '&1Test %ping%'
+      2: '&2Test %name%'
+      3: '&3Test %uuid%'
+      4: '&4Test'
+    #This is what the material setup will look like when animated
+    Material:
+      1: wool:1:11
+      2: wool:2:11
+      3: wool:3:11
+      4: wool:4:11
+    Commands:
+      example:
         Commands:
         - 'say hi'
         Permission: 'animatedmenu.item.test'
         Permission-Message: '&4You do not have permission for that!'
-        Frames: 4
-        Frame-Delay: 40
         #Request/Optional: PlayerPoints plugin integration
         Points: 50
         #Optional: If the player doesn't have enough points, send this to him/her
         Points-Message: '&cYou do not have enough points!'
-        Lore:
-            1:
-            - 'test'
-            2:
-            - 'estt'
-            3:
-            - 'stte'
-            4:
-            - 'ttes'
+    Frame-Delay: 40
+    Lore:
+      1:
+      - 'test'
+      2:
+      - 'estt'
+      3:
+      - 'stte'
+      4:
+      - 'ttes'

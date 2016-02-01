@@ -1,0 +1,30 @@
+#The title can be animated!
+Menu-Name:
+  1: '&6Shop'
+  2: '&aShop'
+Rows: 1
+Command: 'shop'
+Items:
+  Stone:
+    Slot: 5
+    Material: stone
+    Name: '&aStone'
+    Lore:
+      1:
+      - 'Left Click to buy'
+      - 'Shift Left Click to buy 64'
+    Commands:
+      buy:
+        Right-Click: false
+        Shift-Click: false
+        Price: 5
+        Commands:
+        - 'console: give %player_name% stone'
+        - 'message: &aYou bought 1 stone!'
+      buy-64:
+        Right-Click: false
+        Shift-Click: true
+        Price: 320
+        Commands:
+        - 'console: give %player_name% stone 64'
+        - 'message: &aYou bought 64 stone!'

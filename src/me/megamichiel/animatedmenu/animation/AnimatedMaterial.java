@@ -3,7 +3,6 @@ package me.megamichiel.animatedmenu.animation;
 import java.util.Collection;
 
 import lombok.NoArgsConstructor;
-import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.util.MaterialMatcher;
 import me.megamichiel.animatedmenu.util.Nagger;
 
@@ -23,7 +22,7 @@ public class AnimatedMaterial extends Animatable<ItemStack> {
 	}
 	
 	@Override
-	protected ItemStack convert(Nagger nagger, AnimatedMenu menu, String str) {
+	protected ItemStack convert(Nagger nagger, String str) {
 		String[] split = str.split(":");
 		MaterialMatcher matcher = MaterialMatcher.matcher(split[0]);
 		if(!matcher.matches()) {

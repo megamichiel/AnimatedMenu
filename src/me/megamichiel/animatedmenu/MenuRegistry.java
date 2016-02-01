@@ -11,10 +11,11 @@ import java.util.WeakHashMap;
 import java.util.logging.Logger;
 
 import lombok.Getter;
+import me.megamichiel.animatedmenu.animation.AnimatedName;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuType;
+import me.megamichiel.animatedmenu.util.StringUtil;
 
-import org.bukkit.ChatColor;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -134,7 +135,11 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 	}
 	
 	public AnimatedMenu loadMenu(String name, ConfigurationSection cfg) {
-		String title = ChatColor.translateAlternateColorCodes('&', cfg.getString("Menu-Name", name));
+		AnimatedName title = new AnimatedName();
+		if (cfg.isConfigurationSection("Menu-Name"))
+			title.load(plugin, cfg.getConfigurationSection("Menu-Name"));
+		else if (!cfg.isList("Menu-Name"))
+			title.add(StringUtil.parseBundle(plugin, cfg.getString("Menu-Name", name)).colorAmpersands());
 		MenuType type;
 		if(cfg.isSet("Menu-Type")) {
 			type = MenuType.fromName(cfg.getString("Menu-Type").toUpperCase());
@@ -145,7 +150,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 		} else {
 			type = MenuType.chest(cfg.getInt("Rows", 6));
 		}
-		AnimatedMenu menu = type.newMenu(plugin, name, title);
+		AnimatedMenu menu = type.newMenu(plugin, name, title, cfg.getInt("Title-Update-Delay", 20));
 		menu.load(plugin, cfg);
 		return menu;
 	}

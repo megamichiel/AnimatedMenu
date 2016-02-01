@@ -41,8 +41,7 @@ public class MenuItemSettings {
 	private int frameDelay;
 	private Map<Enchantment, Integer> enchantments;
 	private ItemClickListener clickListener;
-	private String permission;
-	private boolean hiddenWithoutPermission;
+	private String hidePermission;
 	private Color leatherArmorColor;
 	private String skullOwner;
 	
@@ -53,7 +52,6 @@ public class MenuItemSettings {
 		lore = new AnimatedLore();
 		enchantments = new HashMap<Enchantment, Integer>();
 		frameDelay = 20;
-		hiddenWithoutPermission = false;
 	}
 	
 	@SuppressWarnings("deprecation")
@@ -61,7 +59,7 @@ public class MenuItemSettings {
 		AnimatedMaterial material = new AnimatedMaterial();
 		if (section.isConfigurationSection("Material"))
 		{
-			material.load(plugin, menu, section.getConfigurationSection("Material"));
+			material.load(plugin, section.getConfigurationSection("Material"));
 		}
 		else if (section.contains("Material"))
 		{
@@ -80,7 +78,7 @@ public class MenuItemSettings {
 		AnimatedName name = new AnimatedName();
 		if (section.isConfigurationSection("Name"))
 		{
-			name.load(plugin, menu, section.getConfigurationSection("Name"));
+			name.load(plugin, section.getConfigurationSection("Name"));
 		}
 		else if (section.contains("Name"))
 		{
@@ -101,7 +99,7 @@ public class MenuItemSettings {
 		}
 		AnimatedLore lore = new AnimatedLore();
 		if (section.isConfigurationSection("Lore"))
-			lore.load(plugin, menu, section.getConfigurationSection("Lore"));
+			lore.load(plugin, section.getConfigurationSection("Lore"));
 		else if (section.isList("Lore"))
 			lore.add(lore.loadFrame(plugin, section.getStringList("Lore")));
 		else lore.add(new Frame());
@@ -125,17 +123,16 @@ public class MenuItemSettings {
 			enchantments.put(ench, level);
 		}
 		ItemClickListener clickListener = new DefaultClickListener(plugin, section);
-		boolean hide = section.getBoolean("Hide");
 		Color color = getColor(section.getString("Color"));
 		String owner = section.getString("SkullOwner");
 		return new MenuItemSettings(itemName, material, name, lore,
 				section.getInt("Frame-Delay", 20), enchantments, clickListener,
-				section.getString("Permission"), hide, color, owner);
+				section.getString("Hide-Permission"), color, owner);
 	}
 	
 	public boolean isHidden(Player p)
 	{
-		return hiddenWithoutPermission && permission != null && !p.hasPermission(permission);
+		return hidePermission != null && !p.hasPermission(hidePermission);
 	}
 	
 	public ItemStack applyFirst(ItemStack handle)
@@ -225,8 +222,7 @@ public class MenuItemSettings {
 		private int frameDelay;
 		private Map<Enchantment, Integer> enchantments;
 		private ItemClickListener clickListener;
-		private String permission;
-		private boolean hiddenWithoutPermission;
+		private String hidePermission;
 		private Color leatherArmorColor;
 		private String skullOwner;
 		
@@ -260,13 +256,8 @@ public class MenuItemSettings {
 			return this;
 		}
 		
-		public Builder permission(String permission) {
-			this.permission = permission;
-			return this;
-		}
-		
-		public Builder hiddenWithoutPermission(boolean hiddenWithoutPermission) {
-			this.hiddenWithoutPermission = hiddenWithoutPermission;
+		public Builder hidePermission(String hidePermission) {
+			this.hidePermission = hidePermission;
 			return this;
 		}
 		
@@ -288,8 +279,7 @@ public class MenuItemSettings {
 			if(frameDelay > 0) settings.setFrameDelay(frameDelay);
 			if(enchantments != null) settings.setEnchantments(enchantments);
 			if(clickListener != null) settings.setClickListener(clickListener);
-			if(permission != null) settings.setPermission(permission);
-			settings.setHiddenWithoutPermission(hiddenWithoutPermission);
+			if (hidePermission != null) settings.setHidePermission(hidePermission);
 			settings.setLeatherArmorColor(leatherArmorColor);
 			settings.setSkullOwner(skullOwner);
 			return settings;

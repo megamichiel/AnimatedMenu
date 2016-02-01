@@ -23,7 +23,7 @@ public class StringBundle extends ArrayList<Object> {
 	}
 	
 	public StringBundle colorAmpersands() {
-		for(int i=0;i<size();i++)
+		for (int i = 0, size = size(); i < size; i++)
 			if(get(i) instanceof String)
 				set(i, COLOR_PATTERN.matcher((String) get(i)).replaceAll(ChatColor.COLOR_CHAR + "$1"));
 		return this;
