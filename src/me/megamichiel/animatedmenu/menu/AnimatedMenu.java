@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.Getter;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.animation.AnimatedName;
+import me.megamichiel.animatedmenu.animation.AnimatedText;
 import me.megamichiel.animatedmenu.util.Nagger;
 
 import org.bukkit.Bukkit;
@@ -20,45 +20,42 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 public class AnimatedMenu {
-	@Getter
-	private final String name;
-	@Getter
-	private final AnimatedName title;
-	@Getter
-	private final MenuSettings settings;
-	@Getter
-	private final MenuType type;
-	@Getter
-	private final MenuGrid menuGrid;
+	
+	private final Nagger nagger;
+	@Getter private final String name;
+	@Getter private final AnimatedText menuTitle;
+	@Getter private final MenuSettings settings;
+	@Getter private final MenuType menuType;
+	@Getter private final MenuGrid menuGrid;
+	@Getter private final int titleUpdateDelay;
 	private int titleUpdateTick = 0;
-	@Getter
-	private final int titleUpdateDelay;
 	
 	@Getter
 	private final Map<Player, Inventory> openMenu = new ConcurrentHashMap<>();
 	
-	public AnimatedMenu(Nagger nagger, String name, AnimatedName title, int titleUpdateDelay, MenuType type) {
+	public AnimatedMenu(Nagger nagger, String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
+		this.nagger = nagger;
 		this.name = name;
 		settings = new MenuSettings();
-		this.title = title;
+		this.menuTitle = title;
 		this.titleUpdateDelay = titleUpdateDelay;
 		
-		this.type = type;
+		this.menuType = type;
 		this.menuGrid = new MenuGrid(type.getSize());
 	}
 	
 	private Inventory createInventory(Player who)
 	{
 		Inventory inv;
-		if(type.getInventoryType() == InventoryType.CHEST)
-			inv = Bukkit.createInventory(null, type.getSize(), title.get().toString(who));
-		else inv = Bukkit.createInventory(null, type.getInventoryType(), title.get().toString(who));
-		for (int slot = 0; slot < type.getSize(); slot++)
+		if (menuType.getInventoryType() == InventoryType.CHEST)
+			inv = Bukkit.createInventory(null, menuType.getSize(), menuTitle.get().toString(who));
+		else inv = Bukkit.createInventory(null, menuType.getInventoryType(), menuTitle.get().toString(who));
+		for (int slot = 0; slot < menuType.getSize(); slot++)
 		{
 			MenuItem item = menuGrid.getItem(slot);
 			if (item != null && !item.getSettings().isHidden(who))
 			{
-				ItemStack i = item.load(who);
+				ItemStack i = item.load(nagger, who);
 				inv.setItem(slot, i);
 			}
 		}
@@ -83,7 +80,7 @@ public class AnimatedMenu {
 		}
 		for(String key : items.getKeys(false)) {
 			ConfigurationSection itemSection = items.getConfigurationSection(key);
-			MenuItem item = new MenuItem(MenuItemSettings.parse(plugin, this, key, itemSection));
+			MenuItem item = new MenuItem(new MenuItemSettings(key).load(plugin, getName(), itemSection));
 			int slot = itemSection.getInt("Slot", -1);
 			if(slot == -1) {
 				plugin.nag("No slot specified for item " + key + " in menu " + name + "!");
@@ -131,18 +128,19 @@ public class AnimatedMenu {
 	}
 	
 	public void tick() {
-		if (title.size() > 1 && titleUpdateTick++ == titleUpdateDelay)
+		if (menuTitle.size() > 1 && titleUpdateTick++ == titleUpdateDelay)
 		{
 			titleUpdateTick = 0;
-			title.next();
+			menuTitle.next();
 			try
 			{
 				for (Player player : openMenu.keySet())
 				{
+					String title = this.menuTitle.get().toString(player);
 					Object handle = GET_HANDLE.invoke(player);
 					Object container = ACTIVE_CONTAINER.get(handle);
-					Object packet = OPEN_WINDOW.newInstance(WINDOW_ID.getInt(container), type.getNmsName(),
-							CHAT_MESSAGE.newInstance(title.get().toString(player), new Object[0]), type.getSize(), 0);
+					Object packet = OPEN_WINDOW.newInstance(WINDOW_ID.getInt(container), menuType.getNmsName(),
+							CHAT_MESSAGE.newInstance(title, new Object[0]), menuType.getSize(), 0);
 					SEND_PACKET.invoke(PLAYER_CONNECTION.get(handle), packet);
 					UPDATE_INVENTORY.invoke(handle, container);
 				}
@@ -150,29 +148,26 @@ public class AnimatedMenu {
 			catch (Exception ex) {}
 		}
 		
-		for (int slot = 0; slot < type.getSize(); slot++)
+		for (int slot = 0; slot < menuType.getSize(); slot++)
 		{
 			MenuItem item = menuGrid.getItem(slot);
-			if (item != null)
+			if (item != null && item.tick())
 			{
-				if (item.tick())
+				for (Entry<Player, Inventory> entry : openMenu.entrySet())
 				{
-					for (Entry<Player, Inventory> entry : openMenu.entrySet())
+					boolean hidden = item.getSettings().isHidden(entry.getKey());
+					ItemStack is = entry.getValue().getItem(slot);
+					if (hidden && is != null)
 					{
-						boolean hidden = item.getSettings().isHidden(entry.getKey());
-						ItemStack is = entry.getValue().getItem(slot);
-						if (hidden && is != null)
-						{
-							entry.getValue().setItem(slot, null);
-							continue;
-						}
-						else if (!hidden && is == null)
-						{
-							entry.getValue().setItem(slot, item.load(entry.getKey()));
-							is = entry.getValue().getItem(slot);
-						}
-						if (!hidden) item.apply(entry.getKey(), is);
+						entry.getValue().setItem(slot, null);
+						continue;
 					}
+					else if (!hidden && is == null)
+					{
+						entry.getValue().setItem(slot, item.load(nagger, entry.getKey()));
+						is = entry.getValue().getItem(slot);
+					}
+					if (!hidden) item.apply(nagger, entry.getKey(), is);
 				}
 			}
 		}

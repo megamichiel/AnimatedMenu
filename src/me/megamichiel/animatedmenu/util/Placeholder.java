@@ -7,7 +7,7 @@ import me.clip.placeholderapi.PlaceholderHook;
 
 import org.bukkit.entity.Player;
 
-public class Placeholder {
+public class Placeholder implements IPlaceholder<String> {
 	
 	private static final boolean placeHolder;
 	
@@ -45,10 +45,11 @@ public class Placeholder {
 	
 	@Override
 	public String toString() {
-		return "{" + plugin + "_" + name + "}";
+		return "%" + plugin + "_" + name + "%";
 	}
 	
-	public String toString(Nagger nagger, Player p)
+	@Override
+	public String invoke(Nagger nagger, Player who)
 	{
 		if (!placeHolder) return toString();
 		if (handle == null)
@@ -64,7 +65,7 @@ public class Placeholder {
 		}
 		if (handle != null)
 		{
-			String str = handle.onPlaceholderRequest(p, name);
+			String str = handle.onPlaceholderRequest(who, name);
 			if (str != null)
 				return str;
 		}

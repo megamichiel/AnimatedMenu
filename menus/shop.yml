@@ -15,14 +15,14 @@ Items:
       - 'Shift Left Click to buy 64'
     Commands:
       buy:
-        Right-Click: false
+        Click-Type: left
         Shift-Click: false
         Price: 5
         Commands:
         - 'console: give %player_name% stone'
         - 'message: &aYou bought 1 stone!'
       buy-64:
-        Right-Click: false
+        Click-Type: left
         Shift-Click: true
         Price: 320
         Commands:

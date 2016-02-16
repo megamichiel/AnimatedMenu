@@ -34,8 +34,8 @@ public class StringBundle extends ArrayList<Object> {
 		StringBuilder sb = new StringBuilder();
 		for (Object o : this)
 		{
-			if (o instanceof Placeholder)
-				sb.append(((Placeholder) o).toString(nagger, player));
+			if (o instanceof Placeholder && player != null)
+				sb.append(((Placeholder) o).invoke(nagger, player));
 			else sb.append(String.valueOf(o));
 		}
 		return sb.toString();

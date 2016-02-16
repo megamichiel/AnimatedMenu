@@ -31,13 +31,29 @@ public class AnimatedLore extends Animatable<Frame> {
 	}
 	
 	@Override
-	public void load(AnimatedMenuPlugin plugin, ConfigurationSection section) {
-		List<String> list;
-		for (int num = 1; !(list = section.getStringList(String.valueOf(num))).isEmpty(); num++)
+	protected Frame defaultValue() {
+		return new Frame();
+	}
+	
+	@Override
+	public boolean load(AnimatedMenuPlugin plugin, ConfigurationSection section, String key, Frame defaultValue) {
+		if (section.isConfigurationSection(key))
 		{
-			Frame frame = loadFrame(plugin, list);
-			add(frame);
+			ConfigurationSection sec = section.getConfigurationSection(key);
+			List<String> list;
+			for (int num = 1; !(list = sec.getStringList(String.valueOf(num))).isEmpty(); num++)
+			{
+				Frame frame = loadFrame(plugin, list);
+				add(frame);
+			}
+			return true;
 		}
+		if (section.isList(key))
+		{
+			add(loadFrame(plugin, section.getStringList(key)));
+			return true;
+		}
+		return false;
 	}
 	
 	public Frame loadFrame(AnimatedMenuPlugin plugin, List<String> list)

@@ -69,10 +69,9 @@ Items:
     Slot: 2
     #This is how the names look when animated
     Name:
-      1: '&1Test %ping%'
-      2: '&2Test %name%'
-      3: '&3Test %uuid%'
-      4: '&4Test'
+      1: '&2Test %player_name%'
+      2: '&3Test %player_uuid%'
+      3: '&4Test'
     #This is what the material setup will look like when animated
     Material:
       1: wool:1:11

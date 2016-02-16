@@ -65,6 +65,12 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		
 		/* Config / API */
 		registerDefaultCommandHandlers();
+		try
+		{
+			Class.forName("me.clip.placeholderapi.PlaceholderAPI");
+			AnimatedMenuPlaceholders.register(this);
+		}
+		catch (Exception ex) {}
 		try {
 			Class.forName("net.milkbowl.vault.economy.Economy");
 			economy = Bukkit.getServicesManager().getRegistration(Economy.class).getProvider();
@@ -169,6 +175,12 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		});
 	}
 	
+	/**
+	 * Gets all online players into a player array
+	 * From 1.7.10 it returns a collection, before that it returned an array.
+	 * 
+	 * @return The online players, as Player[]
+	 */
 	public Player[] getOnlinePlayers()
 	{
 		Object online = Bukkit.getOnlinePlayers();
@@ -199,6 +211,10 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 			if(menu.getSettings().getOpener() != null && menu.getSettings().getOpenerJoinSlot() > -1)
 			{
 				e.getPlayer().getInventory().setItem(menu.getSettings().getOpenerJoinSlot(), menu.getSettings().getOpener());
+			}
+			if (menu.getSettings().shouldOpenOnJoin())
+			{
+				menuRegistry.openMenu(e.getPlayer(), menu);
 			}
 		}
 	}

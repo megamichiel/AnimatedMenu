@@ -6,6 +6,7 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animatedmenu.util.StringUtil;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
@@ -17,7 +18,7 @@ public class MenuSettings {
 	
 	@Getter
 	private ItemStack opener;
-	private boolean openerName, openerLore;
+	private boolean openerName, openerLore, openOnJoin;
 	@Getter @Setter
 	private int openerJoinSlot;
 	@Getter @Setter
@@ -45,6 +46,7 @@ public class MenuSettings {
 			}
 			openerJoinSlot = section.getInt("Menu-Opener-Slot", -1);
 		}
+		openOnJoin = StringUtil.parseBoolean(section, "Open-On-Join", false);
 		if(section.isSet("Open-Sound")) {
 			try {
 				openSound = Sound.valueOf(section.getString("Open-Sound").toUpperCase().replace('-', '_'));
@@ -57,6 +59,11 @@ public class MenuSettings {
 			}
 		}
 		openCommand = section.contains("Command") ? section.getString("Command").toLowerCase() : null;
+	}
+	
+	public boolean shouldOpenOnJoin()
+	{
+		return openOnJoin;
 	}
 	
 	public boolean hasOpenerName() {

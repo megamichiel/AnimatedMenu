@@ -5,6 +5,11 @@ import lombok.Getter;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
+/**
+ * 
+ * Called before menus are loaded. Add stuff like command handlers here
+ *
+ */
 public class AnimatedMenuPreLoadEvent extends Event {
 	
 	@Getter

@@ -55,6 +55,10 @@ Now on to the config:
     Useful for lobbies.
   </li>
   <li>
+    <b>Open-On-Join</b><br/>
+    If this is set to 'true', 'yes', 'on' or 'enable' the menu opens when a player joins.
+  </li>
+  <li>
     <b>Open-Sound</b><br/>
     The sound to make when the menu opens (not required).<br/>
   </li>

@@ -32,6 +32,7 @@ public class StringUtil {
 	}
 	
 	public static StringBundle parseBundle(Nagger nagger, String str) {
+		if (str == null) return null;
 		StringBundle bundle = new StringBundle(nagger);
 		StringBuilder builder = new StringBuilder();
 		char[] array = str.toCharArray();
@@ -40,8 +41,8 @@ public class StringUtil {
 		loop:
 			while(index < array.length) {
 				char c = array[index];
-				if(c == '\\') { //Escaped back-slash
-					if(!(escape = !escape))
+				if(c == '\\') {
+					if(!(escape = !escape)) //Escaped back-slash
 						builder.append(c);
 				} else if(escape) {
 					escape = false;
@@ -123,18 +124,32 @@ public class StringUtil {
 	
 	public static boolean parseBoolean(ConfigurationSection section, String key, boolean def)
 	{
-		return parseBoolean(section.getString(key), def);
+		Flag flag = parseFlag(section, key, def ? Flag.TRUE : Flag.FALSE);
+		return flag == Flag.BOTH ? false : flag.booleanValue();
 	}
 	
 	public static boolean parseBoolean(String str, boolean def)
+	{
+		Flag flag = parseFlag(str, def ? Flag.TRUE : Flag.FALSE);
+		return flag == Flag.BOTH ? false : flag.booleanValue();
+	}
+	
+	public static Flag parseFlag(ConfigurationSection section, String key, Flag def)
+	{
+		return parseFlag(section.getString(key), def);
+	}
+	
+	public static Flag parseFlag(String str, Flag def)
 	{
 		if (str == null) return def;
 		switch (str.toLowerCase())
 		{
 		case "true": case "yes": case "on": case "enable":
-			return true;
+			return Flag.TRUE;
+		case "both":
+			return Flag.BOTH;
 		default:
-			return false;
+			return Flag.FALSE;
 		}
 	}
 }

@@ -3,6 +3,7 @@ package me.megamichiel.animatedmenu.menu;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import lombok.Getter;
+import me.megamichiel.animatedmenu.util.Nagger;
 
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -28,14 +29,14 @@ public class MenuItem {
 		return false;
 	}
 	
-	public void apply(Player p, ItemStack handle)
+	public void apply(Nagger nagger, Player p, ItemStack handle)
 	{
-		settings.apply(p, handle);
+		settings.apply(nagger, p, handle);
 	}
 	
-	public ItemStack load(Player p) {
-		ItemStack item = settings.getMaterial().get().clone();
-		item = settings.applyFirst(item);
+	public ItemStack load(Nagger nagger, Player p) {
+		ItemStack item = settings.getMaterial().get().toItemStack(nagger, p);
+		item = settings.applyFirst(nagger, p, item);
 		
 		ItemMeta meta = item.getItemMeta();
 		meta.setDisplayName(settings.getDisplayName().get().toString(p));

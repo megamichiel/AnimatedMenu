@@ -8,15 +8,15 @@ import me.megamichiel.animatedmenu.util.StringBundle;
 import me.megamichiel.animatedmenu.util.StringUtil;
 
 @NoArgsConstructor
-public class AnimatedName extends Animatable<StringBundle> {
+public class AnimatedText extends Animatable<StringBundle> {
 	
 	private static final long serialVersionUID = 5235518796395129933L;
 	
-	public AnimatedName(Collection<? extends StringBundle> c) {
+	public AnimatedText(Collection<? extends StringBundle> c) {
 		super(c);
 	}
 	
-	public AnimatedName(StringBundle... elements) {
+	public AnimatedText(StringBundle... elements) {
 		super(elements);
 	}
 	

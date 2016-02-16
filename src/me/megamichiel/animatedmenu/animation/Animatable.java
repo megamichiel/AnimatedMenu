@@ -15,6 +15,7 @@ public abstract class Animatable<E> extends ArrayList<E> {
 	
 	private static final long serialVersionUID = -7324365301382371283L;
 	private int frame = 0;
+	protected E defaultValue;
 	
 	public Animatable(Collection<? extends E> c)
 	{
@@ -28,7 +29,7 @@ public abstract class Animatable<E> extends ArrayList<E> {
 	
 	public E get()
 	{
-		return get(frame);
+		return isEmpty() ? defaultValue() : get(frame);
 	}
 	
 	public E next()
@@ -44,9 +45,32 @@ public abstract class Animatable<E> extends ArrayList<E> {
 		return null;
 	}
 	
-	public void load(AnimatedMenuPlugin plugin, ConfigurationSection section)
+	protected E defaultValue()
 	{
-		String str;
-		for (int num = 1; (str = section.getString(String.valueOf(num))) != null; num++, add(convert(plugin, str)));
+		return defaultValue;
+	}
+	
+	public boolean load(AnimatedMenuPlugin plugin, ConfigurationSection section, String key)
+	{
+		return load(plugin, section, key, null);
+	}
+	
+	public boolean load(AnimatedMenuPlugin plugin, ConfigurationSection section, String key, E defaultValue)
+	{
+		this.defaultValue = defaultValue;
+		if (section.isConfigurationSection(key))
+		{
+			ConfigurationSection sec = section.getConfigurationSection(key);
+			String str;
+			for (int num = 1; (str = sec.getString(String.valueOf(num))) != null; num++, add(convert(plugin, str)));
+			return true;
+		}
+		String value = section.getString(key);
+		if (value != null)
+		{
+			add(convert(plugin, value));
+			return true;
+		}
+		return false;
 	}
 }

@@ -21,8 +21,9 @@ There are a few keys which you can customize it with:
   <li>
     <b>Shift-Click</b><br/>
     Whether or not this click has to be a shift click.<br/>
-    If this is not set, both shift and non-shift clicks will execute this section.<br/>
-    Set to 'true', 'yes', 'on' or 'enable' to make this execute only on shift clicks. Any other value will execute when shift is not pressed.
+    If this is set to 'both', both shift and non-shift clicks will execute this section.<br/>
+    Set to 'true', 'yes', 'on' or 'enable' to make this execute only on shift clicks. Any other value will execute when shift is not pressed.<br/>
+    Default is 'both'
   </li>
   <li>
     <b>Permission</b><br/>

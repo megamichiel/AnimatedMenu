@@ -21,6 +21,11 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
+/**
+ * 
+ * The Animated Menu command
+ *
+ */
 public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
 	
 	private final String[] messages = {

@@ -3,34 +3,21 @@ What would a menu be without items?
 Settings up items can be done with ease, especially when you are used to it.
 
 An example of how the Items section might look:<br/>
-Items:<br/>
-&nbsp;&nbsp;itemname:<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;key: value<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;anotherkey: anothervalue<br/>
-&nbsp;&nbsp;anotheritem:<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;key: value
+<b>Items:</b><br/>
+&nbsp;&nbsp;<b>itemname:</b><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>key:</b> value<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>anotherkey:</b> anothervalue<br/>
+&nbsp;&nbsp;<b>anotheritem:</b><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>key:</b> value
 
-The Material, Name and Lore are optionally animated. Use this format:<br/>
-Material:<br/>
-&nbsp;&nbsp;1: stone:1:0<br/>
-&nbsp;&nbsp;2: stone:2:0<br/>
-Name:<br/>
-&nbsp;&nbsp;1: &6Hai<br/>
-&nbsp;&nbsp;2: &aHai<br/>
-Lore:<br/>
-&nbsp;&nbsp;1:<br/>
-&nbsp;&nbsp;- &aLine1<br/>
-&nbsp;&nbsp;- &bLine2<br/>
-&nbsp;&nbsp;2:<br/>
-&nbsp;&nbsp;- &bLine1<br/>
-&nbsp;&nbsp;- &aLine2<br/>
-to animate them, and use<br/>
-Material: stone:1:0<br/>
-Name: &6Hai<br/>
-Lore:<br/>
-- &aLine1<br/>
-- &bLine2<br/>
-to not use animations.
+Some keys are marked with [Animatable]. This means that they are optionally animated. For example, a non-animated key and value:<br/>
+<b>Material:</b> stone:1:0<br/>
+An animated value:<br/>
+<b>Material:</b><br/>
+&nbsp;&nbsp;<b>1:</b> stone:1:0<br/>
+&nbsp;&nbsp;<b>2:</b> dirt:1:0<br/>
+&nbsp;&nbsp;<b>3:</b> sand:1:0<br/>
+  
 
 There are a few keys where you can customize your item with:
 <ul>
@@ -45,26 +32,47 @@ There are a few keys where you can customize your item with:
     Default value is 20
   </li>
   <li>
-    <b>Material</b><br/>
+    <b>Material</b> [Animatable]<br/>
     The material of the item, in format;
     &lt;type or id&gt;:&lt;amount&gt;:&lt;data value&gt;<br/>
     Default value is stone
   </li>
   <li>
-    <b>Name</b><br/>
+    <b>Name</b> [Animatable]<br/>
     The name of the item. Can be colored using & and supports placeholders
   </li>
   <li>
-    <b>Lore</b><br/>
+    <b>Lore</b> [Animatable]<br/>
     The lore of the item. Each line can be colored using & and supports placeholders
   </li>
   <li>
-    <b>Enchantments</b><br/>
+    <b>Enchantments</b> [Animatable in AnimatedMenu Plus]<br/>
     The enchantments to be applied to the item, e.g:<br/>
     Enchantments:<br/>
     - 32:5<br/>
-    - 34:3<br/>
-    This adds efficiency (ID 32) level 5 and unbreaking (ID 34) level 3 to the item.
+    - unbreaking:3<br/>
+    This adds efficiency (ID 32) level 5 and unbreaking (ID 34) level 3 to the item. It uses either IDs or minecraft enchantment names.
+  </li>
+  <li>
+  	<b>Color</b> [Animatable in AnimatedMenu Plus]</br>
+  	Set leather armor's color, using one of these formats:<br/>
+  	<red>, <green>, <blue> e.g. 0, 255, 0 is green<br/>
+  	<hex color> e.g. 00FF00 is green.
+  </li>
+  <li>
+  	<b>SkullOwner</b> [Animatable in AnimatedMenu Plus]</br>
+  	Set a skull's owner, self-explanatory
+  </li>
+  <li>
+  	<b>BannerPattern</b> [Animatable in AnimatedMenu Plus]</br>
+  	Set a banner's pattern. At http://www.needcoolshoes.com/ you can create a banner</br>
+  	When you have customized your banner, the title will say something like http://www.needcoolshoes.com/banner?=paap<br/>
+  	You copy the 'paap' part into this value
+  </li>
+  <li>
+  	<b>Hide-Flags</b> [Animatable in AnimatedMenu Plus]</br>
+  	Set the item's hide flags to hide things such as enchantments.<br/>
+  	Visit http://minecraft.gamepedia.com/Tutorials/Command\_NBT\_tags for reference. If you can't find it, hit CTRL+F and search for "HideFlags"
   </li>
   <li>
     <b>Hide-Permission</b><br/>

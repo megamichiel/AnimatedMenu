@@ -14,10 +14,17 @@ public class MenuGrid {
 		items = new MenuItem[size];
 	}
 	
+	public void clear()
+	{
+		for (int i = 0; i < items.length; i++)
+			items[i] = null;
+	}
+	
 	public void click(Player p, ClickType click, int index) {
-		if(items[index] != null && items[index].getSettings().getClickListener() != null
-				&& !items[index].getSettings().isHidden(p))
-			items[index].getSettings().getClickListener().onClick(p, click, items[index]);
+		MenuItem item = items[index];
+		if(item != null && item.getSettings().getClickListener() != null
+				&& !item.getSettings().isHidden(p))
+			item.getSettings().getClickListener().onClick(p, click, items[index]);
 	}
 	
 	public MenuItem getItem(int index) {

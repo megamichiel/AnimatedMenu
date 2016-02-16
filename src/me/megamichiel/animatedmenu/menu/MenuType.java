@@ -1,7 +1,7 @@
 package me.megamichiel.animatedmenu.menu;
 
 import lombok.Getter;
-import me.megamichiel.animatedmenu.animation.AnimatedName;
+import me.megamichiel.animatedmenu.animation.AnimatedText;
 import me.megamichiel.animatedmenu.util.Nagger;
 
 import org.bukkit.event.inventory.InventoryType;
@@ -13,7 +13,7 @@ import org.bukkit.event.inventory.InventoryType;
 	public static final MenuType DROPPER = new MenuType(InventoryType.DROPPER, "minecraft:dropper", 9);
 	public static final MenuType CRAFTING = new MenuType(InventoryType.CRAFTING, "minecraft:crafting_table", 10);
 	
-	public static final MenuType[] VALUES = new MenuType[] {HOPPER, DISPENSER, DROPPER, CRAFTING};
+	public static final MenuType[] VALUES = new MenuType[] { HOPPER, DISPENSER, DROPPER, CRAFTING };
 	
 	private final InventoryType inventoryType;
 	private final String nmsName;
@@ -31,7 +31,7 @@ import org.bukkit.event.inventory.InventoryType;
 		this.size = rows * 9;
 	}
 	
-	public AnimatedMenu newMenu(Nagger nagger, String name, AnimatedName title, int titleUpdateDelay) {
+	public AnimatedMenu newMenu(Nagger nagger, String name, AnimatedText title, int titleUpdateDelay) {
 		return new AnimatedMenu(nagger, name, title, titleUpdateDelay, this);
 	}
 	

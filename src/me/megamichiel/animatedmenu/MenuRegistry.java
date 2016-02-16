@@ -11,10 +11,10 @@ import java.util.WeakHashMap;
 import java.util.logging.Logger;
 
 import lombok.Getter;
-import me.megamichiel.animatedmenu.animation.AnimatedName;
+import me.megamichiel.animatedmenu.animation.AnimatedText;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuType;
-import me.megamichiel.animatedmenu.util.StringUtil;
+import me.megamichiel.animatedmenu.util.StringBundle;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -27,8 +27,6 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 	private final AnimatedMenuPlugin plugin;
 	@Getter
 	private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
-	/*@Getter
-	private final List<MenuItem> singleItems = new ArrayList<>();*/
 	
 	public MenuRegistry(AnimatedMenuPlugin plugin) {
 		this.plugin = plugin;
@@ -44,32 +42,45 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 				plugin.nag(ex);
 			}
 		}
-		/*for(MenuItem item : singleItems) {
-			try {
-				item.tick();
-			} catch (Exception ex) {
-				plugin.getLogger().warning("An error occured on ticking item " + item.getSettings().getName() + ":");
-				ex.printStackTrace();
-			}
-		}*/
 	}
 	
+	/**
+	 * Get a player's opened menu
+	 * @param who the player to get the opened menu of
+	 * @return the player's opened menu, or null if the player doesn't have a menu open
+	 */
 	public AnimatedMenu getOpenedMenu(Player who) {
 		return openMenu.get(who);
 	}
 	
+	/**
+	 * Clears all menus
+	 */
 	public void clear() {
 		menus.clear();
 	}
 	
+	/**
+	 * Adds a menu to the registry
+	 * @param menu the menu to add
+	 */
 	public void add(AnimatedMenu menu) {
 		menus.add(menu);
 	}
 	
+	/**
+	 * Removes a menu from the registry
+	 * @param menu the menu to remove
+	 */
 	public void remove(AnimatedMenu menu) {
 		menus.remove(menu);
 	}
 	
+	/**
+	 * Gets a menu by name
+	 * @param name the name of the menu, case insensitive
+	 * @return the menu by name, or null if none was found
+	 */
 	public AnimatedMenu getMenu(String name) {
 		for(AnimatedMenu menu : this)
 			if(menu.getName().equalsIgnoreCase(name))
@@ -77,11 +88,19 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 		return null;
 	}
 	
+	/**
+	 * Get a new iterator of all menus
+	 */
 	@Override
 	public Iterator<AnimatedMenu> iterator() {
 		return menus.iterator();
 	}
 	
+	/**
+	 * Make a player open a menu
+	 * @param who the player who should open the menu
+	 * @param menu the menu to open
+	 */
 	public void openMenu(Player who, AnimatedMenu menu) {
 		AnimatedMenu prev = openMenu.remove(who);
 		if (prev != null)
@@ -92,7 +111,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 		openMenu.put(who, menu);
 	}
 	
-	public void loadMenus() {
+	void loadMenus() {
 		clear();
 		
 		Logger logger = plugin.getLogger();
@@ -101,17 +120,21 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 		File menus = new File(plugin.getDataFolder(), "menus");
 		if(!menus.exists()) {
 			menus.mkdirs();
-			try {
-				InputStream yml = plugin.getResource("menus/example.yml");
-				FileOutputStream ymlOut = new FileOutputStream(new File(menus, "example.yml"));
-				int i;
-				while((i = yml.read()) != -1)
-					ymlOut.write(i);
-				yml.close();
-				ymlOut.close();
-			} catch (Exception ex) {
-				plugin.nag("Failed to create the default menu!");
-				plugin.nag(ex);
+			for (String fileName : new String[] { "example", "shop", "exampleplus" })
+			{
+				try {
+					InputStream yml = plugin.getResource("menus/" + fileName + ".yml");
+					if (yml == null) continue;
+					FileOutputStream ymlOut = new FileOutputStream(new File(menus, fileName + ".yml"));
+					int i;
+					while((i = yml.read()) != -1)
+						ymlOut.write(i);
+					yml.close();
+					ymlOut.close();
+				} catch (Exception ex) {
+					plugin.nag("Failed to create default menu " + fileName + "!");
+					plugin.nag(ex);
+				}
 			}
 		}
 		File images = new File(plugin.getDataFolder(), "images");
@@ -125,6 +148,11 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 			String name = file.getName().substring(0, index);
 			AnimatedMenu menu;
 			if(extension.equalsIgnoreCase("yml")) {
+				if (name.contains(" "))
+				{
+					plugin.getLogger().warning("Menu file '" + name + ".yml' contains spaces!");
+					name = name.replace(" ", "_");
+				}
 				FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 				menu = loadMenu(name, cfg);
 			} else continue;
@@ -134,14 +162,17 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 		logger.info(this.menus.size() + " menu" + (this.menus.size() == 1 ? "" : "s") + " loaded");
 	}
 	
+	/**
+	 * Loads a menu from a ConfigurationSection
+	 * @param name the name of the menu
+	 * @param cfg the ConfigurationSection
+	 * @return the created menu
+	 */
 	public AnimatedMenu loadMenu(String name, ConfigurationSection cfg) {
-		AnimatedName title = new AnimatedName();
-		if (cfg.isConfigurationSection("Menu-Name"))
-			title.load(plugin, cfg.getConfigurationSection("Menu-Name"));
-		else if (!cfg.isList("Menu-Name"))
-			title.add(StringUtil.parseBundle(plugin, cfg.getString("Menu-Name", name)).colorAmpersands());
+		AnimatedText title = new AnimatedText();
+		title.load(plugin, cfg, "Menu-Name", new StringBundle(plugin, name));
 		MenuType type;
-		if(cfg.isSet("Menu-Type")) {
+		if (cfg.isSet("Menu-Type")) {
 			type = MenuType.fromName(cfg.getString("Menu-Type").toUpperCase());
 			if(type == null) {
 				plugin.nag("Couldn't find a menu type by name " + cfg.getString("Menu-Type") + "!");

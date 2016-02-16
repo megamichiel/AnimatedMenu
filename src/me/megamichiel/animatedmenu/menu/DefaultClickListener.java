@@ -1,7 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
 import static me.megamichiel.animatedmenu.util.StringUtil.parseBoolean;
-import static org.bukkit.ChatColor.translateAlternateColorCodes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +8,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.command.CommandExecutor;
+import me.megamichiel.animatedmenu.util.Flag;
+import me.megamichiel.animatedmenu.util.StringBundle;
+import me.megamichiel.animatedmenu.util.StringUtil;
 import net.milkbowl.vault.economy.Economy;
 
 import org.bukkit.configuration.ConfigurationSection;
@@ -37,25 +39,26 @@ public class DefaultClickListener implements ItemClickListener {
 					String click = sec.getString("Click-Type", "both").toLowerCase();
 					boolean rightClick = click.equals("both") || click.equals("right"),
 							leftClick = click.equals("both") || click.equals("left");
-					int shiftClick = sec.contains("Shift-Click") ? parseBoolean(sec, "Shift-Click", false) ? 2 : 1 : 0,
-							price = sec.getInt("Price", -1), points = sec.getInt("Points", -1);
+					Flag shiftClick = StringUtil.parseFlag(sec, "Shift-Click", Flag.BOTH);
+					int price = sec.getInt("Price", -1), points = sec.getInt("Points", -1);
 					String permission = sec.getString("Permission"),
-							permissionMessage = color(sec.getString("Permission-Message", PERMISSION_MESSAGE)),
+							permissionMessage = sec.getString("Permission-Message", PERMISSION_MESSAGE),
 							bypassPermission = sec.getString("Bypass-Permission"),
-							priceMessage = color(sec.getString("Price-Message", PRICE_MESSAGE)),
-							pointsMessage = color(sec.getString("Points-Message", POINTS_MESSAGE));
+							priceMessage = sec.getString("Price-Message", PRICE_MESSAGE),
+							pointsMessage = sec.getString("Points-Message", POINTS_MESSAGE);
 					boolean close = parseBoolean(sec, "Close", false);
 					ClickProcessor processor = new ClickProcessor(plugin, commandExecutor, buyCommandExecutor,
-							rightClick, leftClick, shiftClick, price, points, permission, permissionMessage,
-							bypassPermission, priceMessage, pointsMessage, close);
+							rightClick, leftClick, shiftClick, price, points,
+							StringUtil.parseBundle(plugin, permission),
+							StringUtil.parseBundle(plugin, permissionMessage).colorAmpersands(),
+							StringUtil.parseBundle(plugin, bypassPermission),
+							StringUtil.parseBundle(plugin, priceMessage),
+							StringUtil.parseBundle(plugin, pointsMessage),
+							close);
 					clicks.add(processor);
 				}
 			}
 		}
-	}
-	
-	private String color(String str) {
-		return str == null ? null : translateAlternateColorCodes('&', str);
 	}
 	
 	@Override
@@ -69,20 +72,21 @@ public class DefaultClickListener implements ItemClickListener {
 		private final AnimatedMenuPlugin plugin;
 		private final CommandExecutor commandExecutor, buyCommandExecutor;
 		private final boolean rightClick, leftClick;
-		private final int shiftClick, price, pointPrice;
-		private final String permission, permissionMessage, bypassPermission, priceMessage, pointsMessage;
+		private final Flag shiftClick;
+		private final int price, pointPrice;
+		private final StringBundle permission, permissionMessage, bypassPermission, priceMessage, pointsMessage;
 		private final boolean close;
 		
 		@Override
 		public void onClick(Player who, ClickType click, MenuItem item) {
 			if (((rightClick && click.isRightClick()) || (leftClick && click.isLeftClick()))
-					&& (shiftClick == 0 || click.isShiftClick() == (shiftClick == 2)))
+					&& shiftClick.matches(click.isShiftClick()))
 			{
-				if (bypassPermission == null || !who.hasPermission(bypassPermission))
+				if (bypassPermission == null || !who.hasPermission(bypassPermission.toString(who)))
 				{
-					if (permission != null && !who.hasPermission(permission))
+					if (permission != null && !who.hasPermission(permission.toString(who)))
 					{
-						who.sendMessage(permissionMessage);
+						who.sendMessage(permissionMessage.toString(who));
 						return;
 					}
 					boolean bought = false;
@@ -96,7 +100,7 @@ public class DefaultClickListener implements ItemClickListener {
 						}
 						else
 						{
-							who.sendMessage(priceMessage);
+							who.sendMessage(priceMessage.toString(who));
 							return;
 						}
 					}
@@ -109,7 +113,7 @@ public class DefaultClickListener implements ItemClickListener {
 						}
 						else
 						{
-							who.sendMessage(pointsMessage);
+							who.sendMessage(pointsMessage.toString(who));
 							return;
 						}
 					}
