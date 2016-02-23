@@ -19,10 +19,7 @@ public enum Flag {
 		}
 	};
 	
-	public boolean matches(boolean b)
-	{
-		return false;
-	}
+	public abstract boolean matches(boolean b);
 	
 	public boolean booleanValue()
 	{

@@ -1,0 +1,49 @@
+If you have AnimatedMenu (Plus) installed, you will get a few extra placeholders added to PlaceholderAPI.
+
+First, there are a few ping-related placeholders. Inside the config.yml, you can specify remote connections under the Connections section. An example:<br/>
+<b>Connections:</b><br/>
+&nbsp;&nbsp;<b>somemotd:</b><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>ip: </b>localhost:25565<br/>
+&nbsp;&nbsp;<b>somestatus</b>:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>ip: </b>localhost<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>online: </b>'&aOnline'<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>offline: </b>'&cOffline'<br/>
+&nbsp;&nbsp;<b>somemotdcheck:</b><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>ip: </b>localhost:25565<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>'A Minecraft Server': </b>'&aDefault server motd!'<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<b>default: </b>'&cNot a default motd!'
+
+<ul>
+	<li>
+		<b>%animatedmenu_motd_&lt;id&gt;%</b><br/>
+		Retrieve the motd of a server. The &lt;id&gt; should be specified under the Connections section, as shown above.<br/>
+		To interact with 'somemotd', use %animatedmenu_motd_somemotd%
+	</li>
+	<li>
+		<b>%animatedmenu_status_&lt;id&gt;%</b><br/>
+		Returns a different value for an online/offline server.<br/>
+		To interact with 'somestatus', use %animatedmenu_motd_somestatus%<br/>
+		If the server is online, '&aOnline' will be displayed. If the server is offline, '&cOffline' is displayed.
+	</li>
+	<li>
+		<b>%animatedmenu_motdcheck_&lt;id&gt;%</b><br/>
+		Returns a specific value for different motds<br/>
+		To interact with 'somemotdcheck', use %animatedmenu_motd_somemotdcheck%<br/>
+		If the motd is 'A Minecraft Server', '&aDefault server motd!' will be displayed, as you can see in the Connections section. If no matching motd was found, the value at 'default' will be displayed (in this case '&cNot a default motd!').
+	</li>
+</ul>
+
+Finally, there are some random placeholders:
+<ul>
+	<li>
+		<b>%animatedmenu\_worldplayers\_&lt;id&gt;%</b><br/>
+		Retrieve the player count in the specific world. An example: '%animatedmenu_worldplayers_world'
+	</li>
+	<li>
+		<b>%animatedmenu\_formula\_&lt;id&gt;</b><br/>
+		Execute a specific formula. You can specify formulas inside the config.yml under the formulas section. An example:<br/>
+		<b>Formulas:</b><br/>
+		&nbsp;&nbsp;<b>example: </b>'%bungeecord\_server1% + %bungeecord\_server2%'<br/>
+		To retrieve this formula, use %animatedmenu\_formula\_example%
+	</li>
+</ul>

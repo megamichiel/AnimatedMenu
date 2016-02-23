@@ -9,7 +9,7 @@ import org.bukkit.entity.Player;
 	
 	public static final NumberPlaceholder ZERO = of(0);
 	
-	public static NumberPlaceholder of(final int val)
+	public static NumberPlaceholder of(int val)
 	{
 		return new NumberPlaceholder(new ConstantPlaceholder<Integer>(val));
 	}

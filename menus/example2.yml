@@ -1,0 +1,80 @@
+Menu-Name:
+  1: '&6Server Transit %player_name%'
+  2: '&aServer Transit %player_name%'
+Menu-Opener: diamond-block
+Menu-Opener-Name: '&6Open a menu!'
+Menu-Opener-Lore:
+- '&aClick me!'
+Open-Sound: arrow-hit
+Open-Sound-Pitch: 1
+Rows: 1
+Command: 'openinv'
+Items:
+  Example-item:
+    Slot: 1
+    Name: '&6Test'
+    Material: stone:1:0
+    Frame-Delay: 20
+    Commands:
+      example:
+        Commands:
+        - 'script: file: examplescript.js'
+        Price: 100
+        Price-Message: '&cYou do not have enough money!'
+    Lore:
+      1:
+      - 'test'
+      - 'test2'
+      - 'test3'
+      2: 
+      - 'test2'
+      - 'test3'
+      - 'test'
+      3: 
+      - 'test3'
+      - 'test'
+      - 'test2'
+  Another-item:
+    Slot: 2
+    Name:
+      1: '&1Test %ping%'
+      2: '&2Test %name%'
+      3: '&3Test %uuid%'
+      4: '&4Test'
+    Material:
+      1: wool:1:11
+      2: wool:2:11
+      3: wool:3:11
+      4: wool:4:11
+    Tag:
+      1:
+        HideFlags: 63
+        display:
+          color: 0xFF
+        ench:
+        - id: 34
+          lvl: 3
+      2:
+        display:
+          color: 0xFF00
+      3:
+        display:
+          color: 0xFF0000
+    Commands:
+      example:
+        Commands:
+        - 'say hi'
+        Permission: 'animatedmenu.item.test'
+        Permission-Message: '&4You do not have permission for that!'
+        Points: 50
+        Points-Message: '&cYou do not have enough points!'
+    Frame-Delay: 40
+    Lore:
+      1:
+      - 'test'
+      2:
+      - 'estt'
+      3:
+      - 'stte'
+      4:
+      - 'ttes'

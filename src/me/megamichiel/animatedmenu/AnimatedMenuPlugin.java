@@ -1,11 +1,13 @@
 package me.megamichiel.animatedmenu;
 
+import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,12 +22,18 @@ import me.megamichiel.animatedmenu.command.MessageCommand;
 import me.megamichiel.animatedmenu.command.OpCommand;
 import me.megamichiel.animatedmenu.command.ServerCommand;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
+import me.megamichiel.animatedmenu.util.FormulaPlaceholder;
 import me.megamichiel.animatedmenu.util.Nagger;
+import me.megamichiel.animatedmenu.util.RemoteConnections;
+import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
+import me.megamichiel.animatedmenu.util.StringBundle;
+import me.megamichiel.animatedmenu.util.StringUtil;
 import net.milkbowl.vault.economy.Economy;
 
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -41,13 +49,19 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.NumberConversions;
 
 public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 	
+	@Getter private static AnimatedMenuPlugin instance;
+	
 	@Getter
-	private final List<CommandHandler> commandHandlers = new ArrayList<>();
+	private final List<CommandHandler> commandHandlers = new ArrayList<CommandHandler>();
 	@Getter
 	private final MenuRegistry menuRegistry = new MenuRegistry(this);
+	
+	@Getter private final Map<String, FormulaPlaceholder> formulaPlaceholders = new HashMap<String, FormulaPlaceholder>();
+	@Getter private final RemoteConnections connections = new RemoteConnections();
 	
 	private String update;
 	@Getter
@@ -58,12 +72,16 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 	@Override
 	public void onEnable()
 	{
+		instance = this;
+		
 		/* Listeners */
 		getServer().getPluginManager().registerEvents(this, this);
 		getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
 		getCommand("animatedmenu").setExecutor(new AnimatedMenuCommand(this));
 		
 		/* Config / API */
+		saveDefaultConfig();
+		
 		registerDefaultCommandHandlers();
 		try
 		{
@@ -91,8 +109,11 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		}.runTask(this);
 		
 		/* Other Stuff */
-		Bukkit.getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
 		checkForUpdate();
+		loadConfig();
+		
+		Bukkit.getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
+		getServer().getScheduler().runTaskTimerAsynchronously(this, connections, 0L, 10 * 20L);
 	}
 	
 	@Override
@@ -175,22 +196,60 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		});
 	}
 	
-	/**
-	 * Gets all online players into a player array
-	 * From 1.7.10 it returns a collection, before that it returned an array.
-	 * 
-	 * @return The online players, as Player[]
-	 */
-	public Player[] getOnlinePlayers()
+	protected void loadConfig()
 	{
-		Object online = Bukkit.getOnlinePlayers();
-		if(online instanceof Collection<?>)
-			return ((Collection<?>) online).toArray(new Player[0]);
-		return (Player[]) online;
+		if (getConfig().isConfigurationSection("Formulas"))
+		{
+			ConfigurationSection section = getConfig().getConfigurationSection("Formulas");
+			for (String key : section.getKeys(false))
+			{
+				String val = section.getString(key);
+				if (val != null)
+				{
+					formulaPlaceholders.put(key.toLowerCase(), new FormulaPlaceholder(this, val));
+				}
+			}
+		}
+		if (getConfig().isConfigurationSection("Connections"))
+		{
+			ConfigurationSection section = getConfig().getConfigurationSection("Connections");
+			for (String key : section.getKeys(false))
+			{
+				if (section.isConfigurationSection(key))
+				{
+					ConfigurationSection sec = section.getConfigurationSection(key);
+					String ip = sec.getString("ip");
+					if (ip != null)
+					{
+						int colonIndex = ip.indexOf(':');
+						int port = colonIndex == -1 ? 25565 : NumberConversions.toInt(ip.substring(colonIndex + 1));
+						if (colonIndex > -1)
+							ip = ip.substring(0, colonIndex);
+						ServerInfo serverInfo = connections.add(key.toLowerCase(), new InetSocketAddress(ip, port));
+						Map<String, StringBundle> map = serverInfo.getValues();
+						for (String key2 : sec.getKeys(false))
+						{
+							if (!key2.equals("ip"))
+							{
+								String val = sec.getString(key2);
+								if (val != null)
+									map.put(key2, StringUtil.parseBundle(this, val).colorAmpersands());
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	void reload()
 	{
+		reloadConfig();
+		
+		formulaPlaceholders.clear();
+		connections.clear();
+		loadConfig();
+		
 		registerDefaultCommandHandlers();
 		Bukkit.getPluginManager().callEvent(new AnimatedMenuPreLoadEvent(this));
 		menuRegistry.loadMenus();
@@ -221,7 +280,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 	
 	@EventHandler
 	public void onPlayerInteract(PlayerInteractEvent e) {
-		if(!e.getPlayer().hasPermission("animatedmenu.open"))
+		if (!e.getPlayer().hasPermission("animatedmenu.open"))
 			return;
 		if(e.getItem() != null)
 		{
@@ -265,17 +324,17 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		}
 	}
 	
-	@EventHandler(ignoreCancelled = true)
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onInventoryClose(InventoryCloseEvent e)
 	{
 		AnimatedMenu menu = menuRegistry.getOpenMenu().remove(e.getPlayer());
-		if (menu != null) menu.getOpenMenu().remove(e.getPlayer());
+		if (menu != null) menu.handleMenuClose(e.getPlayer());
 	}
 	
 	@EventHandler
 	public void onInventoryClick(InventoryClickEvent e)
 	{
-		if(!(e.getWhoClicked() instanceof Player)) //Not sure if they can't be a player, but just for safety
+		if(!(e.getWhoClicked() instanceof Player)) // Not sure if they can't be a player, but just for safety
 			return;
 		Player p = (Player) e.getWhoClicked();
 		AnimatedMenu open = menuRegistry.getOpenedMenu(p);

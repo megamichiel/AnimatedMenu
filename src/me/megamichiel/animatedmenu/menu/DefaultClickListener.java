@@ -23,7 +23,7 @@ public class DefaultClickListener implements ItemClickListener {
 			PRICE_MESSAGE = "&cYou don't have enough money for that!",
 			POINTS_MESSAGE = "&cYou don't have enough points for that!";
 	
-	private final List<ClickProcessor> clicks = new ArrayList<>();
+	private final List<ClickProcessor> clicks = new ArrayList<ClickProcessor>();
 	
 	public DefaultClickListener(AnimatedMenuPlugin plugin, ConfigurationSection section) {
 		if (section.isConfigurationSection("Commands"))

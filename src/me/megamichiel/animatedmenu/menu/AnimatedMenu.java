@@ -3,6 +3,8 @@ package me.megamichiel.animatedmenu.menu;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +16,7 @@ import me.megamichiel.animatedmenu.util.Nagger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
@@ -30,8 +33,7 @@ public class AnimatedMenu {
 	@Getter private final int titleUpdateDelay;
 	private int titleUpdateTick = 0;
 	
-	@Getter
-	private final Map<Player, Inventory> openMenu = new ConcurrentHashMap<>();
+	private final Map<Player, Inventory> openMenu = new ConcurrentHashMap<Player, Inventory>();
 	
 	public AnimatedMenu(Nagger nagger, String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
 		this.nagger = nagger;
@@ -42,6 +44,16 @@ public class AnimatedMenu {
 		
 		this.menuType = type;
 		this.menuGrid = new MenuGrid(type.getSize());
+	}
+	
+	public void handleMenuClose(HumanEntity who)
+	{
+		openMenu.remove(who);
+	}
+	
+	public Collection<? extends Player> getViewers()
+	{
+		return Collections.unmodifiableCollection(openMenu.keySet());
 	}
 	
 	private Inventory createInventory(Player who)
@@ -62,13 +74,12 @@ public class AnimatedMenu {
 		return inv;
 	}
 	
-	public Inventory open(Player who) {
+	public void open(Player who) {
 		Inventory inv = createInventory(who);
 		who.openInventory(inv);
 		if(settings.getOpenSound() != null)
 			who.playSound(who.getLocation(), settings.getOpenSound(), 1F, settings.getOpenSoundPitch());
 		openMenu.put(who, inv);
-		return inv;
 	}
 	
 	public void load(AnimatedMenuPlugin plugin, ConfigurationSection cfg) {

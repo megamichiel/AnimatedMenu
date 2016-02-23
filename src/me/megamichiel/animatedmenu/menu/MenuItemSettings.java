@@ -71,7 +71,7 @@ public class MenuItemSettings {
 		}
 		lore = new AnimatedLore();
 		lore.load(plugin, section, "Lore");
-		enchantments = new HashMap<>();
+		enchantments = new HashMap<Enchantment, Integer>();
 		for (String str : section.getStringList("Enchantments")) {
 			String[] split = str.split(":");
 			Enchantment ench;
@@ -193,11 +193,11 @@ public class MenuItemSettings {
 	
 	static ItemStack parseItemStack(AnimatedMenuPlugin plugin, String str) {
 		String[] split = str.split(":");
-		MaterialMatcher matcher = MaterialMatcher.matcher(split[0]);
+		MaterialMatcher matcher = MaterialMatcher.parse(split[0]);
 		if(!matcher.matches()) {
 			plugin.nag("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
 		}
-		ItemStack item = new ItemStack(matcher.get());
+		ItemStack item = new ItemStack(matcher.get(null, null));
 		if(split.length > 1) {
 			try {
 				item.setAmount(Integer.parseInt(split[1]));

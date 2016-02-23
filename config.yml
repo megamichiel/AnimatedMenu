@@ -1,0 +1,22 @@
+#You can specify remote server ips here, for animatedmenu placeholders
+#Connections:
+#  #This will be referred to when using %animatedmenu_status_example%
+#  example:
+#    ip: localhost:25565
+#    online: '&aOnline'
+#    offline: '&cOffline'
+#  #You can also retrieve a motd using %animatedmenu_motd_example1%
+#  example1:
+#    ip: localhost
+#  #You can even check if a server has a specific motd!
+#  #This will be referred to when using %animatedmenu_motdcheck_example2%
+#  example2:
+#    ip: localhost
+#    'A Minecraft Server': '&aDefault server motd!'
+#    #If no matching motd was found, you can use the default key
+#    default: '&cNot a default server motd!'
+
+#Here you can combine multiple number placeholders into one!
+#Possible tokens are + (plus) and * (multiply)
+Formulas:
+  example: '%bungeecord_server1% + %bungeecord_server2%'

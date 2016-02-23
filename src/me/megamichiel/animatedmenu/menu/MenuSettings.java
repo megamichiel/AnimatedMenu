@@ -29,7 +29,7 @@ public class MenuSettings {
 	private String openCommand;
 	
 	public void load(AnimatedMenuPlugin plugin, ConfigurationSection section) {
-		if(section.isSet("Menu-Opener")) {
+		if (section.isSet("Menu-Opener")) {
 			opener = MenuItemSettings.parseItemStack(plugin, section.getString("Menu-Opener"));
 			openerName = section.isSet("Menu-Opener-Name");
 			openerLore = section.isSet("Menu-Opener-Lore");
@@ -38,7 +38,7 @@ public class MenuSettings {
 				if(openerName)
 					meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', section.getString("Menu-Opener-Name")));
 				if(openerLore) {
-					List<String> lore = new ArrayList<>();
+					List<String> lore = new ArrayList<String>();
 					for(String line : section.getStringList("Menu-Opener-Lore"))
 						lore.add(ChatColor.translateAlternateColorCodes('&', line));
 				}
@@ -47,7 +47,7 @@ public class MenuSettings {
 			openerJoinSlot = section.getInt("Menu-Opener-Slot", -1);
 		}
 		openOnJoin = StringUtil.parseBoolean(section, "Open-On-Join", false);
-		if(section.isSet("Open-Sound")) {
+		if (section.isSet("Open-Sound")) {
 			try {
 				openSound = Sound.valueOf(section.getString("Open-Sound").toUpperCase().replace('-', '_'));
 				if(section.isSet("Open-Sound-Pitch"))
