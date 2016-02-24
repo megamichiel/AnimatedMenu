@@ -107,7 +107,7 @@ public class MaterialMatcher {
 						}
 					}
 					catch (Exception ex) {}
-					return m;
+					return m == null ? Material.STONE : m;
 				}
 			};
 		}

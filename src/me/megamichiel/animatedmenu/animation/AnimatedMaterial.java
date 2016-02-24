@@ -83,7 +83,10 @@ public class AnimatedMaterial extends Animatable<Frame> {
 		
 		public ItemStack toItemStack(Nagger nagger, Player who)
 		{
-			return new ItemStack(type.get(nagger, who), amount.invoke(nagger, who), data.invoke(nagger, who).shortValue());
+			int num = amount.invoke(nagger, who);
+			if (num > 64) num = 64;
+			else if (num < 0) num = 0;
+			return new ItemStack(type.get(nagger, who), num, data.invoke(nagger, who).shortValue());
 		}
 	}
 }

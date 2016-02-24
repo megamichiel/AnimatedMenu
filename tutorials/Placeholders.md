@@ -13,6 +13,9 @@ First, there are a few ping-related placeholders. Inside the config.yml, you can
 &nbsp;&nbsp;&nbsp;&nbsp;<b>'A Minecraft Server': </b>'&aDefault server motd!'<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<b>default: </b>'&cNot a default motd!'
 
+If something doesn't work the way you expect it to, set 'Warn-Offline-Servers' to true.<br/>
+This will print a message to the console when the plugin can't connect to a server and will help you find the problem.
+
 <ul>
 	<li>
 		<b>%animatedmenu_motd_&lt;id&gt;%</b><br/>
@@ -30,6 +33,14 @@ First, there are a few ping-related placeholders. Inside the config.yml, you can
 		Returns a specific value for different motds<br/>
 		To interact with 'somemotdcheck', use %animatedmenu_motd_somemotdcheck%<br/>
 		If the motd is 'A Minecraft Server', '&aDefault server motd!' will be displayed, as you can see in the Connections section. If no matching motd was found, the value at 'default' will be displayed (in this case '&cNot a default motd!').
+	</li>
+	<li>
+		<b>%animatedmenu_onlineplayers_&lt;id&gt;</b><br/>
+		Returns the online player count of a specific server.
+	</li>
+	<li>
+		<b>%animatedmenu_maxplayers_&lt;id&gt;</b><br/>
+		Returns the max player count of a specific server.
 	</li>
 </ul>
 

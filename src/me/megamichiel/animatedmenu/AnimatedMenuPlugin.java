@@ -49,6 +49,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.NumberConversions;
 
 public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
@@ -61,7 +62,10 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 	private final MenuRegistry menuRegistry = new MenuRegistry(this);
 	
 	@Getter private final Map<String, FormulaPlaceholder> formulaPlaceholders = new HashMap<String, FormulaPlaceholder>();
-	@Getter private final RemoteConnections connections = new RemoteConnections();
+	@Getter private final RemoteConnections connections = new RemoteConnections(this);
+	private boolean warnOfflineServers = true;
+	
+	@Getter private final List<BukkitTask> asyncTasks = new ArrayList<BukkitTask>();
 	
 	private String update;
 	@Getter
@@ -112,8 +116,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		checkForUpdate();
 		loadConfig();
 		
-		Bukkit.getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
-		getServer().getScheduler().runTaskTimerAsynchronously(this, connections, 0L, 10 * 20L);
+		asyncTasks.add(Bukkit.getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
+		asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, connections, 0L, 10 * 20L));
 	}
 	
 	@Override
@@ -122,6 +126,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		for (Player p : new HashSet<Player>(menuRegistry.getOpenMenu().keySet())) { // InventoryCloseEvent could cause ConcurrentModificationException
 			p.closeInventory();
 		}
+		for (BukkitTask task : asyncTasks)
+			task.cancel();
+		asyncTasks.clear();
 	}
 	
 	private void checkForUpdate()
@@ -196,6 +203,11 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		});
 	}
 	
+	public boolean warnOfflineServers()
+	{
+		return warnOfflineServers;
+	}
+	
 	protected void loadConfig()
 	{
 		if (getConfig().isConfigurationSection("Formulas"))
@@ -226,20 +238,22 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 						if (colonIndex > -1)
 							ip = ip.substring(0, colonIndex);
 						ServerInfo serverInfo = connections.add(key.toLowerCase(), new InetSocketAddress(ip, port));
-						Map<String, StringBundle> map = serverInfo.getValues();
+						Map<StringBundle, StringBundle> map = serverInfo.getValues();
 						for (String key2 : sec.getKeys(false))
 						{
 							if (!key2.equals("ip"))
 							{
 								String val = sec.getString(key2);
 								if (val != null)
-									map.put(key2, StringUtil.parseBundle(this, val).colorAmpersands());
+									map.put(StringUtil.parseBundle(this, key2).colorAmpersands(),
+											StringUtil.parseBundle(this, val).colorAmpersands());
 							}
 						}
 					}
 				}
 			}
 		}
+		warnOfflineServers = getConfig().getBoolean("Warn-Offline-Servers");
 	}
 	
 	void reload()
