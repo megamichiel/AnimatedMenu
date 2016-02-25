@@ -14,7 +14,8 @@ First, there are a few ping-related placeholders. Inside the config.yml, you can
 &nbsp;&nbsp;&nbsp;&nbsp;<b>default: </b>'&cNot a default motd!'
 
 If something doesn't work the way you expect it to, set 'Warn-Offline-Servers' to true.<br/>
-This will print a message to the console when the plugin can't connect to a server and will help you find the problem.
+This will print a message to the console when the plugin can't connect to a server and will help you find the problem.<br/>
+You can specify the delay between connection refreshes (in ticks) by settings 'Connection-Refresh-Delay' to a number.
 
 <ul>
 	<li>

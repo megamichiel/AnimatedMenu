@@ -17,6 +17,7 @@ import me.megamichiel.animatedmenu.animation.AnimatedText;
 import me.megamichiel.animatedmenu.util.BannerPattern;
 import me.megamichiel.animatedmenu.util.MaterialMatcher;
 import me.megamichiel.animatedmenu.util.Nagger;
+import me.megamichiel.animatedmenu.util.Skull;
 import me.megamichiel.animatedmenu.util.StringBundle;
 import me.megamichiel.animatedmenu.util.StringUtil;
 
@@ -39,12 +40,12 @@ public class MenuItemSettings {
 	private AnimatedMaterial material;
 	private AnimatedText displayName;
 	private AnimatedLore lore;
-	private int frameDelay;
+	private int frameDelay, refreshDelay;
 	private Map<Enchantment, Integer> enchantments;
 	private ItemClickListener clickListener;
 	private StringBundle hidePermission;
 	private Color leatherArmorColor;
-	private StringBundle skullOwner;
+	private Skull skull;
 	private BannerPattern bannerPattern;
 	private int hideFlags = 0;
 	
@@ -53,12 +54,13 @@ public class MenuItemSettings {
 		material = new AnimatedMaterial();
 		displayName = new AnimatedText();
 		lore = new AnimatedLore();
-		frameDelay = 20;
+		frameDelay = refreshDelay = 20;
 		enchantments = new HashMap<Enchantment, Integer>();
 	}
 	
 	public MenuItemSettings load(AnimatedMenuPlugin plugin, String menu, ConfigurationSection section) {
 		frameDelay = section.getInt("Frame-Delay", 20);
+		refreshDelay = section.getInt("Refresh-Delay", frameDelay);
 		material = new AnimatedMaterial();
 		if (!material.load(plugin, section, "Material"))
 		{
@@ -92,7 +94,8 @@ public class MenuItemSettings {
 		}
 		clickListener = new DefaultClickListener(plugin, section);
 		leatherArmorColor = getColor(section.getString("Color"));
-		skullOwner = StringUtil.parseBundle(plugin, section.getString("SkullOwner"));
+		String skullOwner = section.getString("SkullOwner");
+		skull = skullOwner == null ? null : new Skull(plugin, skullOwner);
 		bannerPattern = null;
 		try
 		{
@@ -122,8 +125,8 @@ public class MenuItemSettings {
 		ItemMeta meta = handle.getItemMeta();
 		if (meta instanceof LeatherArmorMeta && getLeatherArmorColor() != null)
 			((LeatherArmorMeta) meta).setColor(getLeatherArmorColor());
-		else if (meta instanceof SkullMeta && getSkullOwner() != null)
-			((SkullMeta) meta).setOwner(getSkullOwner().toString(who));
+		else if (meta instanceof SkullMeta && getSkull() != null)
+			getSkull().apply(who, (SkullMeta) meta);
 		else if (meta instanceof BannerMeta && getBannerPattern() != null)
 			getBannerPattern().apply((BannerMeta) meta);
 		for (ItemFlag itemFlag : ItemFlag.values())
@@ -159,8 +162,8 @@ public class MenuItemSettings {
 		
 		if (meta instanceof LeatherArmorMeta && getLeatherArmorColor() != null)
 			((LeatherArmorMeta) meta).setColor(getLeatherArmorColor());
-		else if (meta instanceof SkullMeta && getSkullOwner() != null)
-			((SkullMeta) meta).setOwner(getSkullOwner().toString(p));
+		else if (meta instanceof SkullMeta && getSkull() != null)
+			getSkull().apply(p, (SkullMeta) meta);
 		else if (meta instanceof BannerMeta && getBannerPattern() != null)
 			getBannerPattern().apply((BannerMeta) meta);
 		for (ItemFlag itemFlag : ItemFlag.values())
@@ -231,7 +234,7 @@ public class MenuItemSettings {
 		private ItemClickListener clickListener;
 		private StringBundle hidePermission;
 		private Color leatherArmorColor;
-		private StringBundle skullOwner;
+		private Skull skull;
 		private int hideFlags;
 		
 		public Builder material(AnimatedMaterial material) {
@@ -274,8 +277,8 @@ public class MenuItemSettings {
 			return this;
 		}
 		
-		public Builder skullOwner(StringBundle skullOwner) {
-			this.skullOwner = skullOwner;
+		public Builder skull(Skull skull) {
+			this.skull = skull;
 			return this;
 		}
 		
@@ -294,7 +297,7 @@ public class MenuItemSettings {
 			settings.setClickListener(clickListener);
 			settings.setHidePermission(hidePermission);
 			settings.setLeatherArmorColor(leatherArmorColor);
-			settings.setSkullOwner(skullOwner);
+			settings.setSkull(skull);
 			settings.setHideFlags(hideFlags);
 			return settings;
 		}

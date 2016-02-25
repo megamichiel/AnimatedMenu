@@ -27,9 +27,15 @@ There are a few keys where you can customize your item with:
   </li>
   <li>
     <b>Frame-Delay</b><br/>
-    The delay in ticks between item updates.
+    The delay in ticks between item frame updates.<br/>
     20 ticks = 1 second<br/>
     Default value is 20
+  </li>
+  <li>
+    <b>Refresh-Delay</b><br/>
+    The delay in ticks between item refreshes.<br/>
+    20 ticks = 1 second<br/>
+    Default value is equal to Frame-Delay
   </li>
   <li>
     <b>Material</b> [Animatable]<br/>

@@ -117,7 +117,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		loadConfig();
 		
 		asyncTasks.add(Bukkit.getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
-		asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, connections, 0L, 10 * 20L));
 	}
 	
 	@Override
@@ -254,6 +253,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 			}
 		}
 		warnOfflineServers = getConfig().getBoolean("Warn-Offline-Servers");
+		connections.schedule(getConfig().getLong("Connection-Refresh-Delay", 10 * 20L));
 	}
 	
 	void reload()
@@ -262,6 +262,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		
 		formulaPlaceholders.clear();
 		connections.clear();
+		connections.cancel();
 		loadConfig();
 		
 		registerDefaultCommandHandlers();
