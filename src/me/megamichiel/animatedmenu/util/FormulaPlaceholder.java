@@ -13,7 +13,6 @@ public class FormulaPlaceholder implements IPlaceholder<Integer> {
 	
 	public FormulaPlaceholder(Nagger nagger, String value) {
 		value = value.trim();
-<<<<<<< HEAD
 		String[] multiply = value.split("\\+");
 		List<Object> list = new ArrayList<Object>();
 		for (String str : multiply)
@@ -25,19 +24,6 @@ public class FormulaPlaceholder implements IPlaceholder<Integer> {
 			list.add(new Formula(FormulaType.MULTIPLY, list1));
 		}
 		formula = new Formula(FormulaType.SUM, list);
-=======
-		String[] multiply = value.split("\\*");
-		List<Object> list = new ArrayList<Object>();
-		for (String str : multiply)
-		{
-			String[] plus = str.trim().split("\\+");
-			List<Object> list1 = new ArrayList<Object>();
-			for (String str1 : plus)
-				list1.add(StringUtil.parseBundle(nagger, str1.trim()));
-			list.add(new Formula(FormulaType.SUM, list1));
-		}
-		formula = new Formula(FormulaType.MULTIPLY, list);
->>>>>>> 41fa8baba6eb1ea2c9a35c62bff02fad1e1de5a3
 	}
 	
 	@Override
