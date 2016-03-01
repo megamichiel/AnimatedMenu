@@ -74,6 +74,7 @@ There are a few keys which you can customize it with:
     - '<b>broadcast</b>': Broadcast a message for everyone on the server, e.g. 'broadcast: Hello everybody!'<br/>
     - '<b>server</b>': Send the player to a specific server, e.g. 'server: Lobby'<br/>
     - '<b>menu</b>': Make the player open a specific menu, e.g. 'menu: example'<br/>
+    - '<b>tellraw</b>': Send a raw (json) message to the player, e.g. 'tellraw: {text:"Hello ",extra:[{selector:"@p"},{text:"!"}]}'<br/>
     By default the player will perform the command
   </li>
   <li>

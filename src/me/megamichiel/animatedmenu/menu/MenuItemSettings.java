@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
@@ -17,6 +18,7 @@ import me.megamichiel.animatedmenu.animation.AnimatedText;
 import me.megamichiel.animatedmenu.util.BannerPattern;
 import me.megamichiel.animatedmenu.util.MaterialMatcher;
 import me.megamichiel.animatedmenu.util.Nagger;
+import me.megamichiel.animatedmenu.util.Skull;
 import me.megamichiel.animatedmenu.util.StringBundle;
 import me.megamichiel.animatedmenu.util.StringUtil;
 
@@ -39,12 +41,12 @@ public class MenuItemSettings {
 	private AnimatedMaterial material;
 	private AnimatedText displayName;
 	private AnimatedLore lore;
-	private int frameDelay;
+	private int frameDelay, refreshDelay;
 	private Map<Enchantment, Integer> enchantments;
 	private ItemClickListener clickListener;
 	private StringBundle hidePermission;
 	private Color leatherArmorColor;
-	private StringBundle skullOwner;
+	private Skull skull;
 	private BannerPattern bannerPattern;
 	private int hideFlags = 0;
 	
@@ -53,12 +55,13 @@ public class MenuItemSettings {
 		material = new AnimatedMaterial();
 		displayName = new AnimatedText();
 		lore = new AnimatedLore();
-		frameDelay = 20;
+		frameDelay = refreshDelay = 20;
 		enchantments = new HashMap<Enchantment, Integer>();
 	}
 	
 	public MenuItemSettings load(AnimatedMenuPlugin plugin, String menu, ConfigurationSection section) {
 		frameDelay = section.getInt("Frame-Delay", 20);
+		refreshDelay = section.getInt("Refresh-Delay", frameDelay);
 		material = new AnimatedMaterial();
 		if (!material.load(plugin, section, "Material"))
 		{
@@ -71,7 +74,7 @@ public class MenuItemSettings {
 		}
 		lore = new AnimatedLore();
 		lore.load(plugin, section, "Lore");
-		enchantments = new HashMap<>();
+		enchantments = new HashMap<Enchantment, Integer>();
 		for (String str : section.getStringList("Enchantments")) {
 			String[] split = str.split(":");
 			Enchantment ench;
@@ -92,7 +95,8 @@ public class MenuItemSettings {
 		}
 		clickListener = new DefaultClickListener(plugin, section);
 		leatherArmorColor = getColor(section.getString("Color"));
-		skullOwner = StringUtil.parseBundle(plugin, section.getString("SkullOwner"));
+		String skullOwner = section.getString("SkullOwner");
+		skull = skullOwner == null ? null : new Skull(plugin, skullOwner);
 		bannerPattern = null;
 		try
 		{
@@ -122,8 +126,8 @@ public class MenuItemSettings {
 		ItemMeta meta = handle.getItemMeta();
 		if (meta instanceof LeatherArmorMeta && getLeatherArmorColor() != null)
 			((LeatherArmorMeta) meta).setColor(getLeatherArmorColor());
-		else if (meta instanceof SkullMeta && getSkullOwner() != null)
-			((SkullMeta) meta).setOwner(getSkullOwner().toString(who));
+		else if (meta instanceof SkullMeta && getSkull() != null)
+			getSkull().apply(who, (SkullMeta) meta);
 		else if (meta instanceof BannerMeta && getBannerPattern() != null)
 			getBannerPattern().apply((BannerMeta) meta);
 		for (ItemFlag itemFlag : ItemFlag.values())
@@ -159,8 +163,8 @@ public class MenuItemSettings {
 		
 		if (meta instanceof LeatherArmorMeta && getLeatherArmorColor() != null)
 			((LeatherArmorMeta) meta).setColor(getLeatherArmorColor());
-		else if (meta instanceof SkullMeta && getSkullOwner() != null)
-			((SkullMeta) meta).setOwner(getSkullOwner().toString(p));
+		else if (meta instanceof SkullMeta && getSkull() != null)
+			getSkull().apply(p, (SkullMeta) meta);
 		else if (meta instanceof BannerMeta && getBannerPattern() != null)
 			getBannerPattern().apply((BannerMeta) meta);
 		for (ItemFlag itemFlag : ItemFlag.values())
@@ -193,11 +197,11 @@ public class MenuItemSettings {
 	
 	static ItemStack parseItemStack(AnimatedMenuPlugin plugin, String str) {
 		String[] split = str.split(":");
-		MaterialMatcher matcher = MaterialMatcher.matcher(split[0]);
+		MaterialMatcher matcher = MaterialMatcher.parse(split[0]);
 		if(!matcher.matches()) {
 			plugin.nag("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
 		}
-		ItemStack item = new ItemStack(matcher.get());
+		ItemStack item = new ItemStack(matcher.get(null, null));
 		if(split.length > 1) {
 			try {
 				item.setAmount(Integer.parseInt(split[1]));
@@ -219,7 +223,7 @@ public class MenuItemSettings {
 		return new Builder(name);
 	}
 	
-	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE) @Accessors(fluent = true) @Setter 
 	public static class Builder {
 		
 		private final String name;
@@ -231,58 +235,8 @@ public class MenuItemSettings {
 		private ItemClickListener clickListener;
 		private StringBundle hidePermission;
 		private Color leatherArmorColor;
-		private StringBundle skullOwner;
+		private Skull skull;
 		private int hideFlags;
-		
-		public Builder material(AnimatedMaterial material) {
-			this.material = material;
-			return this;
-		}
-		
-		public Builder displayName(AnimatedText displayName) {
-			this.displayName = displayName;
-			return this;
-		}
-		
-		public Builder lore(AnimatedLore lore) {
-			this.lore = lore;
-			return this;
-		}
-		
-		public Builder frameDelay(int frameDelay) {
-			this.frameDelay = frameDelay;
-			return this;
-		}
-		
-		public Builder enchantments(Map<Enchantment, Integer> enchantments) {
-			this.enchantments = enchantments;
-			return this;
-		}
-		
-		public Builder clickListener(ItemClickListener clickListener) {
-			this.clickListener = clickListener;
-			return this;
-		}
-		
-		public Builder hidePermission(StringBundle hidePermission) {
-			this.hidePermission = hidePermission;
-			return this;
-		}
-		
-		public Builder leatherArmorColor(Color leatherArmorColor) {
-			this.leatherArmorColor = leatherArmorColor;
-			return this;
-		}
-		
-		public Builder skullOwner(StringBundle skullOwner) {
-			this.skullOwner = skullOwner;
-			return this;
-		}
-		
-		public Builder hideFlags(int hideFlags) {
-			this.hideFlags = hideFlags;
-			return this;
-		}
 		
 		public MenuItemSettings build() {
 			MenuItemSettings settings = new MenuItemSettings(name);
@@ -294,7 +248,7 @@ public class MenuItemSettings {
 			settings.setClickListener(clickListener);
 			settings.setHidePermission(hidePermission);
 			settings.setLeatherArmorColor(leatherArmorColor);
-			settings.setSkullOwner(skullOwner);
+			settings.setSkull(skull);
 			settings.setHideFlags(hideFlags);
 			return settings;
 		}

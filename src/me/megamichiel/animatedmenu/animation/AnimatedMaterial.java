@@ -39,22 +39,21 @@ public class AnimatedMaterial extends Animatable<Frame> {
 	
 	@RequiredArgsConstructor @Getter public static class Frame 
 	{
-		private final Material type;
+		private final MaterialMatcher type;
 		private final NumberPlaceholder amount, data;
 		
 		public Frame(Material type) {
-			this.type = type;
+			this.type = new MaterialMatcher(type);
 			amount = NumberPlaceholder.of(1);
 			data = NumberPlaceholder.ZERO;
 		}
 		
 		public Frame(Nagger nagger, String str) {
 			String[] split = str.split(":");
-			MaterialMatcher matcher = MaterialMatcher.matcher(split[0]);
+			MaterialMatcher matcher = MaterialMatcher.dynamic(split[0]);
 			if(!matcher.matches()) {
 				nagger.nag("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
 			}
-			Material type = matcher.get();
 			NumberPlaceholder amount = NumberPlaceholder.of(1), data = NumberPlaceholder.ZERO;
 			if (split.length > 1)
 			{
@@ -77,14 +76,17 @@ public class AnimatedMaterial extends Animatable<Frame> {
 					}
 				}
 			}
-			this.type = type;
+			this.type = matcher;
 			this.amount = amount;
 			this.data = data;
 		}
 		
 		public ItemStack toItemStack(Nagger nagger, Player who)
 		{
-			return new ItemStack(type, amount.invoke(nagger, who), data.invoke(nagger, who).shortValue());
+			int num = amount.invoke(nagger, who);
+			if (num > 64) num = 64;
+			else if (num < 0) num = 0;
+			return new ItemStack(type.get(nagger, who), num, data.invoke(nagger, who).shortValue());
 		}
 	}
 }

@@ -1,27 +1,15 @@
 package me.megamichiel.animatedmenu.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
 
 import org.bukkit.configuration.ConfigurationSection;
+
+import com.google.common.collect.ImmutableMap;
 
 public class StringUtil {
 	
 	static final char BOX = '\u2588';
-	
-	public static String join(Iterable<?> iterable, String split, boolean end) {
-		StringBuilder sb = new StringBuilder();
-		for(Iterator<?> it = iterable.iterator(); it.hasNext();) {
-			sb.append(it.next() + (it.hasNext() || end ? split : ""));
-		}
-		return sb.toString();
-	}
 	
 	public static String join(Object[] array, String split, boolean end) {
 		StringBuilder sb = new StringBuilder();
@@ -100,32 +88,9 @@ public class StringUtil {
 		return bundle;
 	}
 	
-	public static List<String> toStringList(List<?> list) {
-		List<String> out = new ArrayList<>();
-		for(Object o : list)
-			out.add(String.valueOf(o));
-		return out;
-	}
-	
-	public static String read(File file) {
-		StringBuilder builder = new StringBuilder();
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
-			String line;
-			while((line = br.readLine()) != null) {
-				builder.append(line);
-			}
-			br.close();
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-		return builder.toString();
-	}
-	
 	public static boolean parseBoolean(ConfigurationSection section, String key, boolean def)
 	{
-		Flag flag = parseFlag(section, key, def ? Flag.TRUE : Flag.FALSE);
-		return flag == Flag.BOTH ? false : flag.booleanValue();
+		return parseBoolean(section.getString(key), def);
 	}
 	
 	public static boolean parseBoolean(String str, boolean def)
@@ -139,17 +104,14 @@ public class StringUtil {
 		return parseFlag(section.getString(key), def);
 	}
 	
+	private static final Map<String, Flag> flags = new ImmutableMap.Builder<String, Flag>()
+			.put("true", Flag.TRUE).put("yes", Flag.TRUE).put("on", Flag.TRUE).put("enable", Flag.TRUE)
+			.put("both", Flag.BOTH).build();
+	
 	public static Flag parseFlag(String str, Flag def)
 	{
 		if (str == null) return def;
-		switch (str.toLowerCase())
-		{
-		case "true": case "yes": case "on": case "enable":
-			return Flag.TRUE;
-		case "both":
-			return Flag.BOTH;
-		default:
-			return Flag.FALSE;
-		}
+		Flag flag = flags.get(str.toLowerCase());
+		return flag == null ? Flag.FALSE : flag;
 	}
 }

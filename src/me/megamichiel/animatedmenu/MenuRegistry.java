@@ -23,10 +23,10 @@ import org.bukkit.entity.Player;
 
 public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 	
-	@Getter private final List<AnimatedMenu> menus = new ArrayList<>();
+	@Getter private final List<AnimatedMenu> menus = new ArrayList<AnimatedMenu>();
 	private final AnimatedMenuPlugin plugin;
 	@Getter
-	private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
+	private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<Player, AnimatedMenu>();
 	
 	public MenuRegistry(AnimatedMenuPlugin plugin) {
 		this.plugin = plugin;
@@ -105,7 +105,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 		AnimatedMenu prev = openMenu.remove(who);
 		if (prev != null)
 		{
-			prev.getOpenMenu().remove(who);
+			prev.handleMenuClose(who);
 		}
 		menu.open(who);
 		openMenu.put(who, menu);

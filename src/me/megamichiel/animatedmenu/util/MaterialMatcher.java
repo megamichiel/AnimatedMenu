@@ -7,6 +7,7 @@ import java.util.Map;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
 
 @SuppressWarnings("deprecation")
 public class MaterialMatcher {
@@ -36,16 +37,10 @@ public class MaterialMatcher {
 		BLOCK_TO_MATERIAL = methods[3];
 	}
 	
-	public static MaterialMatcher matcher(String str) {
-		return new MaterialMatcher(str);
-	}
-	
-	private final Material match;
-	private final boolean matched;
-	
-	private MaterialMatcher(String value) {
-		value = value.replace("-", "_");
-		Material m = Material.AIR;
+	public static MaterialMatcher parse(String value)
+	{
+		value = value.toLowerCase().replace("-", "_");
+		Material m = null;
 		try
 		{
 			Object o = ITEM_BY_NAME.invoke(null, value);
@@ -63,19 +58,94 @@ public class MaterialMatcher {
 			}
 		}
 		catch (Exception ex) {}
-		match = m == null ? Material.STONE : m;
-		matched = m != null;
+		return new MaterialMatcher(m == null ? Material.STONE : m, m != null);
+	}
+	
+	public static MaterialMatcher dynamic(String str) {
+		return new MaterialMatcher(str);
+	}
+	
+	private final IPlaceholder<Material> match;
+	private final boolean matched;
+	
+	public MaterialMatcher(Material type, boolean matched) {
+		match = new ConstantPlaceholder<Material>(type);
+		this.matched = matched;
+	}
+	
+	public MaterialMatcher(Material type) {
+		 this(type, true);
+	}
+	
+	private MaterialMatcher(String value) {
+		if (value.startsWith("%") && value.endsWith("%"))
+		{
+			matched = true;
+			final Placeholder placeholder = new Placeholder(value.substring(1, value.length() - 1));
+			match = new IPlaceholder<Material>() {
+				@Override
+				public Material invoke(Nagger nagger, Player who) {
+					String value = placeholder.invoke(nagger, who);
+					if (value == null)
+						return Material.STONE;
+					value = value.toLowerCase().replace("-", "_");
+					Material m = Material.STONE;
+					try
+					{
+						Object o = ITEM_BY_NAME.invoke(null, value);
+						if (o != null)
+						{
+							m = (Material) ITEM_TO_MATERIAL.invoke(null, o);
+						}
+						else if (((o = BLOCK_BY_NAME.invoke(null, value))) != null)
+						{
+							m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
+						}
+						else
+						{
+							m = Material.matchMaterial(value);
+						}
+					}
+					catch (Exception ex) {}
+					return m == null ? Material.STONE : m;
+				}
+			};
+		}
+		else
+		{
+			value = value.toLowerCase().replace("-", "_");
+			Material m = null;
+			try
+			{
+				Object o = ITEM_BY_NAME.invoke(null, value);
+				if (o != null)
+				{
+					m = (Material) ITEM_TO_MATERIAL.invoke(null, o);
+				}
+				else if (((o = BLOCK_BY_NAME.invoke(null, value))) != null)
+				{
+					m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
+				}
+				else
+				{
+					m = Material.matchMaterial(value);
+				}
+			}
+			catch (Exception ex) {}
+			match = new ConstantPlaceholder<Material>(m == null ? Material.STONE : m);
+			matched = m != null;
+		}
 	}
 	
 	public boolean matches() {
 		return matched;
 	}
 	
-	public Material get() {
-		return match;
+	public Material get(Nagger nagger, Player who) {
+		return match.invoke(nagger, who);
 	}
 	
-	private static final Map<String, Enchantment> enchantments = new HashMap<>();
+	private static final Map<String, Enchantment> enchantments = new HashMap<String, Enchantment>();
 	
 	static
 	{

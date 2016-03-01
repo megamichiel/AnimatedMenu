@@ -13,17 +13,21 @@ public class MenuItem {
 	
 	@Getter
 	private final MenuItemSettings settings;
-	private final AtomicInteger currentTick = new AtomicInteger();
+	private final AtomicInteger frameTick = new AtomicInteger(), refreshTick = new AtomicInteger();
 	
 	public MenuItem(MenuItemSettings settings) {
 		this.settings = settings;
 	}
 	
 	public boolean tick() {
-		if(currentTick.getAndIncrement() == settings.getFrameDelay())
+		if (frameTick.getAndIncrement() == settings.getFrameDelay())
 		{
-			currentTick.set(0);
+			frameTick.set(0);
 			settings.next();
+		}
+		if (refreshTick.getAndIncrement() == settings.getRefreshDelay())
+		{
+			refreshTick.set(0);
 			return true;
 		}
 		return false;

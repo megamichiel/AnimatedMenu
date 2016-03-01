@@ -27,9 +27,15 @@ There are a few keys where you can customize your item with:
   </li>
   <li>
     <b>Frame-Delay</b><br/>
-    The delay in ticks between item updates.
+    The delay in ticks between item frame updates.<br/>
     20 ticks = 1 second<br/>
     Default value is 20
+  </li>
+  <li>
+    <b>Refresh-Delay</b><br/>
+    The delay in ticks between item refreshes.<br/>
+    20 ticks = 1 second<br/>
+    Default value is equal to Frame-Delay
   </li>
   <li>
     <b>Material</b> [Animatable]<br/>
@@ -46,7 +52,7 @@ There are a few keys where you can customize your item with:
     The lore of the item. Each line can be colored using & and supports placeholders
   </li>
   <li>
-    <b>Enchantments</b> [Animatable in AnimatedMenu Plus]<br/>
+    <b>Enchantments</b> [Animatable with AnimatedMenu Plus]<br/>
     The enchantments to be applied to the item, e.g:<br/>
     Enchantments:<br/>
     - 32:5<br/>
@@ -54,23 +60,23 @@ There are a few keys where you can customize your item with:
     This adds efficiency (ID 32) level 5 and unbreaking (ID 34) level 3 to the item. It uses either IDs or minecraft enchantment names.
   </li>
   <li>
-  	<b>Color</b> [Animatable in AnimatedMenu Plus]</br>
+  	<b>Color</b> [Animatable with AnimatedMenu Plus]</br>
   	Set leather armor's color, using one of these formats:<br/>
   	<red>, <green>, <blue> e.g. 0, 255, 0 is green<br/>
   	<hex color> e.g. 00FF00 is green.
   </li>
   <li>
-  	<b>SkullOwner</b> [Animatable in AnimatedMenu Plus]</br>
+  	<b>SkullOwner</b> [Animatable with AnimatedMenu Plus]</br>
   	Set a skull's owner, self-explanatory
   </li>
   <li>
-  	<b>BannerPattern</b> [Animatable in AnimatedMenu Plus]</br>
+  	<b>BannerPattern</b> [Animatable with AnimatedMenu Plus]</br>
   	Set a banner's pattern. At http://www.needcoolshoes.com/ you can create a banner</br>
   	When you have customized your banner, the title will say something like http://www.needcoolshoes.com/banner?=paap<br/>
   	You copy the 'paap' part into this value
   </li>
   <li>
-  	<b>Hide-Flags</b> [Animatable in AnimatedMenu Plus]</br>
+  	<b>Hide-Flags</b> [Animatable with AnimatedMenu Plus]</br>
   	Set the item's hide flags to hide things such as enchantments.<br/>
   	Visit http://minecraft.gamepedia.com/Tutorials/Command\_NBT\_tags for reference. If you can't find it, hit CTRL+F and search for "HideFlags"
   </li>

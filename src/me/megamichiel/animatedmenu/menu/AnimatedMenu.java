@@ -3,6 +3,8 @@ package me.megamichiel.animatedmenu.menu;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,81 +16,13 @@ import me.megamichiel.animatedmenu.util.Nagger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 public class AnimatedMenu {
-	
-	private final Nagger nagger;
-	@Getter private final String name;
-	@Getter private final AnimatedText menuTitle;
-	@Getter private final MenuSettings settings;
-	@Getter private final MenuType menuType;
-	@Getter private final MenuGrid menuGrid;
-	@Getter private final int titleUpdateDelay;
-	private int titleUpdateTick = 0;
-	
-	@Getter
-	private final Map<Player, Inventory> openMenu = new ConcurrentHashMap<>();
-	
-	public AnimatedMenu(Nagger nagger, String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
-		this.nagger = nagger;
-		this.name = name;
-		settings = new MenuSettings();
-		this.menuTitle = title;
-		this.titleUpdateDelay = titleUpdateDelay;
-		
-		this.menuType = type;
-		this.menuGrid = new MenuGrid(type.getSize());
-	}
-	
-	private Inventory createInventory(Player who)
-	{
-		Inventory inv;
-		if (menuType.getInventoryType() == InventoryType.CHEST)
-			inv = Bukkit.createInventory(null, menuType.getSize(), menuTitle.get().toString(who));
-		else inv = Bukkit.createInventory(null, menuType.getInventoryType(), menuTitle.get().toString(who));
-		for (int slot = 0; slot < menuType.getSize(); slot++)
-		{
-			MenuItem item = menuGrid.getItem(slot);
-			if (item != null && !item.getSettings().isHidden(who))
-			{
-				ItemStack i = item.load(nagger, who);
-				inv.setItem(slot, i);
-			}
-		}
-		return inv;
-	}
-	
-	public Inventory open(Player who) {
-		Inventory inv = createInventory(who);
-		who.openInventory(inv);
-		if(settings.getOpenSound() != null)
-			who.playSound(who.getLocation(), settings.getOpenSound(), 1F, settings.getOpenSoundPitch());
-		openMenu.put(who, inv);
-		return inv;
-	}
-	
-	public void load(AnimatedMenuPlugin plugin, ConfigurationSection cfg) {
-		settings.load(plugin, cfg);
-		ConfigurationSection items = cfg.getConfigurationSection("Items");
-		if(items == null) {
-			plugin.nag("No items specified for " + name + "!");
-			return;
-		}
-		for(String key : items.getKeys(false)) {
-			ConfigurationSection itemSection = items.getConfigurationSection(key);
-			MenuItem item = new MenuItem(new MenuItemSettings(key).load(plugin, getName(), itemSection));
-			int slot = itemSection.getInt("Slot", -1);
-			if(slot == -1) {
-				plugin.nag("No slot specified for item " + key + " in menu " + name + "!");
-				continue;
-			}
-			menuGrid.setItem(slot - 1, item);
-		}
-	}
 	
 	private static final Method GET_HANDLE, SEND_PACKET, UPDATE_INVENTORY;
 	private static final Field PLAYER_CONNECTION, ACTIVE_CONTAINER, WINDOW_ID;
@@ -127,6 +61,86 @@ public class AnimatedMenu {
 		WINDOW_ID = windowId;
 	}
 	
+	private final Nagger nagger;
+	@Getter private final String name;
+	@Getter private final AnimatedText menuTitle;
+	@Getter private final MenuSettings settings;
+	@Getter private final MenuType menuType;
+	@Getter private final MenuGrid menuGrid;
+	@Getter private final int titleUpdateDelay;
+	private int titleUpdateTick = 0;
+	
+	private final Map<Player, Inventory> openMenu = new ConcurrentHashMap<Player, Inventory>();
+	
+	public AnimatedMenu(Nagger nagger, String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
+		this.nagger = nagger;
+		this.name = name;
+		settings = new MenuSettings();
+		this.menuTitle = title;
+		this.titleUpdateDelay = titleUpdateDelay;
+		
+		this.menuType = type;
+		this.menuGrid = new MenuGrid(type.getSize());
+	}
+	
+	public void handleMenuClose(HumanEntity who)
+	{
+		openMenu.remove(who);
+	}
+	
+	public Collection<? extends Player> getViewers()
+	{
+		return Collections.unmodifiableCollection(openMenu.keySet());
+	}
+	
+	private Inventory createInventory(Player who)
+	{
+		String title = menuTitle.get().toString(who);
+		if (title.length() > 32)
+			title = title.substring(0, 32);
+		Inventory inv;
+		if (menuType.getInventoryType() == InventoryType.CHEST)
+			inv = Bukkit.createInventory(null, menuType.getSize(), title);
+		else inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
+		for (int slot = 0; slot < menuType.getSize(); slot++)
+		{
+			MenuItem item = menuGrid.getItem(slot);
+			if (item != null && !item.getSettings().isHidden(who))
+			{
+				ItemStack i = item.load(nagger, who);
+				inv.setItem(slot, i);
+			}
+		}
+		return inv;
+	}
+	
+	public void open(Player who) {
+		Inventory inv = createInventory(who);
+		who.openInventory(inv);
+		if(settings.getOpenSound() != null)
+			who.playSound(who.getLocation(), settings.getOpenSound(), 1F, settings.getOpenSoundPitch());
+		openMenu.put(who, inv);
+	}
+	
+	public void load(AnimatedMenuPlugin plugin, ConfigurationSection cfg) {
+		settings.load(plugin, cfg);
+		ConfigurationSection items = cfg.getConfigurationSection("Items");
+		if(items == null) {
+			plugin.nag("No items specified for " + name + "!");
+			return;
+		}
+		for(String key : items.getKeys(false)) {
+			ConfigurationSection itemSection = items.getConfigurationSection(key);
+			MenuItem item = new MenuItem(new MenuItemSettings(key).load(plugin, getName(), itemSection));
+			int slot = itemSection.getInt("Slot", -1);
+			if(slot == -1) {
+				plugin.nag("No slot specified for item " + key + " in menu " + name + "!");
+				continue;
+			}
+			menuGrid.setItem(slot - 1, item);
+		}
+	}
+	
 	public void tick() {
 		if (menuTitle.size() > 1 && titleUpdateTick++ == titleUpdateDelay)
 		{
@@ -137,6 +151,8 @@ public class AnimatedMenu {
 				for (Player player : openMenu.keySet())
 				{
 					String title = this.menuTitle.get().toString(player);
+					if (title.length() > 32)
+						title = title.substring(0, 32);
 					Object handle = GET_HANDLE.invoke(player);
 					Object container = ACTIVE_CONTAINER.get(handle);
 					Object packet = OPEN_WINDOW.newInstance(WINDOW_ID.getInt(container), menuType.getNmsName(),

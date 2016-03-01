@@ -12,7 +12,7 @@ public class Command {
 	
 	@Getter
 	protected final StringBundle command;
-	protected Command next;
+	Command next;
 	
 	public Command(Nagger nagger, String command) {
 		this.command = StringUtil.parseBundle(nagger, command);

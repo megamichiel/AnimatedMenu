@@ -69,8 +69,9 @@ public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
 		Integer minArgs = valid.get(args[0].toLowerCase());
 		if(minArgs == null) return invalid(sender, "Invalid subcommand, type /" + label + " for help");
 		if(args.length < minArgs) return invalid(sender, "Invalid argument length, type /" + label + " for help");
-		switch(args[0].toLowerCase()) {
-		case "reload":
+		switch (Character.toLowerCase(args[0].charAt(0)))
+		{
+		case 'r':
 			if(!(sender.hasPermission(permissions[1])))
 				return invalid(sender, "You don't have permission for that!");
 			plugin.reload();
@@ -78,14 +79,14 @@ public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
 					+ ChatColor.GREEN + "Plugin reloaded! "
 					+ plugin.getMenuRegistry().getMenus().size() + " menu(s) loaded.");
 			break;
-		case "open":
+		case 'o':
 			if(!(sender.hasPermission(permissions[2])))
 				return invalid(sender, "You don't have permission for that!");
 			AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
 			if(menu == null) return invalid(sender, "Couldn't find a menu by that name!");
 			plugin.getMenuRegistry().openMenu((Player) sender, menu);
 			break;
-		case "item":
+		case 'i':
 			if(!(sender.hasPermission(permissions[3])))
 				return invalid(sender, "You don't have permission for that!");
 			menu = plugin.getMenuRegistry().getMenu(args[1]);
@@ -99,10 +100,10 @@ public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
 	
 	@Override
 	public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-		List<String> list = new ArrayList<>();
+		List<String> list = new ArrayList<String>();
 		boolean player = sender instanceof Player;
-		if(args.length <= 1) {
-			if(player) {
+		if (args.length <= 1) {
+			if (player) {
 				if(sender.hasPermission(permissions[2]))
 					list.add("open");
 				if(sender.hasPermission(permissions[3]))
@@ -110,21 +111,21 @@ public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
 				if(sender.hasPermission(permissions[1]))
 					list.add("reload");
 			} else list.add("reload");
-			if(args.length == 1) {
+			if (args.length == 1) {
 				for(Iterator<String> it = list.iterator(); it.hasNext();)
 					if(!it.next().startsWith(args[0].toLowerCase()))
 						it.remove();
 			}
-		} else if(args.length == 2) {
-			if(player) {
-				switch(args[0].toLowerCase()) {
-				case "open": case "item":
+		} else if (args.length == 2) {
+			if (player) {
+				String arg = args[0].toLowerCase();
+				if (arg.equals("open") || arg.equals("item"))
+				{
 					for(AnimatedMenu menu : plugin.getMenuRegistry()) {
 						if(menu.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
 							list.add(menu.getName().toLowerCase());
 						}
 					}
-					break;
 				}
 			}
 		}

@@ -62,7 +62,7 @@ public class AnimatedLore extends Animatable<Frame> {
 		for(String item : list) {
 			if(item.toLowerCase().startsWith("file: ")) {
 				File file = new File(plugin.getDataFolder(), "images/" + item.substring(6));
-				if(file.exists()) {
+				if (file.exists()) {
 					try {
 						frame.addAll(Arrays.asList(new Image(plugin, file).getLines()));
 					} catch (IOException e) {

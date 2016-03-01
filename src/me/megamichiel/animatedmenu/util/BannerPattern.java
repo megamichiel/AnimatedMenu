@@ -20,7 +20,7 @@ import org.bukkit.inventory.meta.BannerMeta;
 @SuppressWarnings("deprecation")
 @Getter @NoArgsConstructor public class BannerPattern {
 	
-	private static final Map<Character, DyeColor> colors = new HashMap<>();
+	private static final Map<Character, DyeColor> colors = new HashMap<Character, DyeColor>();
 	
 	static
 	{
@@ -28,7 +28,7 @@ import org.bukkit.inventory.meta.BannerMeta;
 			colors.put((char) ('a' + i), DyeColor.getByWoolData((byte) (15 - i)));
 	}
 	
-	private final List<Pattern> patterns = new ArrayList<>();
+	private final List<Pattern> patterns = new ArrayList<Pattern>();
 	
 	public BannerPattern(Nagger nagger, String pattern) throws IllegalArgumentException {
 		char[] array = pattern.toCharArray();
@@ -64,7 +64,7 @@ import org.bukkit.inventory.meta.BannerMeta;
 	}
 	
 	@RequiredArgsConstructor @Getter
-	public enum BannerPatternType {
+	public static enum BannerPatternType {
 		
 		BASE(PatternType.BASE, 'a'),
 		SQUARE_BOTTOM_LEFT(PatternType.SQUARE_BOTTOM_LEFT, 'b'),
