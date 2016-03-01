@@ -238,6 +238,59 @@ public class MenuItemSettings {
 		private Skull skull;
 		private int hideFlags;
 		
+<<<<<<< HEAD
+=======
+		public Builder material(AnimatedMaterial material) {
+			this.material = material;
+			return this;
+		}
+		
+		public Builder displayName(AnimatedText displayName) {
+			this.displayName = displayName;
+			return this;
+		}
+		
+		public Builder lore(AnimatedLore lore) {
+			this.lore = lore;
+			return this;
+		}
+		
+		public Builder frameDelay(int frameDelay) {
+			this.frameDelay = frameDelay;
+			return this;
+		}
+		
+		public Builder enchantments(Map<Enchantment, Integer> enchantments) {
+			this.enchantments = enchantments;
+			return this;
+		}
+		
+		public Builder clickListener(ItemClickListener clickListener) {
+			this.clickListener = clickListener;
+			return this;
+		}
+		
+		public Builder hidePermission(StringBundle hidePermission) {
+			this.hidePermission = hidePermission;
+			return this;
+		}
+		
+		public Builder leatherArmorColor(Color leatherArmorColor) {
+			this.leatherArmorColor = leatherArmorColor;
+			return this;
+		}
+		
+		public Builder skull(Skull skull) {
+			this.skull = skull;
+			return this;
+		}
+		
+		public Builder hideFlags(int hideFlags) {
+			this.hideFlags = hideFlags;
+			return this;
+		}
+		
+>>>>>>> 41fa8baba6eb1ea2c9a35c62bff02fad1e1de5a3
 		public MenuItemSettings build() {
 			MenuItemSettings settings = new MenuItemSettings(name);
 			if(material != null) settings.setMaterial(material);

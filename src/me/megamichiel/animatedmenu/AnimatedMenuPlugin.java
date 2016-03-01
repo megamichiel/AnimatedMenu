@@ -129,7 +129,10 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 		for (BukkitTask task : asyncTasks)
 			task.cancel();
 		asyncTasks.clear();
+<<<<<<< HEAD
 		connections.cancel();
+=======
+>>>>>>> 41fa8baba6eb1ea2c9a35c62bff02fad1e1de5a3
 	}
 	
 	private void checkForUpdate()
