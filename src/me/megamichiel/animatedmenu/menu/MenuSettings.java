@@ -1,5 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
+import me.megamichiel.animatedmenu.command.SoundCommand;
 import org.bukkit.Sound;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -10,8 +11,7 @@ public class MenuSettings {
 	private boolean openerName, openerLore;
 	private boolean openOnJoin;
 	private int openerJoinSlot;
-	private Sound openSound;
-	private float openSoundPitch = 1F;
+    private SoundCommand.SoundInfo openSound;
 	private String[] openCommands;
     private boolean hiddenFromCommand = false;
 	
@@ -51,20 +51,12 @@ public class MenuSettings {
         return openerJoinSlot;
     }
 
-    public void setOpenSound(Sound openSound) {
+    public void setOpenSound(SoundCommand.SoundInfo openSound) {
         this.openSound = openSound;
     }
 
-    public Sound getOpenSound() {
+    public SoundCommand.SoundInfo getOpenSound() {
         return openSound;
-    }
-
-    public float getOpenSoundPitch() {
-        return openSoundPitch;
-    }
-
-    public void setOpenSoundPitch(float openSoundPitch) {
-        this.openSoundPitch = openSoundPitch;
     }
 
     public void setOpenCommands(String[] openCommands) {

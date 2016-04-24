@@ -3,6 +3,7 @@ package me.megamichiel.animatedmenu.menu;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.MenuRegistry;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
+import me.megamichiel.animatedmenu.command.SoundCommand;
 import me.megamichiel.animatedmenu.util.DirectoryListener;
 import me.megamichiel.animatedmenu.util.DirectoryListener.FileAction;
 import me.megamichiel.animatedmenu.util.Flag;
@@ -147,15 +148,11 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
         }
         settings.setOpenOnJoin(Flag.parseBoolean(section, "open-on-join", false));
         if (section.isSet("open-sound")) {
-            try {
-                settings.setOpenSound(Sound.valueOf(section.getString("open-sound").toUpperCase().replace('-', '_')));
-                if(section.isSet("open-sound-pitch"))
-                    settings.setOpenSoundPitch(Float.parseFloat(section.getString("open-sound-pitch")));
-            } catch (NumberFormatException ex) {
-                plugin.nag("Invalid pitch: " + section.getString("open-sound-pitch"));
-            } catch (Exception ex) {
-                plugin.nag("Couldn't find a sound for name " + section.getString("spen-sound") + "!");
-            }
+            SoundCommand.SoundInfo sound = new SoundCommand.SoundInfo(
+                    section.getString("open-sound").toLowerCase().replace('-', '_'),
+                    1F, (float) section.getDouble("open-sound-pitch", 1F)
+            );
+            settings.setOpenSound(sound);
         }
         settings.setOpenCommands(section.contains("command") ? section.getString("command").toLowerCase().split("; ") : null);
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));

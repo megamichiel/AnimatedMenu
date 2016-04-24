@@ -26,7 +26,7 @@ public class AnimatedMaterial extends Animatable<Frame> {
                 }
             };
         } else {
-            final ItemStack item = parseItemStack(nagger, sb.toString(null));
+            final ItemStack item = parseItemStack(nagger, str);
             return new Frame() {
                 @Override
                 public ItemStack toItemStack(Nagger nagger, Player player) {

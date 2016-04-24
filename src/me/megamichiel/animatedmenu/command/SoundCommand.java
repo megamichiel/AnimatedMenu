@@ -60,6 +60,12 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
             this.pitch = pitch;
         }
 
+        public SoundInfo(String sound, float volume, float pitch) {
+            this.sound = sound;
+            this.volume = volume;
+            this.pitch = pitch;
+        }
+
         public void play(Player player) {
             player.playSound(player.getLocation(), sound, volume, pitch);
         }

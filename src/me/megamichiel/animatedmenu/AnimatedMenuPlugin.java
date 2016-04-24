@@ -9,8 +9,10 @@ import me.megamichiel.animatedmenu.util.FormulaPlaceholder;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
 import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.YamlConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import net.milkbowl.vault.economy.Economy;
+import org.apache.commons.codec.Charsets;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
@@ -34,8 +36,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.NumberConversions;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URLConnection;
@@ -420,5 +421,25 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 
     public boolean isPlayerPointsPresent() {
         return playerPointsPresent;
+    }
+
+    private final File configFile = new File(getDataFolder(), "config.yml");
+    private YamlConfig config;
+
+    @Override
+    public void reloadConfig() {
+        this.config = YamlConfig.loadConfig(this.configFile);
+        InputStream defConfigStream = this.getResource("config.yml");
+        if(defConfigStream != null) {
+            this.config.setDefaults(YamlConfig.loadConfig(new InputStreamReader(defConfigStream, Charsets.UTF_8)));
+        }
+    }
+
+    @Override
+    public YamlConfig getConfig() {
+        if(this.config == null) {
+            this.reloadConfig();
+        }
+        return this.config;
     }
 }

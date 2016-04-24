@@ -152,7 +152,7 @@ public class AnimatedMenu implements ReferenceHolder<AnimatedMenuPlugin> {
         Inventory inv = createInventory(who);
         who.openInventory(inv);
         if(settings.getOpenSound() != null)
-            who.playSound(who.getLocation(), settings.getOpenSound(), 1F, settings.getOpenSoundPitch());
+            settings.getOpenSound().play(who);
         openMenu.put(who, inv);
     }
     
