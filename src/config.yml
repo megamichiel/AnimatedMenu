@@ -23,3 +23,6 @@ Formulas:
 
 #Should a message be printed to the console if the plugin was unable to connect to a server?
 Warn-Offline-Servers: false
+
+#If this is set to true, menus will be automaticly updated when the file is changed and saved
+Auto-Menu-Refresh: false

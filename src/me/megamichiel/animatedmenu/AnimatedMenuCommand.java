@@ -1,19 +1,12 @@
 package me.megamichiel.animatedmenu;
 
-import static org.bukkit.ChatColor.DARK_AQUA;
-import static org.bukkit.ChatColor.GOLD;
-import static org.bukkit.ChatColor.GREEN;
-import static org.bukkit.ChatColor.RED;
-import static org.bukkit.ChatColor.YELLOW;
+import static org.bukkit.ChatColor.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -27,113 +20,99 @@ import org.bukkit.entity.Player;
  *
  */
 public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
-	
-	private final String[] messages = {
-			DARK_AQUA + "-=" + GOLD + "Animated Menu - Help" + DARK_AQUA + "=-",
-			GREEN + "/%s open <menu>" + YELLOW + ": Open a specific menu",
-			GREEN + "/%s item <menu>" + YELLOW + ": Get a menu's menu opener",
-			GREEN + "/%s reload" + YELLOW + ": Reload the plugin"
-	};
-	private final String[] permissions = new String[] {
-			"animatedmenu.command.help",
-			"animatedmenu.command.reload",
-			"animatedmenu.command.open",
-			"animatedmenu.command.item"
-	};
-	private final Map<String, Integer> consoleOnly = new HashMap<String, Integer>();
-	private final Map<String, Integer> playerOnly = new HashMap<String, Integer>();
-	private final AnimatedMenuPlugin plugin;
-	
-	public AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
-		this.plugin = plugin;
-		consoleOnly.put("reload", 1);
-		playerOnly.put("reload", 1);
-		playerOnly.put("open", 2);
-		playerOnly.put("item", 2);
-	}
-	
-	@Override
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if(args.length == 0) {
-			if(!sender.hasPermission(permissions[0]))
-				return invalid(sender, "You don't have permission for that!");
-			sender.sendMessage(messages[0]);
-			if(sender instanceof Player) {
-				for(int i=1;i<4;i++)
-					if(sender.hasPermission(permissions[i]))
-						sender.sendMessage(String.format(messages[i], label));
-			} else sender.sendMessage(String.format(messages[3], label));
-			return true;
-		}
-		Map<String, Integer> valid = sender instanceof Player ? playerOnly : consoleOnly;
-		Integer minArgs = valid.get(args[0].toLowerCase());
-		if(minArgs == null) return invalid(sender, "Invalid subcommand, type /" + label + " for help");
-		if(args.length < minArgs) return invalid(sender, "Invalid argument length, type /" + label + " for help");
-		switch (Character.toLowerCase(args[0].charAt(0)))
-		{
-		case 'r':
-			if(!(sender.hasPermission(permissions[1])))
-				return invalid(sender, "You don't have permission for that!");
-			plugin.reload();
-			sender.sendMessage("§8[§6" + plugin.getDescription().getName() + "§8] "
-					+ ChatColor.GREEN + "Plugin reloaded! "
-					+ plugin.getMenuRegistry().getMenus().size() + " menu(s) loaded.");
-			break;
-		case 'o':
-			if(!(sender.hasPermission(permissions[2])))
-				return invalid(sender, "You don't have permission for that!");
-			AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
-			if(menu == null) return invalid(sender, "Couldn't find a menu by that name!");
-			plugin.getMenuRegistry().openMenu((Player) sender, menu);
-			break;
-		case 'i':
-			if(!(sender.hasPermission(permissions[3])))
-				return invalid(sender, "You don't have permission for that!");
-			menu = plugin.getMenuRegistry().getMenu(args[1]);
-			if(menu == null) return invalid(sender, "Couldn't find a menu by that name!");
-			if(menu.getSettings().getOpener() == null) return invalid(sender, "That menu doesn't have a menu opener!");
-			((Player) sender).getInventory().addItem(menu.getSettings().getOpener());
-			break;
-		}
-		return true;
-	}
-	
-	@Override
-	public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-		List<String> list = new ArrayList<String>();
-		boolean player = sender instanceof Player;
-		if (args.length <= 1) {
-			if (player) {
-				if(sender.hasPermission(permissions[2]))
-					list.add("open");
-				if(sender.hasPermission(permissions[3]))
-					list.add("item");
-				if(sender.hasPermission(permissions[1]))
-					list.add("reload");
-			} else list.add("reload");
-			if (args.length == 1) {
-				for(Iterator<String> it = list.iterator(); it.hasNext();)
-					if(!it.next().startsWith(args[0].toLowerCase()))
-						it.remove();
-			}
-		} else if (args.length == 2) {
-			if (player) {
-				String arg = args[0].toLowerCase();
-				if (arg.equals("open") || arg.equals("item"))
-				{
-					for(AnimatedMenu menu : plugin.getMenuRegistry()) {
-						if(menu.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
-							list.add(menu.getName().toLowerCase());
-						}
-					}
-				}
-			}
-		}
-		return list;
-	}
-	
-	private boolean invalid(CommandSender sender, String msg) {
-		sender.sendMessage(RED + msg);
-		return true;
-	}
+    
+    private final String[] messages = {
+            DARK_AQUA + "-=" + GOLD + "Animated Menu - Help" + DARK_AQUA + "=-",
+            AQUA + "<> = required, [] = optional",
+            GREEN + "/%s open <menu> [player]" + YELLOW + ": Open a specific menu",
+            GREEN + "/%s item <menu> [player]" + YELLOW + ": Get a menu's menu opener",
+            GREEN + "/%s reload" + YELLOW + ": Reload the plugin"
+    };
+    private final String[] permissions = new String[] {
+            "animatedmenu.command.help",
+            "animatedmenu.command.open",
+            "animatedmenu.command.item",
+            "animatedmenu.command.reload"
+    };
+    private final AnimatedMenuPlugin plugin;
+    
+    public AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    private final List<String> validArgs = Arrays.asList("reload", "open", "item");
+    
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if(args.length == 0) {
+            if (!sender.hasPermission("animatedmenu.command.help"))
+                return invalid(sender, "You don't have permission for that!");
+            sender.sendMessage(messages[0]);
+            sender.sendMessage(messages[1]);
+            for (int i = 2; i < messages.length; i++)
+                if (sender.hasPermission(permissions[i - 1]))
+                    sender.sendMessage(String.format(messages[i], label));
+            return true;
+        }
+        String type = args[0].toLowerCase();
+        if (!validArgs.contains(type)) {
+            return invalid(sender, "Invalid subcommand, type /" + label + " for help");
+        }
+        if (!sender.hasPermission("animatedmenu.command." + type)) {
+            return invalid(sender, "You don't have permission for that!");
+        }
+        switch (type.charAt(0)) {
+            case 'r': // Reload
+                plugin.reload();
+                sender.sendMessage(DARK_GRAY + "[" + GOLD + plugin.getDescription().getName() + DARK_GRAY + "] "
+                        + ChatColor.GREEN + "Plugin reloaded! "
+                        + plugin.getMenuRegistry().getMenus().size() + " menu(s) loaded.");
+                break;
+            case 'o':case 'i': // Open/Item
+                if (args.length < 2) return invalid(sender, "You must specify a menu!");
+                AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
+                if (menu == null) return invalid(sender, "Couldn't find a menu by that name!");
+                Player target;
+                if (args.length > 2) {
+                    if (!sender.hasPermission("animatedmenu.command." + type + ".other"))
+                        return invalid(sender, "You are not permitted to do that for other players!");
+                    target = Bukkit.getPlayerExact(args[2]);
+                    if (target == null) return invalid(sender, "Couldn't find a player by that name!");
+                } else if (sender instanceof Player) target = (Player) sender;
+                else return invalid(sender, '/' + label + ' ' + type + " <menu> <player>");
+                if (type.charAt(0) == 'o') plugin.getMenuRegistry().openMenu(target, menu);
+                else if (menu.getSettings().getOpener() != null) target.getInventory().addItem(menu.getSettings().getOpener());
+                else return invalid(sender, "That menu doesn't have a menu opener!");
+                break;
+        }
+        return true;
+    }
+    
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        List<String> list = new ArrayList<>();
+        if (args.length <= 1) {
+            String start = args.length == 0 ? "" : args[0].toLowerCase();
+            for (String str : new String[] { "open", "item", "reload" })
+                if (sender.hasPermission("animatedmenu.command." + str) && str.startsWith(start))
+                    list.add(str);
+        } else if (args.length == 2) {
+            String type = args[0].toLowerCase();
+            if ((type.equals("open") || type.equals("item"))
+                    && sender.hasPermission("animatedmenu.command." + type + ".open")) {
+                for (AnimatedMenu menu : plugin.getMenuRegistry()) {
+                    if (!menu.getSettings().isHiddenFromCommand()
+                            && menu.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
+                        list.add(menu.getName().toLowerCase());
+                    }
+                }
+            }
+        }
+        return list;
+    }
+    
+    private boolean invalid(CommandSender sender, String msg) {
+        sender.sendMessage(RED + msg);
+        return true;
+    }
 }

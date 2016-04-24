@@ -1,11 +1,12 @@
 package me.megamichiel.animatedmenu.util;
 
+import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.placeholder.IPlaceholder;
+import me.megamichiel.animationlib.placeholder.StringBundle;
+import org.bukkit.entity.Player;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import lombok.RequiredArgsConstructor;
-
-import org.bukkit.entity.Player;
 
 public class FormulaPlaceholder implements IPlaceholder<Integer> {
 	
@@ -20,7 +21,7 @@ public class FormulaPlaceholder implements IPlaceholder<Integer> {
 			String[] plus = str.trim().split("\\*");
 			List<Object> list1 = new ArrayList<Object>();
 			for (String str1 : plus)
-				list1.add(StringUtil.parseBundle(nagger, str1.trim()));
+				list1.add(StringBundle.parse(nagger, str1.trim()));
 			list.add(new Formula(FormulaType.MULTIPLY, list1));
 		}
 		formula = new Formula(FormulaType.SUM, list);
@@ -31,7 +32,7 @@ public class FormulaPlaceholder implements IPlaceholder<Integer> {
 		return formula.calculate(nagger, who);
 	}
 	
-	public static enum FormulaType {
+	public enum FormulaType {
 		SUM {
 			@Override
 			int calculate(List<Object> values, Nagger nagger, Player who) {
@@ -76,12 +77,16 @@ public class FormulaPlaceholder implements IPlaceholder<Integer> {
 		abstract int calculate(List<Object> values, Nagger nagger, Player who);
 	}
 	
-	@RequiredArgsConstructor
-	private static class Formula {
+	private class Formula {
 		
 		private final FormulaType formulaType;
 		private final List<Object> values;
-		
+
+		public Formula(FormulaType formulaType, List<Object> values) {
+			this.formulaType = formulaType;
+			this.values = values;
+		}
+
 		int calculate(Nagger nagger, Player who)
 		{
 			return formulaType.calculate(values, nagger, who);

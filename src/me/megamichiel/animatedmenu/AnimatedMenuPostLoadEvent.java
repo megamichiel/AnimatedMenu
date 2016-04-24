@@ -1,7 +1,5 @@
 package me.megamichiel.animatedmenu;
 
-import lombok.Getter;
-
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
@@ -11,10 +9,13 @@ import org.bukkit.event.HandlerList;
  *
  */
 public class AnimatedMenuPostLoadEvent extends Event {
-	
-	@Getter
+
 	private static final HandlerList handlerList = new HandlerList();
-	@Getter
+
+	public static HandlerList getHandlerList() {
+		return handlerList;
+	}
+
 	private final AnimatedMenuPlugin plugin;
 	
 	public AnimatedMenuPostLoadEvent(AnimatedMenuPlugin plugin) {
@@ -24,5 +25,9 @@ public class AnimatedMenuPostLoadEvent extends Event {
 	@Override
 	public HandlerList getHandlers() {
 		return handlerList;
+	}
+
+	public AnimatedMenuPlugin getPlugin() {
+		return plugin;
 	}
 }

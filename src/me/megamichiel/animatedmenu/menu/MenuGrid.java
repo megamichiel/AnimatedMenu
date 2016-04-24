@@ -1,29 +1,26 @@
 package me.megamichiel.animatedmenu.menu;
 
-import lombok.Getter;
-
+import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animatedmenu.util.ReferenceHolder;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
+import java.util.Arrays;
+
 public class MenuGrid {
-	
-	@Getter
+
+	private final ReferenceHolder<AnimatedMenuPlugin> ref;
 	private final MenuItem[] items;
 	
-	public MenuGrid(int size) {
-		items = new MenuItem[size];
-	}
-	
-	public void clear()
-	{
-		for (int i = 0; i < items.length; i++)
-			items[i] = null;
+	public MenuGrid(ReferenceHolder<AnimatedMenuPlugin> ref, int size) {
+		this.ref = ref;
+        items = new MenuItem[size];
 	}
 	
 	public void click(Player p, ClickType click, int index) {
 		MenuItem item = items[index];
 		if(item != null && item.getSettings().getClickListener() != null
-				&& !item.getSettings().isHidden(p))
+				&& !item.getSettings().isHidden(ref.get(), p))
 			item.getSettings().getClickListener().onClick(p, click, items[index]);
 	}
 	
@@ -36,4 +33,12 @@ public class MenuGrid {
 		items[index] = item;
 		return old;
 	}
+
+	public void clear() {
+		Arrays.fill(items, null);
+	}
+
+    public MenuItem[] getItems() {
+        return items;
+    }
 }

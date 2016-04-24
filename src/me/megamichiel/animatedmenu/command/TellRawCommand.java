@@ -3,16 +3,15 @@ package me.megamichiel.animatedmenu.command;
 import java.lang.reflect.Method;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.util.Nagger;
 
+import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-public class TellRawCommand extends Command {
+public class TellRawCommand extends TextCommand {
 	
-	private static final Method deserialize, getHandle, sendMessage;
-	
-	static
+	private final Method deserialize, getHandle, sendMessage;
+
 	{
 		Method m1 = null, m2 = null, m3 = null;
 		try
@@ -37,21 +36,20 @@ public class TellRawCommand extends Command {
 		sendMessage = m3;
 	}
 	
-	public TellRawCommand(Nagger nagger, String command) {
-		super(nagger, command);
+	public TellRawCommand() {
+		super("tellraw");
 	}
 	
 	@Override
-	public boolean execute(AnimatedMenuPlugin plugin, Player p) {
-		String message = command.toString(p);
+	public boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
 		try
 		{
-			Object msg = deserialize.invoke(null, message);
+			Object msg = deserialize.invoke(null, value);
 			sendMessage.invoke(getHandle.invoke(p), msg);
 		}
 		catch (Exception ex)
 		{
-			plugin.nag("Failed to tell raw message '" + message + "'!");
+			plugin.nag("Failed to tell raw message '" + value + "'!");
 			plugin.nag(ex);
 		}
 		return true;

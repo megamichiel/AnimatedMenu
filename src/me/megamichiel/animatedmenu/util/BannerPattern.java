@@ -1,26 +1,19 @@
 package me.megamichiel.animatedmenu.util;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
-
+import me.megamichiel.animationlib.Nagger;
 import org.bukkit.DyeColor;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
 import org.bukkit.inventory.meta.BannerMeta;
 
+import java.util.*;
+
 
 
 @SuppressWarnings("deprecation")
-@Getter @NoArgsConstructor public class BannerPattern {
+public class BannerPattern {
 	
-	private static final Map<Character, DyeColor> colors = new HashMap<Character, DyeColor>();
+	private static final Map<Character, DyeColor> colors = new HashMap<>();
 	
 	static
 	{
@@ -28,7 +21,7 @@ import org.bukkit.inventory.meta.BannerMeta;
 			colors.put((char) ('a' + i), DyeColor.getByWoolData((byte) (15 - i)));
 	}
 	
-	private final List<Pattern> patterns = new ArrayList<Pattern>();
+	private final List<Pattern> patterns = new ArrayList<>();
 	
 	public BannerPattern(Nagger nagger, String pattern) throws IllegalArgumentException {
 		char[] array = pattern.toCharArray();
@@ -51,7 +44,10 @@ import org.bukkit.inventory.meta.BannerMeta;
 			patterns.add(new Pattern(dyeColor, patternType.patternType));
 		}
 	}
-	
+
+	public BannerPattern() {
+	}
+
 	public void apply(BannerMeta meta)
 	{
 		Iterator<Pattern> iterator = patterns.iterator();
@@ -62,9 +58,12 @@ import org.bukkit.inventory.meta.BannerMeta;
 			patterns.add(iterator.next());
 		meta.setPatterns(patterns);
 	}
-	
-	@RequiredArgsConstructor @Getter
-	public static enum BannerPatternType {
+
+	public List<Pattern> getPatterns() {
+		return this.patterns;
+	}
+
+	public enum BannerPatternType {
 		
 		BASE(PatternType.BASE, 'a'),
 		SQUARE_BOTTOM_LEFT(PatternType.SQUARE_BOTTOM_LEFT, 'b'),
@@ -108,13 +107,26 @@ import org.bukkit.inventory.meta.BannerMeta;
 		
 		private final PatternType patternType;
 		private final char identifier;
-		
+
+		private BannerPatternType(PatternType patternType, char identifier) {
+			this.patternType = patternType;
+			this.identifier = identifier;
+		}
+
 		public static BannerPatternType getByIdentifier(char identifier)
 		{
 			for (BannerPatternType patternType : values())
 				if (patternType.identifier == identifier)
 					return patternType;
 			return null;
+		}
+
+		public PatternType getPatternType() {
+			return this.patternType;
+		}
+
+		public char getIdentifier() {
+			return this.identifier;
 		}
 	}
 }

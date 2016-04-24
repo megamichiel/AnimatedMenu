@@ -1,13 +1,16 @@
 package me.megamichiel.animatedmenu.util;
 
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
-
+import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.placeholder.IPlaceholder;
+import me.megamichiel.animationlib.placeholder.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 @SuppressWarnings("deprecation")
 public class MaterialMatcher {
@@ -57,7 +60,9 @@ public class MaterialMatcher {
 				m = Material.matchMaterial(value);
 			}
 		}
-		catch (Exception ex) {}
+		catch (Exception ex) {
+			// No material found ;c
+		}
 		return new MaterialMatcher(m == null ? Material.STONE : m, m != null);
 	}
 	
@@ -69,7 +74,7 @@ public class MaterialMatcher {
 	private final boolean matched;
 	
 	public MaterialMatcher(Material type, boolean matched) {
-		match = new ConstantPlaceholder<Material>(type);
+		match = new IPlaceholder.ConstantPlaceholder<>(type);
 		this.matched = matched;
 	}
 	
@@ -106,7 +111,9 @@ public class MaterialMatcher {
 							m = Material.matchMaterial(value);
 						}
 					}
-					catch (Exception ex) {}
+					catch (Exception ex) {
+						// Not properly loaded ;c
+					}
 					return m == null ? Material.STONE : m;
 				}
 			};
@@ -131,8 +138,10 @@ public class MaterialMatcher {
 					m = Material.matchMaterial(value);
 				}
 			}
-			catch (Exception ex) {}
-			match = new ConstantPlaceholder<Material>(m == null ? Material.STONE : m);
+			catch (Exception ex) {
+				// Not properly loaded ;c
+			}
+			match = new IPlaceholder.ConstantPlaceholder<>(m == null ? Material.STONE : m);
 			matched = m != null;
 		}
 	}
@@ -145,7 +154,7 @@ public class MaterialMatcher {
 		return match.invoke(nagger, who);
 	}
 	
-	private static final Map<String, Enchantment> enchantments = new HashMap<String, Enchantment>();
+	private static final Map<String, Enchantment> enchantments = new HashMap<>();
 	
 	static
 	{
