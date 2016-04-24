@@ -48,7 +48,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             ServerInfo info = plugin.getConnections().get(lower.substring(11));
             return Integer.toString(info == null ? 0 : info.getMaxPlayers());
         }
-        if (arg.startsWith("status_"))
+        if (lower.startsWith("status_"))
         {
             ServerInfo info = plugin.getConnections().get(lower.substring(7));
             if (info != null)
@@ -69,7 +69,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
                 for (Entry<StringBundle, StringBundle> entry : info.getValues().entrySet())
                 {
                     String str = entry.getKey().toString(who);
-                    if (str.equals(motd))
+                    if (str.equalsIgnoreCase(motd))
                         return entry.getValue().toString(who);
                     else if (str.equalsIgnoreCase("default"))
                         def = entry.getValue();
