@@ -9,6 +9,5 @@ AnimatedMenu utilises a few plugins for stuff like commands. These are the ones 
 	<li>Craftbukkit 1.8.8</li>
 	<li>Vault</li>
 	<li>PlayerPoints</li>
-	<li>lombok</li>
 	<li>PlaceholderAPI</li>
 </ul>
