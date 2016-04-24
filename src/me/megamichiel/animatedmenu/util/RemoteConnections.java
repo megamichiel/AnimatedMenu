@@ -120,7 +120,6 @@ public class RemoteConnections implements Runnable {
                 }
                 catch (Exception ex)
                 {
-                    ex.printStackTrace();
                     if (plugin.warnOfflineServers())
                     {
                         plugin.nag("Failed to connect to " + info.address.getHostName() + ":" + info.address.getPort() + "!");

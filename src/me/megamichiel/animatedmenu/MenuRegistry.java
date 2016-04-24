@@ -77,6 +77,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      */
     public void clear() {
         menus.clear();
+        loaders.clear();
     }
     
     /**
