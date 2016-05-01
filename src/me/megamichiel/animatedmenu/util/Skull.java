@@ -1,19 +1,26 @@
 package me.megamichiel.animatedmenu.util;
 
 import com.google.common.base.Predicate;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import io.netty.util.internal.StringUtil;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.placeholder.StringBundle;
+import org.apache.commons.io.IOUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.SkullMeta;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -81,10 +88,10 @@ public class Skull {
         }
     }
     
-    private static void load(String name)
+    private static void load(final String savedName, String name)
     {
         final GameProfile profile = new GameProfile(null, name);
-        cachedProfiles.put(name, profile);
+        cachedProfiles.put(savedName, profile);
         try
         {
             if (fillProfile.getParameterTypes().length == 2) // Spigot
@@ -93,37 +100,57 @@ public class Skull {
                     @Override
                     public boolean apply(GameProfile profile) {
                         if (profile != null)
-                            cachedProfiles.put(profile.getName(), profile);
+                            cachedProfiles.put(savedName, profile);
                         return false;
                     }
                 });
             }
             else if (fillProfile.getParameterTypes().length == 1) // Bukkit
             {
-                cachedProfiles.put(name, (GameProfile) fillProfile.invoke(null, profile));
+                cachedProfiles.put(savedName, (GameProfile) fillProfile.invoke(null, profile));
             }
         }
         catch (Exception ex) {}
     }
     
-    public static void loadProfile(String name)
+    public static void loadProfile(final String name)
     {
 		int length = name.length();
-		if (length <= 36) {
-			GameProfile profile;
-			if (length <= 16) {
-                load(name);
+		if (length <= 36) { // uuid/name
+			final GameProfile profile;
+			if (length <= 16) { // name!
+                load(name, name);
                 return;
-			} else if (length == 32) {
+			} else if (length == 32) { // non-hyphen uuid
 				profile = new GameProfile(UUID.fromString(name.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5")), null);
-			} else if (length == 36) {
+			} else if (length == 36) { // hyphen uuid
 				profile = new GameProfile(UUID.fromString(name), null);
-			} else {
+			} else { // idk D:
                 cachedProfiles.put(name, new GameProfile(null, name));
                 return;
 			}
             cachedProfiles.put(name, profile);
-		} else {
+            // Load skin from UUID asynchronous:
+            runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    UUID uuid = profile.getId();
+                    try {
+                        HttpURLConnection connection = (HttpURLConnection)
+                                new URL("https://api.mojang.com/user/profiles/"
+                                        + uuid.toString().replace("-", "") + "/names").openConnection();
+                        InputStream in = connection.getInputStream();
+                        byte[] data = new byte[in.available()];
+                        in.read(data, 0, data.length);
+                        JsonArray array = (JsonArray) new JsonParser().parse(new String(data, "UTF-8"));
+                        String currentName = array.get(array.size() - 1).getAsJsonObject().get("name").getAsString();
+                        load(name, currentName);
+                    } catch (IOException ex) {
+                        // Cannot connect/no such player
+                    }
+                }
+            });
+		} else { // gson?
 			try {
                 JsonObject obj = new JsonParser().parse(name).getAsJsonObject();
                 UUID uuid = UUID.fromString(obj.get("Id").getAsString());
@@ -137,5 +164,11 @@ public class Skull {
                 cachedProfiles.put(name, new GameProfile(null, name));
 			}
 		}
+    }
+
+    private static void runAsync(Runnable runnable) {
+        Thread thread = new Thread(runnable);
+        thread.setDaemon(true);
+        thread.start();
     }
 }

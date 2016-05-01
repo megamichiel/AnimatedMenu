@@ -17,7 +17,7 @@ public abstract class TextCommand extends Command<StringBundle, String> {
     }
 
     @Override
-    public String tryCacheValue(Nagger nagger, StringBundle value) {
+    public String tryCacheValue(AnimatedMenuPlugin plugin, StringBundle value) {
         return value.containsPlaceholders() ? null : value.toString(null);
     }
 

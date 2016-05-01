@@ -23,8 +23,8 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
     }
 
     @Override
-    public SoundInfo tryCacheValue(Nagger nagger, StringBundle value) {
-        return value.containsPlaceholders() ? null : new SoundInfo(nagger, value.toString(null));
+    public SoundInfo tryCacheValue(AnimatedMenuPlugin plugin, StringBundle value) {
+        return value.containsPlaceholders() ? null : new SoundInfo(plugin, value.toString(null));
     }
 
     @Override
@@ -35,12 +35,14 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
 
     public static class SoundInfo {
 
+        private final Nagger nagger;
         private final String sound;
         private final float volume, pitch;
 
         public SoundInfo(Nagger nagger, String value) {
+            this.nagger = nagger;
             String[] split = value.split(" ");
-            sound = split[0];
+            sound = split[0].toLowerCase().replace('-', '_');
             float volume = 0, pitch = 0;
             if (split.length > 1) {
                 try {
@@ -60,14 +62,19 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
             this.pitch = pitch;
         }
 
-        public SoundInfo(String sound, float volume, float pitch) {
+        public SoundInfo(Nagger nagger, String sound, float volume, float pitch) {
+            this.nagger = nagger;
             this.sound = sound;
             this.volume = volume;
             this.pitch = pitch;
         }
 
         public void play(Player player) {
-            player.playSound(player.getLocation(), sound, volume, pitch);
+            try {
+                player.playSound(player.getLocation(), sound, volume, pitch);
+            } catch (IllegalArgumentException ex) {
+                nagger.nag("No sound by name '" + sound + "' found!");
+            }
         }
     }
 }

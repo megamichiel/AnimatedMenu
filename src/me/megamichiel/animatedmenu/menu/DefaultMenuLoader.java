@@ -1,5 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
+import com.google.common.base.Predicate;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.MenuRegistry;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
@@ -11,13 +12,13 @@ import me.megamichiel.animationlib.YamlConfig;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
-import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ import java.util.List;
 public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileListener {
 
     private DirectoryListener listener;
-    private AnimatedMenuPlugin plugin;
+    protected AnimatedMenuPlugin plugin;
 
     @Override
     public void onEnable(AnimatedMenuPlugin plugin) {
@@ -66,7 +67,7 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
         return list;
     }
 
-    private void loadMenus(List<AnimatedMenu> menus, File dir) {
+    protected void loadMenus(List<AnimatedMenu> menus, File dir) {
         for (File file : dir.listFiles()) {
             if (file.isDirectory()) {
                 loadMenus(menus, file);
@@ -82,7 +83,7 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
         }
     }
 
-    private AnimatedMenu loadMenu(String name, ConfigurationSection config) {
+    protected AnimatedMenu loadMenu(String name, ConfigurationSection config) {
         AnimatedText title = new AnimatedText();
         title.load(plugin, config, "menu-name", new StringBundle(plugin, name));
         MenuType type;
@@ -100,7 +101,7 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
         return menu;
     }
 
-    private void loadMenu(AnimatedMenu menu, ConfigurationSection config) {
+    protected void loadMenu(AnimatedMenu menu, ConfigurationSection config) {
         loadSettings(menu.getSettings(), config);
         ConfigurationSection items = config.getConfigurationSection("items");
         if (items == null) {
@@ -126,7 +127,7 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
         }
     }
 
-    private void loadSettings(MenuSettings settings, ConfigurationSection section) {
+    protected void loadSettings(MenuSettings settings, ConfigurationSection section) {
         if (section.isSet("menu-opener")) {
             ItemStack opener = AnimatedMaterial.parseItemStack(plugin, section.getString("menu-opener"));
             boolean openerName = section.isSet("menu-opener-name"),
@@ -148,11 +149,17 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
         }
         settings.setOpenOnJoin(Flag.parseBoolean(section, "open-on-join", false));
         if (section.isSet("open-sound")) {
-            SoundCommand.SoundInfo sound = new SoundCommand.SoundInfo(
+            final SoundCommand.SoundInfo sound = new SoundCommand.SoundInfo(plugin,
                     section.getString("open-sound").toLowerCase().replace('-', '_'),
                     1F, (float) section.getDouble("open-sound-pitch", 1F)
             );
-            settings.setOpenSound(sound);
+            settings.addOpenListener(new Predicate<Player>() {
+                @Override
+                public boolean apply(@Nullable Player player) {
+                    sound.play(player);
+                    return false;
+                }
+            });
         }
         settings.setOpenCommands(section.contains("command") ? section.getString("command").toLowerCase().split("; ") : null);
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));

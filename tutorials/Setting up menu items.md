@@ -62,8 +62,8 @@ There are a few keys where you can customize your item with:
   <li>
   	<b>Color</b> [Animatable with AnimatedMenu Plus]</br>
   	Set leather armor's color, using one of these formats:<br/>
-  	<red>, <green>, <blue> e.g. 0, 255, 0 is green<br/>
-  	<hex color> e.g. 00FF00 is green.
+  	&lt;red>, &lt;green&gt;, &lt;blue&gt; e.g. 0, 255, 0 is green<br/>
+  	&lt;hex color&gt; e.g. 00FF00 is green.
   </li>
   <li>
   	<b>SkullOwner</b> [Animatable with AnimatedMenu Plus]</br>

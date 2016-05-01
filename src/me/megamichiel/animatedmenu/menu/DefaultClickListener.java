@@ -134,9 +134,9 @@ public class DefaultClickListener implements ItemClickListener {
 						}
 					}
 					if (bought)
-						buyCommandExecutor.execute(plugin, who, click);
+						buyCommandExecutor.execute(plugin, who);
 				}
-				commandExecutor.execute(plugin, who, click);
+				commandExecutor.execute(plugin, who);
 				if (close) {
 					who.closeInventory();
 				}

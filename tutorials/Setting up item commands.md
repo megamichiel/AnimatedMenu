@@ -75,7 +75,8 @@ There are a few keys which you can customize it with:
     - '<b>server</b>': Send the player to a specific server, e.g. 'server: Lobby'<br/>
     - '<b>menu</b>': Make the player open a specific menu, e.g. 'menu: example'<br/>
     - '<b>tellraw</b>': Send a raw (json) message to the player, e.g. 'tellraw: {text:"Hello ",extra:[{selector:"@p"},{text:"!"}]}'<br/>
-    By default the player will perform the command
+    - '<b>sound</b>': Play a sound to a player. The format is 'sound: <name> [volume] [pitch]'<br/>
+    By default (if no prefix is specified) the player will perform the command
   </li>
   <li>
     <b>Buy-Commands</b><br/>

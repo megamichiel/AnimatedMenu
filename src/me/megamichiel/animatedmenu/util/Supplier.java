@@ -1,6 +1,5 @@
 package me.megamichiel.animatedmenu.util;
 
-public interface ReferenceHolder<T> {
-
+public interface Supplier<T> {
     T get();
 }

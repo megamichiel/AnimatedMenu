@@ -1,7 +1,8 @@
 package me.megamichiel.animatedmenu.menu;
 
+import com.google.common.base.Predicate;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.util.ReferenceHolder;
+import me.megamichiel.animatedmenu.util.Supplier;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import org.bukkit.Bukkit;
@@ -19,7 +20,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AnimatedMenu implements ReferenceHolder<AnimatedMenuPlugin> {
+public class AnimatedMenu implements Supplier<AnimatedMenuPlugin> {
     
     private static final Method GET_HANDLE, SEND_PACKET, UPDATE_INVENTORY;
     private static final Field PLAYER_CONNECTION, ACTIVE_CONTAINER, WINDOW_ID;
@@ -65,7 +66,7 @@ public class AnimatedMenu implements ReferenceHolder<AnimatedMenuPlugin> {
     private final Nagger nagger;
     private final String name;
     private final AnimatedText menuTitle;
-    private final MenuSettings settings;
+    private final MenuSettings settings = new MenuSettings();
     private final MenuType menuType;
     private final MenuGrid menuGrid;
     private final int titleUpdateDelay;
@@ -76,7 +77,6 @@ public class AnimatedMenu implements ReferenceHolder<AnimatedMenuPlugin> {
     public AnimatedMenu(Nagger nagger, String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
         this.nagger = nagger;
         this.name = name;
-        settings = new MenuSettings();
         this.menuTitle = title;
         this.titleUpdateDelay = titleUpdateDelay;
         
@@ -149,10 +149,10 @@ public class AnimatedMenu implements ReferenceHolder<AnimatedMenuPlugin> {
     
     public void open(Player who) {
         if (plugin == null) return;
+        for (Predicate<? super Player> predicate : settings.getOpenListeners())
+            predicate.apply(who);
         Inventory inv = createInventory(who);
         who.openInventory(inv);
-        if(settings.getOpenSound() != null)
-            settings.getOpenSound().play(who);
         openMenu.put(who, inv);
     }
     

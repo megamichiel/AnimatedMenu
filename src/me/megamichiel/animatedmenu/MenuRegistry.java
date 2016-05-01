@@ -1,7 +1,6 @@
 package me.megamichiel.animatedmenu;
 
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
-import me.megamichiel.animatedmenu.menu.DefaultMenuLoader;
 import me.megamichiel.animatedmenu.menu.MenuLoader;
 import org.apache.commons.lang.Validate;
 import org.bukkit.entity.Player;
@@ -134,7 +133,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     void loadMenus() {
         clear();
 
-        registerMenuLoader(new DefaultMenuLoader());
+        registerMenuLoader(plugin.getDefaultMenuLoader());
         
         Logger logger = plugin.getLogger();
         logger.info("Loading menus...");

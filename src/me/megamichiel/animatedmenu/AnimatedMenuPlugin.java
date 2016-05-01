@@ -5,6 +5,7 @@ import me.megamichiel.animatedmenu.command.SoundCommand;
 import me.megamichiel.animatedmenu.command.TellRawCommand;
 import me.megamichiel.animatedmenu.command.TextCommand;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
+import me.megamichiel.animatedmenu.menu.DefaultMenuLoader;
 import me.megamichiel.animatedmenu.util.FormulaPlaceholder;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
@@ -85,15 +86,18 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         {
             Class.forName("me.clip.placeholderapi.PlaceholderAPI");
             AnimatedMenuPlaceholders.register(this);
+        } catch (Exception ex) {
+            // No PlaceholderAPI ;c
         }
-        catch (Exception ex) {} // No PlaceholderAPI ;c
         try {
             Class.forName("net.milkbowl.vault.economy.Economy");
             economy = Bukkit.getServicesManager().getRegistration(Economy.class).getProvider();
             vaultPresent = true;
-        } catch (Exception ex) {} //No Vault
+        } catch (Exception ex) {
+            //No Vault
+        }
         Plugin pp = Bukkit.getPluginManager().getPlugin("PlayerPoints");
-        if(pp != null) {
+        if(pp instanceof PlayerPoints) {
             playerPointsAPI = ((PlayerPoints) pp).getAPI();
             playerPointsPresent = true;
         }
@@ -124,6 +128,10 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         asyncTasks.clear();
         connections.cancel();
         menuRegistry.onDisable();
+    }
+
+    protected DefaultMenuLoader getDefaultMenuLoader() {
+        return new DefaultMenuLoader();
     }
     
     private void checkForUpdate()
@@ -350,13 +358,17 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     {
         Player p = e.getPlayer();
         String cmd = e.getMessage().substring(1).split(" ")[0].toLowerCase();
-        for(AnimatedMenu menu : menuRegistry)
-            for (String command : menu.getSettings().getOpenCommands())
+        for (AnimatedMenu menu : menuRegistry) {
+            String[] commands = menu.getSettings().getOpenCommands();
+            if (commands == null) continue;
+            for (String command : commands) {
                 if (cmd.equals(command)) {
                     menuRegistry.openMenu(p, menu);
                     e.setCancelled(true);
                     return;
                 }
+            }
+        }
     }
     
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

@@ -69,7 +69,9 @@ Now on to the config:
   <li>
     <b>Command</b><br/>
     The command to be executed to open the menu (not required).<br/>
-    For example, if set to 'apple' and the player types /apple this menu will be opened.
+    For example, if set to 'apple' and the player types /apple this menu will be opened.<br/>
+    You can have multiple commands by seperating them by a semicolon (;) and a space, e.g.:<br/>
+    Command: 'apple; banana'
   </li>
   <li>
     <b>Items</b><br/>

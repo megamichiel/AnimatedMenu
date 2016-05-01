@@ -1,7 +1,7 @@
 package me.megamichiel.animatedmenu.menu;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.util.ReferenceHolder;
+import me.megamichiel.animatedmenu.util.Supplier;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
@@ -9,10 +9,10 @@ import java.util.Arrays;
 
 public class MenuGrid {
 
-	private final ReferenceHolder<AnimatedMenuPlugin> ref;
+	private final Supplier<AnimatedMenuPlugin> ref;
 	private final MenuItem[] items;
 	
-	public MenuGrid(ReferenceHolder<AnimatedMenuPlugin> ref, int size) {
+	public MenuGrid(Supplier<AnimatedMenuPlugin> ref, int size) {
 		this.ref = ref;
         items = new MenuItem[size];
 	}

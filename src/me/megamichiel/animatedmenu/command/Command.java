@@ -16,11 +16,11 @@ public abstract class Command<T, C> {
         return prefix;
     }
 
-	public abstract T parse(Nagger nagger, String command);
-	
-	public abstract boolean execute(AnimatedMenuPlugin plugin, Player p, T value);
+	protected abstract T parse(Nagger nagger, String command);
 
-	public abstract C tryCacheValue(Nagger nagger, T value);
+	protected abstract boolean execute(AnimatedMenuPlugin plugin, Player p, T value);
 
-    public abstract boolean executeCached(AnimatedMenuPlugin plugin, Player p, C value);
+	protected abstract C tryCacheValue(AnimatedMenuPlugin plugin, T value);
+
+	protected abstract boolean executeCached(AnimatedMenuPlugin plugin, Player p, C value);
 }

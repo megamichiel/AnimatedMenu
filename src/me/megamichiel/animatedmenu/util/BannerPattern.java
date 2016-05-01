@@ -45,8 +45,7 @@ public class BannerPattern {
 		}
 	}
 
-	public BannerPattern() {
-	}
+	public BannerPattern() {}
 
 	public void apply(BannerMeta meta)
 	{
@@ -108,7 +107,7 @@ public class BannerPattern {
 		private final PatternType patternType;
 		private final char identifier;
 
-		private BannerPatternType(PatternType patternType, char identifier) {
+		BannerPatternType(PatternType patternType, char identifier) {
 			this.patternType = patternType;
 			this.identifier = identifier;
 		}
