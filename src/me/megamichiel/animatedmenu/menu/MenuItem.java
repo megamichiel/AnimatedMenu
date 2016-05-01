@@ -7,7 +7,7 @@ import org.bukkit.inventory.ItemStack;
 public class MenuItem {
 
     private final MenuItemSettings settings;
-    private int frameTick, refreshTick;
+    private int frameTick, refreshTick, lastSlot;
     
     public MenuItem(MenuItemSettings settings) {
         this.settings = settings;
@@ -23,6 +23,11 @@ public class MenuItem {
         {
             refreshTick = 0;
             return true;
+        }
+        int slot = settings.getSlot();
+        if (slot != lastSlot) {
+            lastSlot = slot;
+            
         }
         return false;
     }

@@ -52,14 +52,10 @@ public class BannerPattern {
 		Iterator<Pattern> iterator = patterns.iterator();
 		if (iterator.hasNext())
 			meta.setBaseColor(iterator.next().getColor());
-		List<Pattern> patterns = new ArrayList<Pattern>();
+		List<Pattern> patterns = new ArrayList<>();
 		while (iterator.hasNext())
 			patterns.add(iterator.next());
 		meta.setPatterns(patterns);
-	}
-
-	public List<Pattern> getPatterns() {
-		return this.patterns;
 	}
 
 	public enum BannerPatternType {
@@ -118,14 +114,6 @@ public class BannerPattern {
 				if (patternType.identifier == identifier)
 					return patternType;
 			return null;
-		}
-
-		public PatternType getPatternType() {
-			return this.patternType;
-		}
-
-		public char getIdentifier() {
-			return this.identifier;
 		}
 	}
 }

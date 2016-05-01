@@ -97,10 +97,6 @@ public class AnimatedMenu implements Supplier<AnimatedMenuPlugin> {
         return name;
     }
 
-    public AnimatedText getMenuTitle() {
-        return menuTitle;
-    }
-
     public MenuSettings getSettings() {
         return settings;
     }
@@ -111,10 +107,6 @@ public class AnimatedMenu implements Supplier<AnimatedMenuPlugin> {
 
     public MenuGrid getMenuGrid() {
         return menuGrid;
-    }
-
-    public int getTitleUpdateDelay() {
-        return titleUpdateDelay;
     }
 
     public void handleMenuClose(Player who) {

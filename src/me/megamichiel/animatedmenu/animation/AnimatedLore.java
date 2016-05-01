@@ -29,16 +29,6 @@ public class AnimatedLore extends Animatable<Frame> {
         this.plugin = plugin;
     }
     
-    public AnimatedLore(Plugin plugin, Collection<? extends Frame> c) {
-        super(c);
-        this.plugin = plugin;
-    }
-    
-    public AnimatedLore(Plugin plugin, Frame[] elements) {
-        super(elements);
-        this.plugin = plugin;
-    }
-    
     @Override
     protected Frame defaultValue() {
         return new Frame();
@@ -52,7 +42,7 @@ public class AnimatedLore extends Animatable<Frame> {
                 File file = new File(plugin.getDataFolder(), "images/" + item.substring(6));
                 if (file.exists()) {
                     try {
-                        frame.addAll(Arrays.asList(new Image(nagger, file).getLines()));
+                        frame.addAll(readImage(nagger, file));
                     } catch (IOException e) {
                         nagger.nag("Failed to read file " + file.getName() + "!");
                         nagger.nag(e);
@@ -116,63 +106,51 @@ public class AnimatedLore extends Animatable<Frame> {
             return sb.toString();
         }
     }
-    public static class Image {
 
-        private static final int[] colors = {
-                0x000000,    // BLACK
-                0x0000AA,    // DARK_BLUE
-                0x00AA00,    // DARK_GREEN
-                0x00AAAA,    // DARK_AQUA
-                0xAA0000,    // DARK_RED
-                0xAA00AA,    // DARK_PURPLE
-                0xFFAA00,    // GOLD
-                0xAAAAAA,    // GRAY
-                0x555555,    // DARK_GRAY
-                0x5555FF,    // BLUE
-                0x55FF55,    // GREEN
-                0x55FFFF,    // AQUA
-                0xFF5555,    // RED
-                0xFF55FF,    // LIGHT_PURPLE
-                0xFFFF55,    // YELLOW
-                0xFFFFFF    // WHITE
-        };
-
-        private final StringBundle[] lines;
-
-        public Image(Nagger nagger, File file) throws IOException {
-            BufferedImage img = ImageIO.read(file);
-            int height = img.getHeight(), width = img.getWidth();
-            lines = new StringBundle[height];
-            for (int y = 0; y < height; y++) {
-                StringBuilder sb = new StringBuilder();
-                ChatColor previous = null;
-                for (int x = 0; x < width; x++) {
-                    ChatColor color = matchColor(img.getRGB(x, y));
-                    if (color != previous) {
-                        sb.append(color.toString());
-                        previous = color;
-                    }
-                    sb.append(StringBundle.BOX);
+    private static List<StringBundle> readImage(Nagger nagger, File file) throws IOException {
+        BufferedImage img = ImageIO.read(file);
+        int height = img.getHeight(), width = img.getWidth();
+        List<StringBundle> lines = new ArrayList<>(height);
+        for (int y = 0; y < height; y++) {
+            StringBuilder sb = new StringBuilder();
+            ChatColor previous = null;
+            for (int x = 0; x < width; x++) {
+                ChatColor color = matchColor(img.getRGB(x, y));
+                if (color != previous) {
+                    sb.append(color.toString());
+                    previous = color;
                 }
-                lines[y] = new StringBundle(nagger, sb.toString());
+                sb.append(StringBundle.BOX);
             }
+            lines.set(y, new StringBundle(nagger, sb.toString()));
         }
+        return lines;
+    }
 
-        private ChatColor matchColor(int rgb) {
-            int distance = 0;
-            int index = -1;
-            for (int i = 0; i < colors.length; i++) {
-                int dist = Math.abs(colors[i] - rgb);
-                if (index == -1 || dist < distance) {
-                    index = i;
-                    distance = dist;
-                }
-            }
-            return ChatColor.values()[index];
-        }
+    private static final int[] colors = {
+            0x000000,    // BLACK
+            0x0000AA,    // DARK_BLUE
+            0x00AA00,    // DARK_GREEN
+            0x00AAAA,    // DARK_AQUA
+            0xAA0000,    // DARK_RED
+            0xAA00AA,    // DARK_PURPLE
+            0xFFAA00,    // GOLD
+            0xAAAAAA,    // GRAY
+            0x555555,    // DARK_GRAY
+            0x5555FF,    // BLUE
+            0x55FF55,    // GREEN
+            0x55FFFF,    // AQUA
+            0xFF5555,    // RED
+            0xFF55FF,    // LIGHT_PURPLE
+            0xFFFF55,    // YELLOW
+            0xFFFFFF     // WHITE
+    };
 
-        public StringBundle[] getLines() {
-            return lines;
-        }
+    private static ChatColor matchColor(int rgb) {
+        int index = 0;
+        for (int i = 0; i < colors.length; i++)
+            if (Math.abs(colors[i] - rgb) < Math.abs(colors[index] - rgb))
+                index = i;
+        return ChatColor.values()[index];
     }
 }

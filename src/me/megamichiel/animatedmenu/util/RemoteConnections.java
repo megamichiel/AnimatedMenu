@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RemoteConnections implements Runnable {
     
     private final AnimatedMenuPlugin plugin;
-    private final Map<String, ServerInfo> statuses = new ConcurrentHashMap<String, ServerInfo>();
+    private final Map<String, ServerInfo> statuses = new ConcurrentHashMap<>();
     private long delay;
     boolean running = false;
     private Thread runningThread;
@@ -198,10 +198,6 @@ public class RemoteConnections implements Runnable {
                 if (entry.getKey().toString(who).equals(key))
                     return entry.getValue();
             return null;
-        }
-
-        public InetSocketAddress getAddress() {
-            return address;
         }
 
         public Map<StringBundle, StringBundle> getValues() {

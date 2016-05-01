@@ -111,7 +111,7 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
         MenuType type = menu.getMenuType();
         for (String key : items.getKeys(false)) {
             ConfigurationSection section = items.getConfigurationSection(key);
-            MenuItem item = new MenuItem(new MenuItemSettings(plugin, key).load(plugin, menu.getName(), section));
+            MenuItem item = new MenuItem(new MenuItemSettings(plugin, key, menu.getName(), section));
             int slot;
             if (section.isInt("x") && section.isInt("y")) {
                 int x = clamp(1, type.getWidth(), section.getInt("x")) - 1,
@@ -138,7 +138,7 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
                     meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', section.getString("menu-opener-name")));
                 if(openerLore) {
                     List<String> lore = new ArrayList<>();
-                    for(String line : section.getStringList("menu-opener-lore"))
+                    for (String line : section.getStringList("menu-opener-lore"))
                         lore.add(ChatColor.translateAlternateColorCodes('&', line));
                     meta.setLore(lore);
                 }

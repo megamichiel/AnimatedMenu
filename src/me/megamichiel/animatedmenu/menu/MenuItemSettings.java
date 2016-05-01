@@ -3,7 +3,9 @@ package me.megamichiel.animatedmenu.menu;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
-import me.megamichiel.animatedmenu.util.*;
+import me.megamichiel.animatedmenu.util.BannerPattern;
+import me.megamichiel.animatedmenu.util.MaterialMatcher;
+import me.megamichiel.animatedmenu.util.Skull;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.placeholder.StringBundle;
@@ -18,7 +20,6 @@ import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.SkullMeta;
-import org.bukkit.plugin.Plugin;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -39,33 +40,10 @@ public class MenuItemSettings {
     private Skull skull;
     private BannerPattern bannerPattern;
     private int hideFlags = 0;
-    
-    public MenuItemSettings(Plugin plugin, String name) {
-        this.name = name;
-        material = new AnimatedMaterial();
-        displayName = new AnimatedText();
-        lore = new AnimatedLore(plugin);
-        frameDelay = refreshDelay = 20;
-        enchantments = new HashMap<>();
-    }
 
-    public MenuItemSettings(String name, AnimatedMaterial material, AnimatedText displayName, AnimatedLore lore, int frameDelay, int refreshDelay, Map<Enchantment, Integer> enchantments, ItemClickListener clickListener, StringBundle hidePermission, Color leatherArmorColor, Skull skull, BannerPattern bannerPattern, int hideFlags) {
+    public MenuItemSettings(AnimatedMenuPlugin plugin, String name,
+                            String menu, ConfigurationSection section) {
         this.name = name;
-        this.material = material;
-        this.displayName = displayName;
-        this.lore = lore;
-        this.frameDelay = frameDelay;
-        this.refreshDelay = refreshDelay;
-        this.enchantments = enchantments;
-        this.clickListener = clickListener;
-        this.hidePermission = hidePermission;
-        this.leatherArmorColor = leatherArmorColor;
-        this.skull = skull;
-        this.bannerPattern = bannerPattern;
-        this.hideFlags = hideFlags;
-    }
-
-    MenuItemSettings load(AnimatedMenuPlugin plugin, String menu, ConfigurationSection section) {
         frameDelay = section.getInt("frame-delay", 20);
         refreshDelay = section.getInt("refresh-delay", frameDelay);
         material = new AnimatedMaterial();
@@ -99,7 +77,7 @@ public class MenuItemSettings {
             }
             enchantments.put(ench, level);
         }
-        clickListener = new DefaultClickListener(plugin, section);
+        clickListener = new ItemClickListener(plugin, section);
         leatherArmorColor = getColor(section.getString("color"));
         String skullOwner = section.getString("skullowner");
         skull = skullOwner == null ? null : new Skull(plugin, skullOwner);
@@ -128,7 +106,6 @@ public class MenuItemSettings {
             }
         }
         hidePermission = StringBundle.parse(plugin, section.getString("hide-permission"));
-        return this;
     }
     
     public boolean isHidden(AnimatedMenuPlugin plugin, Player p)
@@ -137,7 +114,7 @@ public class MenuItemSettings {
     }
 
     public ItemStack first(Nagger nagger, Player who) {
-        return applyFirst(nagger, who, material.get().toItemStack(nagger, who));
+        return applyFirst(nagger, who, material.get().invoke(nagger, who));
     }
 
     public ItemStack applyFirst(Nagger nagger, Player who, ItemStack handle)
@@ -175,7 +152,7 @@ public class MenuItemSettings {
     
     public ItemStack apply(Nagger nagger, Player p, ItemStack handle)
     {
-        ItemStack material = getMaterial().get().toItemStack(nagger, p);
+        ItemStack material = getMaterial().get().invoke(nagger, p);
         handle.setType(material.getType());
         handle.setAmount(material.getAmount());
         handle.setDurability(material.getDurability());
@@ -218,10 +195,6 @@ public class MenuItemSettings {
             }
         }
     }
-    
-    public static Builder builder(Plugin plugin, String name) {
-        return new Builder(plugin, name);
-    }
 
     public String getName() {
         return this.name;
@@ -255,10 +228,6 @@ public class MenuItemSettings {
         return this.clickListener;
     }
 
-    public StringBundle getHidePermission() {
-        return this.hidePermission;
-    }
-
     public Color getLeatherArmorColor() {
         return this.leatherArmorColor;
     }
@@ -275,137 +244,7 @@ public class MenuItemSettings {
         return this.hideFlags;
     }
 
-    public void setMaterial(AnimatedMaterial material) {
-        this.material = material;
-    }
-
-    public void setDisplayName(AnimatedText displayName) {
-        this.displayName = displayName;
-    }
-
-    public void setLore(AnimatedLore lore) {
-        this.lore = lore;
-    }
-
-    public void setFrameDelay(int frameDelay) {
-        this.frameDelay = frameDelay;
-    }
-
-    public void setRefreshDelay(int refreshDelay) {
-        this.refreshDelay = refreshDelay;
-    }
-
-    public void setEnchantments(Map<Enchantment, Integer> enchantments) {
-        this.enchantments = enchantments;
-    }
-
-    public void setClickListener(ItemClickListener clickListener) {
-        this.clickListener = clickListener;
-    }
-
-    public void setHidePermission(StringBundle hidePermission) {
-        this.hidePermission = hidePermission;
-    }
-
-    public void setLeatherArmorColor(Color leatherArmorColor) {
-        this.leatherArmorColor = leatherArmorColor;
-    }
-
-    public void setSkull(Skull skull) {
-        this.skull = skull;
-    }
-
-    public void setBannerPattern(BannerPattern bannerPattern) {
-        this.bannerPattern = bannerPattern;
-    }
-
-    public void setHideFlags(int hideFlags) {
-        this.hideFlags = hideFlags;
-    }
-
-    public static class Builder {
-
-        private final Plugin plugin;
-        private final String name;
-        private AnimatedMaterial material;
-        private AnimatedText displayName;
-        private AnimatedLore lore;
-        private int frameDelay = 20;
-        private Map<Enchantment, Integer> enchantments;
-        private ItemClickListener clickListener;
-        private StringBundle hidePermission;
-        private Color leatherArmorColor;
-        private Skull skull;
-        private int hideFlags;
-
-        private Builder(Plugin plugin, String name) {
-            this.plugin = plugin;
-            this.name = name;
-        }
-
-        public MenuItemSettings build() {
-            MenuItemSettings settings = new MenuItemSettings(plugin, name);
-            if(material != null) settings.setMaterial(material);
-            if(displayName != null) settings.setDisplayName(displayName);
-            if(lore != null) settings.setLore(lore);
-            settings.setFrameDelay(frameDelay);
-            settings.setEnchantments(enchantments);
-            settings.setClickListener(clickListener);
-            settings.setHidePermission(hidePermission);
-            settings.setLeatherArmorColor(leatherArmorColor);
-            settings.setSkull(skull);
-            settings.setHideFlags(hideFlags);
-            return settings;
-        }
-
-        public Builder material(AnimatedMaterial material) {
-            this.material = material;
-            return this;
-        }
-
-        public Builder displayName(AnimatedText displayName) {
-            this.displayName = displayName;
-            return this;
-        }
-
-        public Builder lore(AnimatedLore lore) {
-            this.lore = lore;
-            return this;
-        }
-
-        public Builder frameDelay(int frameDelay) {
-            this.frameDelay = frameDelay;
-            return this;
-        }
-
-        public Builder enchantments(Map<Enchantment, Integer> enchantments) {
-            this.enchantments = enchantments;
-            return this;
-        }
-
-        public Builder clickListener(ItemClickListener clickListener) {
-            this.clickListener = clickListener;
-            return this;
-        }
-
-        public Builder hidePermission(StringBundle hidePermission) {
-            this.hidePermission = hidePermission;
-            return this;
-        }
-
-        public Builder leatherArmorColor(Color leatherArmorColor) {
-            this.leatherArmorColor = leatherArmorColor;
-            return this;
-        }
-
-        public Builder skull(Skull skull) {
-            this.skull = skull;
-            return this;
-        }
-
-        public Builder hideFlags(int hideFlags) {
-            this.hideFlags = hideFlags;
-            return this;
-        }
+    public int getSlot() {
+        return 0; // TODO
     }
 }

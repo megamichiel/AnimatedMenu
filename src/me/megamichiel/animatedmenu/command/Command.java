@@ -6,15 +6,11 @@ import org.bukkit.entity.Player;
 
 public abstract class Command<T, C> {
 
-	private final String prefix;
+	final String prefix;
 
 	protected Command(String prefix) {
 		this.prefix = prefix;
 	}
-
-    public String getPrefix() {
-        return prefix;
-    }
 
 	protected abstract T parse(Nagger nagger, String command);
 

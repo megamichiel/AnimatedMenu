@@ -46,22 +46,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
-    
-    private static AnimatedMenuPlugin instance;
-
-    public static AnimatedMenuPlugin getInstance() {
-        return instance;
-    }
 
     private final List<Command<?, ?>> commands = new ArrayList<>();
 
     private final MenuRegistry menuRegistry = new MenuRegistry(this);
     
-    private final Map<String, FormulaPlaceholder> formulaPlaceholders = new HashMap<String, FormulaPlaceholder>();
+    private final Map<String, FormulaPlaceholder> formulaPlaceholders = new HashMap<>();
     private final RemoteConnections connections = new RemoteConnections(this);
     private boolean warnOfflineServers = true;
     
-    private final List<BukkitTask> asyncTasks = new ArrayList<BukkitTask>();
+    private final List<BukkitTask> asyncTasks = new ArrayList<>();
     
     private String update;
     private boolean vaultPresent = false, playerPointsPresent = false;
@@ -71,8 +65,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     @Override
     public void onEnable()
     {
-        instance = this;
-        
         /* Listeners */
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
@@ -104,9 +96,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         new BukkitRunnable() {
             @Override
             public void run() {
-                Bukkit.getPluginManager().callEvent(new AnimatedMenuPreLoadEvent(AnimatedMenuPlugin.this));
                 menuRegistry.loadMenus();
-                Bukkit.getPluginManager().callEvent(new AnimatedMenuPostLoadEvent(AnimatedMenuPlugin.this));
             }
         }.runTask(this);
         
@@ -290,9 +280,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         loadConfig();
         
         registerDefaultCommandHandlers();
-        Bukkit.getPluginManager().callEvent(new AnimatedMenuPreLoadEvent(this));
         menuRegistry.loadMenus();
-        Bukkit.getPluginManager().callEvent(new AnimatedMenuPostLoadEvent(this));
     }
     
     /* Listeners */
@@ -327,18 +315,18 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     void onPlayerInteract(PlayerInteractEvent e) {
         if (!e.getPlayer().hasPermission("animatedmenu.open"))
             return;
-        if(e.getItem() != null)
+        if (e.getItem() != null)
         {
-            for(AnimatedMenu menu : menuRegistry)
+            for (AnimatedMenu menu : menuRegistry)
             {
                 ItemStack item = menu.getSettings().getOpener();
-                if(item != null && item.getData().equals(e.getItem().getData()))
+                if (item != null && item.getData().equals(e.getItem().getData()))
                 {
                     ItemMeta meta = e.getItem().getItemMeta();
                     ItemMeta meta1 = item.getItemMeta();
-                    if(menu.getSettings().hasOpenerName() && notEqual(meta.getDisplayName(), meta1.getDisplayName()))
+                    if (menu.getSettings().hasOpenerName() && notEqual(meta.getDisplayName(), meta1.getDisplayName()))
                         continue;
-                    if(menu.getSettings().hasOpenerLore() && notEqual(meta.getLore(), meta1.getLore()))
+                    if (menu.getSettings().hasOpenerLore() && notEqual(meta.getLore(), meta1.getLore()))
                         continue;
                     menuRegistry.openMenu(e.getPlayer(), menu);
                     e.setCancelled(true);
@@ -350,7 +338,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     
     private boolean notEqual(Object o1, Object o2)
     {
-        return o1 == null ? o2 == null : o1.equals(o2);
+        return o1 == null ? o2 != null : !o1.equals(o2);
     }
     
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -421,10 +409,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 
     public RemoteConnections getConnections() {
         return connections;
-    }
-
-    public List<BukkitTask> getAsyncTasks() {
-        return asyncTasks;
     }
 
     public boolean isVaultPresent() {

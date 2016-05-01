@@ -1,12 +1,10 @@
 package me.megamichiel.animatedmenu.command;
 
-import java.util.*;
-
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.ClickType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CommandExecutor {
     
@@ -20,9 +18,9 @@ public class CommandExecutor {
                 String str = String.valueOf(o);
                 Command cmd = null;
                 for (Command command : plugin.getCommands()) {
-                    if (str.toLowerCase().startsWith(command.getPrefix().toLowerCase() + ":")) {
+                    if (str.toLowerCase().startsWith(command.prefix.toLowerCase() + ":")) {
                         cmd = command;
-                        str = str.substring(command.getPrefix().length() + 1).trim();
+                        str = str.substring(command.prefix.length() + 1).trim();
                         break;
                     }
                 }

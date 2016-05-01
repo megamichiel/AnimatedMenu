@@ -21,7 +21,7 @@ public class MenuGrid {
 		MenuItem item = items[index];
 		if(item != null && item.getSettings().getClickListener() != null
 				&& !item.getSettings().isHidden(ref.get(), p))
-			item.getSettings().getClickListener().onClick(p, click, items[index]);
+			item.getSettings().getClickListener().onClick(p, click);
 	}
 	
 	public MenuItem getItem(int index) {
@@ -37,8 +37,4 @@ public class MenuGrid {
 	public void clear() {
 		Arrays.fill(items, null);
 	}
-
-    public MenuItem[] getItems() {
-        return items;
-    }
 }

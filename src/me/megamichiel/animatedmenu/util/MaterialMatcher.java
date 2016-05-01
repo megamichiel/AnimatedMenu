@@ -2,7 +2,6 @@ package me.megamichiel.animatedmenu.util;
 
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
-import me.megamichiel.animationlib.placeholder.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -66,10 +65,6 @@ public class MaterialMatcher {
 		return new MaterialMatcher(m == null ? Material.STONE : m, m != null);
 	}
 	
-	public static MaterialMatcher dynamic(String str) {
-		return new MaterialMatcher(str);
-	}
-	
 	private final IPlaceholder<Material> match;
 	private final boolean matched;
 	
@@ -78,7 +73,7 @@ public class MaterialMatcher {
 		this.matched = matched;
 	}
 	
-	public MaterialMatcher(Material type) {
+	/*public MaterialMatcher(Material type) {
 		 this(type, true);
 	}
 	
@@ -144,7 +139,7 @@ public class MaterialMatcher {
 			match = new IPlaceholder.ConstantPlaceholder<>(m == null ? Material.STONE : m);
 			matched = m != null;
 		}
-	}
+	}*/
 	
 	public boolean matches() {
 		return matched;

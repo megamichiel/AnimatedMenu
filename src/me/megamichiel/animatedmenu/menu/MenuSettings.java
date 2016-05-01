@@ -1,8 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
 import com.google.common.base.Predicate;
-import me.megamichiel.animatedmenu.command.SoundCommand;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -17,7 +15,6 @@ public class MenuSettings {
 	private boolean openerName, openerLore;
 	private boolean openOnJoin;
 	private int openerJoinSlot;
-    //private SoundCommand.SoundInfo openSound;
 	private String[] openCommands;
     private boolean hiddenFromCommand = false;
 
@@ -58,14 +55,6 @@ public class MenuSettings {
     public int getOpenerJoinSlot() {
         return openerJoinSlot;
     }
-
-    /*public void setOpenSound(SoundCommand.SoundInfo openSound) {
-        this.openSound = openSound;
-    }
-
-    public SoundCommand.SoundInfo getOpenSound() {
-        return openSound;
-    }*/
 
     public void addOpenListener(Predicate<? super Player> listener) {
         openListeners.add(listener);

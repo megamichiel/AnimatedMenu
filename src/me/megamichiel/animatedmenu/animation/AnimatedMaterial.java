@@ -1,53 +1,34 @@
 package me.megamichiel.animatedmenu.animation;
 
-import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.animation.AnimatedMaterial.Frame;
 import me.megamichiel.animatedmenu.util.MaterialMatcher;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.Animatable;
-import me.megamichiel.animationlib.placeholder.NumberPlaceholder;
+import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-public class AnimatedMaterial extends Animatable<Frame> {
+public class AnimatedMaterial extends Animatable<IPlaceholder<ItemStack>> {
     
     private static final long serialVersionUID = 3993512547684702735L;
     
     @Override
-    protected Frame convert(Nagger nagger, String str) {
+    protected IPlaceholder<ItemStack> convert(Nagger nagger, String str) {
         final StringBundle sb = StringBundle.parse(nagger, str);
         if (sb.containsPlaceholders()) {
-            return new Frame() {
+            return new IPlaceholder<ItemStack>() {
                 @Override
-                public ItemStack toItemStack(Nagger nagger, Player player) {
+                public ItemStack invoke(Nagger nagger, Player player) {
                     return parseItemStack(nagger, sb.toString(player));
                 }
             };
-        } else {
-            final ItemStack item = parseItemStack(nagger, str);
-            return new Frame() {
-                @Override
-                public ItemStack toItemStack(Nagger nagger, Player player) {
-                    return item;
-                }
-            };
-        }
+        } else return IPlaceholder.ConstantPlaceholder.of(parseItemStack(nagger, sb.toString(null)));
     }
     
     @Override
-    protected Frame defaultValue() {
-        return new Frame() {
-            @Override
-            public ItemStack toItemStack(Nagger nagger, Player player) {
-                return new ItemStack(Material.STONE);
-            }
-        };
-    }
-    
-    public interface Frame {
-        ItemStack toItemStack(Nagger nagger, Player player);
+    protected IPlaceholder<ItemStack> defaultValue() {
+        return IPlaceholder.ConstantPlaceholder.of(new ItemStack(Material.STONE));
     }
 
     public static ItemStack parseItemStack(Nagger nagger, String str) {
