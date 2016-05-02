@@ -1,6 +1,7 @@
 package me.megamichiel.animatedmenu.menu;
 
 import com.google.common.base.Predicate;
+import io.netty.util.internal.chmv8.ConcurrentHashMapV8;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.util.Supplier;
 import me.megamichiel.animationlib.Nagger;
@@ -14,11 +15,13 @@ import org.bukkit.inventory.ItemStack;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentNavigableMap;
 
 public class AnimatedMenu implements Supplier<AnimatedMenuPlugin> {
     
@@ -111,6 +114,9 @@ public class AnimatedMenu implements Supplier<AnimatedMenuPlugin> {
 
     public void handleMenuClose(Player who) {
         openMenu.remove(who);
+        for (MenuItem item : menuGrid.getItems())
+            if (item != null)
+                item.handleMenuClose(who);
     }
     
     public Collection<? extends Player> getViewers()
@@ -174,25 +180,22 @@ public class AnimatedMenu implements Supplier<AnimatedMenuPlugin> {
             }
         }
         
-        for (int slot = 0; slot < menuType.getSize(); slot++)
-        {
-            MenuItem item = menuGrid.getItem(slot);
-            if (item != null && item.tick())
-            {
-                for (Entry<Player, Inventory> entry : openMenu.entrySet())
-                {
+        for (int index = 0; index < menuType.getSize(); index++) {
+            MenuItem item = menuGrid.getItem(index);
+            if (item != null && item.tick()) {
+                for (Entry<Player, Inventory> entry : openMenu.entrySet()) {
                     Player player = entry.getKey();
+                    Inventory inv = entry.getValue();
+                    int lastSlot = item.getLastSlot(player),
+                            slot = item.getSlot(this, player);
                     boolean hidden = item.getSettings().isHidden(plugin, player);
-                    ItemStack is = entry.getValue().getItem(slot);
-                    if (hidden && is != null)
-                    {
-                        entry.getValue().setItem(slot, null);
+                    ItemStack is = inv.getItem(slot);
+                    if (hidden && is != null) {
+                        inv.setItem(slot, null);
                         continue;
-                    }
-                    else if (!hidden && is == null)
-                    {
-                        entry.getValue().setItem(slot, item.load(nagger, player));
-                        is = entry.getValue().getItem(slot);
+                    } else if (!hidden && is == null) {
+                        inv.setItem(slot, item.load(nagger, player));
+                        is = inv.getItem(slot);
                     }
                     if (!hidden) item.apply(nagger, player, is);
                 }

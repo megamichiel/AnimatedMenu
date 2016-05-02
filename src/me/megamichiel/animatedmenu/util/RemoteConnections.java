@@ -42,7 +42,8 @@ public class RemoteConnections implements Runnable {
     public void cancel()
     {
         running = false;
-        runningThread.interrupt();
+        if (runningThread != null)
+            runningThread.interrupt();
     }
     
     @Override

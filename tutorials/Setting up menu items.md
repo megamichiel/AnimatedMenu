@@ -17,6 +17,8 @@ An animated value:<br/>
 &nbsp;&nbsp;<b>1:</b> stone:1:0<br/>
 &nbsp;&nbsp;<b>2:</b> dirt:1:0<br/>
 &nbsp;&nbsp;<b>3:</b> sand:1:0<br/>
+&nbsp;&nbsp;<b>Random:</b> true<br/>
+The 'Random: true' line is optional. If you add this, it will cycle through frames randomly
   
 
 There are a few keys where you can customize your item with:

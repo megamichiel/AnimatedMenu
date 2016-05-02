@@ -243,8 +243,4 @@ public class MenuItemSettings {
     public int getHideFlags() {
         return this.hideFlags;
     }
-
-    public int getSlot() {
-        return 0; // TODO
-    }
 }

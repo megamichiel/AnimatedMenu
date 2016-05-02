@@ -35,7 +35,7 @@ public class ItemClickListener {
 					boolean rightClick = click.equals("both") || click.equals("right"),
 							leftClick = click.equals("both") || click.equals("left");
 					Flag shiftClick = Flag.parseFlag(sec, "shift-click", Flag.BOTH);
-					int price = sec.getInt("price", -1), points = sec.getInt("Points", -1);
+					int price = sec.getInt("price", -1), points = sec.getInt("points", -1);
 					String permission = sec.getString("permission"),
 							permissionMessage = sec.getString("permission-message", PERMISSION_MESSAGE),
 							bypassPermission = sec.getString("bypass-permission"),

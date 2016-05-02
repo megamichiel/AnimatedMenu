@@ -25,7 +25,9 @@ Now on to the config:
     This can be animated, using a format like this:<br/>
     Menu-Name:<br/>
     &nbsp;&nbsp;1: '&6Title 1'<br/>
-    &nbsp;&nbsp;2: '&aTitle 2'
+    &nbsp;&nbsp;2: '&aTitle 2'<br/>
+    &nbsp;&nbsp;Random: true<br/>
+    The 'Random: true' line is optional. If you add this, it will cycle through frames randomly
   </li>
   <li>
     <b>Title-Update-Delay</b></br>

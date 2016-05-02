@@ -37,4 +37,8 @@ public class MenuGrid {
 	public void clear() {
 		Arrays.fill(items, null);
 	}
+
+	public MenuItem[] getItems() {
+		return items;
+	}
 }

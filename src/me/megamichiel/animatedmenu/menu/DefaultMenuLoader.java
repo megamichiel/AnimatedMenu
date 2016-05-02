@@ -109,21 +109,29 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
             return;
         }
         MenuType type = menu.getMenuType();
+        int slot = 0;
         for (String key : items.getKeys(false)) {
             ConfigurationSection section = items.getConfigurationSection(key);
-            MenuItem item = new MenuItem(new MenuItemSettings(plugin, key, menu.getName(), section));
-            int slot;
+            MenuItemSettings settings = new MenuItemSettings(plugin, key, menu.getName(), section);
+            MenuItem item;
             if (section.isInt("x") && section.isInt("y")) {
                 int x = clamp(1, type.getWidth(), section.getInt("x")) - 1,
                         y = clamp(1, type.getHeight(), section.getInt("y")) - 1;
-                slot = (y * type.getWidth()) + x;
+                item = new MenuItem(settings, (y * type.getWidth()) + x);
             } else if (section.isInt("slot")) {
-                slot = clamp(1, type.getSize(), section.getInt("slot")) - 1;
+                item = new MenuItem(settings, clamp(1, type.getSize(), section.getInt("slot")) - 1);
+            } else if (section.isSet("slot")) {
+                try {
+                    item = new MenuItem(plugin, settings, section.get("slot"));
+                } catch (IllegalArgumentException ex) {
+                    plugin.nag("Invalid slot specified for item " + key + " in menu " + menu.getName() + "!");
+                    continue;
+                }
             } else {
                 plugin.nag("No slot specified for item " + key + " in menu " + menu.getName() + "!");
                 continue;
             }
-            menu.getMenuGrid().setItem(slot, item);
+            menu.getMenuGrid().setItem(slot++, item);
         }
     }
 

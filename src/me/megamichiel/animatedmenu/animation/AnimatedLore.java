@@ -66,6 +66,7 @@ public class AnimatedLore extends Animatable<Frame> {
                 Frame frame = loadFrame(nagger, list);
                 add(frame);
             }
+            isRandom = sec.getBoolean("random");
             return true;
         }
         if (section.isList(key))

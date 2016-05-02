@@ -65,6 +65,10 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     @Override
     public void onEnable()
     {
+        if (!requirePlugin("AnimationLib", "1.1.0")) {
+            return;
+        }
+
         /* Listeners */
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
@@ -89,7 +93,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
             //No Vault
         }
         Plugin pp = Bukkit.getPluginManager().getPlugin("PlayerPoints");
-        if(pp instanceof PlayerPoints) {
+        if (pp instanceof PlayerPoints) {
             playerPointsAPI = ((PlayerPoints) pp).getAPI();
             playerPointsPresent = true;
         }
@@ -106,10 +110,27 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         
         asyncTasks.add(Bukkit.getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
     }
-    
+
+    private boolean requirePlugin(String name, String version) {
+        Plugin plugin = getServer().getPluginManager().getPlugin(name);
+        if (plugin != null) {
+            String str = plugin.getDescription().getVersion();
+            if (str.equals(version)) return true;
+            String[] current = str.split("\\."), required = version.split("\\.");
+            int length = current.length;
+            for (int x = 0; x < length; x++) {
+                int a = Integer.parseInt(current[x]), b = Integer.parseInt(required[x]);
+                if (a < b) break;
+                if (a > b || x + 1 == length) return true;
+            }
+        }
+        getLogger().severe("I require " + name + " v" + version + " to work!");
+        getServer().getPluginManager().disablePlugin(this);
+        return false;
+    }
+
     @Override
-    public void onDisable()
-    {
+    public void onDisable() {
         for (Player p : new HashSet<>(menuRegistry.getOpenMenu().keySet())) { // InventoryCloseEvent could cause ConcurrentModificationException
             p.closeInventory();
         }
