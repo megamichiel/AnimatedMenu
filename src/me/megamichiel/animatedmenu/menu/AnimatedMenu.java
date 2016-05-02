@@ -135,11 +135,11 @@ public class AnimatedMenu implements Supplier<AnimatedMenuPlugin> {
         else inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
         for (int slot = 0; slot < menuType.getSize(); slot++)
         {
-            MenuItem item = menuGrid.getItem(slot);
+            MenuItem item = menuGrid.getItems()[slot];
             if (item != null && !item.getSettings().isHidden(plugin, who))
             {
                 ItemStack i = item.load(nagger, who);
-                inv.setItem(slot, i);
+                inv.setItem(item.getSlot(this, who), i);
             }
         }
         return inv;
@@ -180,9 +180,9 @@ public class AnimatedMenu implements Supplier<AnimatedMenuPlugin> {
             }
         }
         
-        for (int index = 0; index < menuType.getSize(); index++) {
-            MenuItem item = menuGrid.getItem(index);
-            if (item != null && item.tick()) {
+        for (int index = 0; index < menuGrid.getSize(); index++) {
+            MenuItem item = menuGrid.getItems()[index];
+            if (item.tick()) {
                 for (Entry<Player, Inventory> entry : openMenu.entrySet()) {
                     Player player = entry.getKey();
                     Inventory inv = entry.getValue();

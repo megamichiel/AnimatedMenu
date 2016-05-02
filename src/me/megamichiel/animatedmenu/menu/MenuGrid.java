@@ -11,27 +11,30 @@ public class MenuGrid {
 
 	private final Supplier<AnimatedMenuPlugin> ref;
 	private final MenuItem[] items;
+	private int size = 0;
 	
 	public MenuGrid(Supplier<AnimatedMenuPlugin> ref, int size) {
 		this.ref = ref;
         items = new MenuItem[size];
 	}
 	
-	public void click(Player p, ClickType click, int index) {
-		MenuItem item = items[index];
+	public void click(Player p, ClickType click, int slot) {
+		MenuItem item = getItemAtInventorySlot(p, slot);
 		if(item != null && item.getSettings().getClickListener() != null
 				&& !item.getSettings().isHidden(ref.get(), p))
 			item.getSettings().getClickListener().onClick(p, click);
 	}
 	
-	public MenuItem getItem(int index) {
-		return items[index];
+	public MenuItem getItemAtInventorySlot(Player p, int slot) {
+		MenuItem item;
+		for (int i = 0; i < items.length && (item = items[i]) != null; i++)
+			if (item.getLastSlot(p) == slot)
+				return item;
+		return null;
 	}
 	
-	public MenuItem setItem(int index, MenuItem item) {
-		MenuItem old = items[index];
-		items[index] = item;
-		return old;
+	public void addItem(MenuItem item) {
+		items[size++] = item;
 	}
 
 	public void clear() {
@@ -40,5 +43,9 @@ public class MenuGrid {
 
 	public MenuItem[] getItems() {
 		return items;
+	}
+
+	public int getSize() {
+		return size;
 	}
 }

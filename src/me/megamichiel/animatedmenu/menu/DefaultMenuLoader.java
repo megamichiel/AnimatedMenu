@@ -109,7 +109,6 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
             return;
         }
         MenuType type = menu.getMenuType();
-        int slot = 0;
         for (String key : items.getKeys(false)) {
             ConfigurationSection section = items.getConfigurationSection(key);
             MenuItemSettings settings = new MenuItemSettings(plugin, key, menu.getName(), section);
@@ -131,7 +130,7 @@ public class DefaultMenuLoader implements MenuLoader, DirectoryListener.FileList
                 plugin.nag("No slot specified for item " + key + " in menu " + menu.getName() + "!");
                 continue;
             }
-            menu.getMenuGrid().setItem(slot++, item);
+            menu.getMenuGrid().addItem(item);
         }
     }
 

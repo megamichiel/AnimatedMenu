@@ -398,8 +398,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         e.setCancelled(true);
         int slot = e.getRawSlot();
         InventoryView view = e.getView();
-        if ((view.getTopInventory() != null) && slot >= 0 && (slot < view.getTopInventory().getSize()))
-        {
+        if ((view.getTopInventory() != null) && slot >= 0 && (slot < view.getTopInventory().getSize())) {
             open.getMenuGrid().click(p, e.getClick(), e.getSlot());
         }
     }
