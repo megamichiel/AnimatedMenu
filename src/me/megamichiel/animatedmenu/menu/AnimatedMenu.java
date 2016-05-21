@@ -117,10 +117,8 @@ public class AnimatedMenu extends AbstractMenu {
         ItemStack[] contents = new ItemStack[inv.getSize()];
         for (int slot = 0; slot < menuGrid.getSize(); slot++) {
             MenuItem item = menuGrid.getItems()[slot];
-            if (!item.getSettings().isHidden(plugin, who)) {
-                ItemStack i = item.load(nagger, who);
-                inv.setItem(item.getSlot(who, contents), i);
-            }
+            if (!item.getSettings().isHidden(plugin, who))
+                contents[item.getSlot(who, contents)] = item.load(nagger, who);
         }
         inv.setContents(contents);
         return inv;
@@ -129,8 +127,7 @@ public class AnimatedMenu extends AbstractMenu {
     public void open(Player who) {
         if (plugin == null) return;
         if (permission != null && !who.hasPermission(permission.invoke(plugin, who))) {
-            if (permissionMessage != null)
-                who.sendMessage(permissionMessage.invoke(plugin, who));
+            if (permissionMessage != null) who.sendMessage(permissionMessage.invoke(plugin, who));
             return;
         }
         for (Predicate<? super Player> predicate : settings.getOpenListeners())
