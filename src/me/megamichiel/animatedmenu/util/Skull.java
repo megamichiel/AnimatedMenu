@@ -6,10 +6,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
-import io.netty.util.internal.StringUtil;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.placeholder.StringBundle;
-import org.apache.commons.io.IOUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -30,31 +28,25 @@ public class Skull {
     private static final Field skullProfile;
     private static final Method fillProfile;
     
-    static
-    {
+    static {
         Field field = null;
         Method method = null;
-        try
-        {
+        try {
             String pkg = Bukkit.getServer().getClass().getPackage().getName();
             field = Class.forName(pkg + ".inventory.CraftMetaSkull").getDeclaredField("profile");
             field.setAccessible(true);
             
             Class<?> clazz = Class.forName("net.minecraft.server." + pkg.split("\\.")[3] + ".TileEntitySkull");
-            for (Method m : clazz.getDeclaredMethods())
-            {
-                if (Modifier.isStatic(m.getModifiers()))
-                {
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (Modifier.isStatic(m.getModifiers())) {
                     Class<?>[] params = m.getParameterTypes();
-                    if (params.length > 0 && params[0] == GameProfile.class)
-                    {
+                    if (params.length > 0 && params[0] == GameProfile.class) {
                         method = m;
                         break;
                     }
                 }
             }
-        }
-        catch (Exception ex) {}
+        } catch (Exception ex) {}
         skullProfile = field;
         fillProfile = method;
     }
@@ -67,35 +59,26 @@ public class Skull {
         this.name = StringBundle.parse(nagger, name);
     }
     
-    public void apply(Player player, SkullMeta meta)
-    {
+    public void apply(Player player, SkullMeta meta) {
         String name = this.name.toString(player);
         GameProfile profile = cachedProfiles.get(name);
-        if (profile != null)
-        {
+        if (profile != null) {
             if (profile.getName() != null) {
-                try
-                {
+                try {
                     skullProfile.set(meta, profile);
-                }
-                catch (Exception ex) {}
+                } catch (Exception ex) {}
             }
-        }
-        else
-        {
+        } else {
             loadProfile(name);
             meta.setOwner(name);
         }
     }
     
-    private static void load(final String savedName, String name)
-    {
+    private static void load(final String savedName, String name) {
         final GameProfile profile = new GameProfile(null, name);
         cachedProfiles.put(savedName, profile);
-        try
-        {
-            if (fillProfile.getParameterTypes().length == 2) // Spigot
-            {
+        try {
+            if (fillProfile.getParameterTypes().length == 2) { // Spigot
                 fillProfile.invoke(null, profile, new Predicate<GameProfile>() {
                     @Override
                     public boolean apply(GameProfile profile) {
@@ -104,17 +87,13 @@ public class Skull {
                         return false;
                     }
                 });
-            }
-            else if (fillProfile.getParameterTypes().length == 1) // Bukkit
-            {
+            } else if (fillProfile.getParameterTypes().length == 1) {// Bukkit
                 cachedProfiles.put(savedName, (GameProfile) fillProfile.invoke(null, profile));
             }
-        }
-        catch (Exception ex) {}
+        } catch (Exception ex) {}
     }
     
-    public static void loadProfile(final String name)
-    {
+    public static void loadProfile(final String name) {
 		int length = name.length();
 		if (length <= 36) { // uuid/name
 			final GameProfile profile;

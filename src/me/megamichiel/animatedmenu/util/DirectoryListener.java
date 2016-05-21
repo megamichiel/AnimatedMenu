@@ -26,8 +26,7 @@ public class DirectoryListener implements Runnable {
         (thread = new Thread(this)).start();
     }
 
-    public void stop()
-    {
+    public void stop() {
         running = false;
         thread.interrupt();
     }
@@ -35,19 +34,13 @@ public class DirectoryListener implements Runnable {
     @SuppressWarnings("unchecked")
     @Override
     public void run() {
-        while (running)
-        {
-            try
-            {
+        while (running) {
+            try {
                 WatchKey key = service.take();
 
-                for (WatchEvent<?> event : key.pollEvents())
-                {
+                for (WatchEvent<?> event : key.pollEvents()) {
                     WatchEvent.Kind<?> kind = event.kind();
-                    if (kind == OVERFLOW)
-                    {
-                        continue;
-                    }
+                    if (kind == OVERFLOW) continue;
                     WatchEvent<Path> ev = (WatchEvent<Path>) event;
 
                     Path path = ev.context();
@@ -61,11 +54,8 @@ public class DirectoryListener implements Runnable {
                 }
 
                 boolean valid = key.reset();
-                if (!valid) {
-                    break;
-                }
-            }
-            catch (InterruptedException ex) {
+                if (!valid) break;
+            } catch (InterruptedException ex) {
                 // Interrupted by the plugin disabling
                 if (running) {
                     log.severe("Directory change listener was interrupted by an external source!");
@@ -75,13 +65,11 @@ public class DirectoryListener implements Runnable {
         }
     }
 
-    public enum FileAction
-    {
+    public enum FileAction {
         CREATE, MODIFY, DELETE
     }
 
     public interface FileListener {
-
         void fileChanged(File file, FileAction action);
     }
 }

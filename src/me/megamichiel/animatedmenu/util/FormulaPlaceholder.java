@@ -16,8 +16,7 @@ public class FormulaPlaceholder implements IPlaceholder<Integer> {
         value = value.trim();
         String[] multiply = value.split("\\+");
         List<Object> list = new ArrayList<Object>();
-        for (String str : multiply)
-        {
+        for (String str : multiply) {
             String[] plus = str.trim().split("\\*");
             List<Object> list1 = new ArrayList<Object>();
             for (String str1 : plus)

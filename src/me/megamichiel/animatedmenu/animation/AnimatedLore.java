@@ -34,15 +34,14 @@ public class AnimatedLore extends Animatable<Frame> {
         return new Frame();
     }
 
-    public Frame loadFrame(Nagger nagger, List<String> list)
-    {
+    private Frame loadFrame(Nagger nagger, List<String> list) {
         Frame frame = new Frame();
-        for(String item : list) {
-            if(item.toLowerCase().startsWith("file: ")) {
+        for (String item : list) {
+            if (item.toLowerCase().startsWith("file: ")) {
                 File file = new File(plugin.getDataFolder(), "images/" + item.substring(6));
-                if (file.exists()) {
+                if (file.exists() && file.isFile()) {
                     try {
-                        frame.addAll(readImage(nagger, file));
+                        frame.addAll(readImage(file));
                     } catch (IOException e) {
                         nagger.nag("Failed to read file " + file.getName() + "!");
                         nagger.nag(e);
@@ -50,34 +49,29 @@ public class AnimatedLore extends Animatable<Frame> {
                     continue;
                 }
             }
-            frame.add(StringBundle.parse(nagger, item).colorAmpersands());
+            frame.add(StringBundle.parse(nagger, item).colorAmpersands().tryCache());
         }
         return frame;
     }
 
     @Override
     public boolean load(Nagger nagger, ConfigurationSection section, String key, Frame defaultValue) {
-        if (section.isConfigurationSection(key))
-        {
+        if (section.isConfigurationSection(key)) {
             ConfigurationSection sec = section.getConfigurationSection(key);
             List<String> list;
             for (int num = 1; !(list = sec.getStringList(String.valueOf(num))).isEmpty(); num++)
-            {
-                Frame frame = loadFrame(nagger, list);
-                add(frame);
-            }
+                add(loadFrame(nagger, list));
             isRandom = sec.getBoolean("random");
             return true;
         }
-        if (section.isList(key))
-        {
+        if (section.isList(key)) {
             add(loadFrame(nagger, section.getStringList(key)));
             return true;
         }
         return false;
     }
 
-    public static class Frame extends ArrayList<IPlaceholder<String>> {
+    public class Frame extends ArrayList<IPlaceholder<String>> {
         
         private static final long serialVersionUID = 3655877616632972680L;
         
@@ -108,10 +102,10 @@ public class AnimatedLore extends Animatable<Frame> {
         }
     }
 
-    private static List<StringBundle> readImage(Nagger nagger, File file) throws IOException {
+    private static List<IPlaceholder<String>> readImage(File file) throws IOException {
         BufferedImage img = ImageIO.read(file);
         int height = img.getHeight(), width = img.getWidth();
-        List<StringBundle> lines = new ArrayList<>(height);
+        List<IPlaceholder<String>> lines = new ArrayList<>(height);
         for (int y = 0; y < height; y++) {
             StringBuilder sb = new StringBuilder();
             ChatColor previous = null;
@@ -123,7 +117,7 @@ public class AnimatedLore extends Animatable<Frame> {
                 }
                 sb.append(StringBundle.BOX);
             }
-            lines.set(y, new StringBundle(nagger, sb.toString()));
+            lines.set(y, IPlaceholder.ConstantPlaceholder.of(sb.toString()));
         }
         return lines;
     }

@@ -19,7 +19,7 @@ import org.bukkit.entity.Player;
  * The Animated Menu command
  *
  */
-public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
+class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
     
     private final String[] messages = {
             DARK_AQUA + "-=" + GOLD + "Animated Menu - Help" + DARK_AQUA + "=-",
@@ -36,7 +36,7 @@ public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
     };
     private final AnimatedMenuPlugin plugin;
     
-    public AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
+    AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -72,11 +72,15 @@ public class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
                 if (args.length < 2) return invalid(sender, "You must specify a menu!");
                 AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
                 if (menu == null) return invalid(sender, "Couldn't find a menu by that name!");
-                Player target;
+                Player target = null;
                 if (args.length > 2) {
                     if (!sender.hasPermission("animatedmenu.command." + type + ".other"))
                         return invalid(sender, "You are not permitted to do that for other players!");
-                    target = Bukkit.getPlayerExact(args[2]);
+                    for (Player player : Bukkit.getOnlinePlayers())
+                        if (player.getName().equals(args[2])) {
+                            target = player;
+                            break;
+                        }
                     if (target == null) return invalid(sender, "Couldn't find a player by that name!");
                 } else if (sender instanceof Player) target = (Player) sender;
                 else return invalid(sender, '/' + label + ' ' + type + " <menu> <player>");

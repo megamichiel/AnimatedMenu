@@ -9,10 +9,7 @@ import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
@@ -25,22 +22,20 @@ public class RemoteConnections implements Runnable {
     private final AnimatedMenuPlugin plugin;
     private final Map<String, ServerInfo> statuses = new ConcurrentHashMap<>();
     private long delay;
-    boolean running = false;
+    private boolean running = false;
     private Thread runningThread;
 
     public RemoteConnections(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
     }
 
-    public void schedule(long delay)
-    {
+    public void schedule(long delay) {
         running = true;
         this.delay = delay * 50;
         (runningThread = new Thread(this)).start();
     }
     
-    public void cancel()
-    {
+    public void cancel() {
         running = false;
         if (runningThread != null)
             runningThread.interrupt();
@@ -48,13 +43,10 @@ public class RemoteConnections implements Runnable {
     
     @Override
     public void run() {
-        while (running)
-        {
-            for (Entry<String, ServerInfo> entry : statuses.entrySet())
-            {
+        while (running) {
+            for (Entry<String, ServerInfo> entry : statuses.entrySet()) {
                 ServerInfo info = entry.getValue();
-                try
-                {
+                try {
                     Socket socket = new Socket(info.address.getAddress(), info.address.getPort());
                     OutputStream output = socket.getOutputStream();
                     InputStream input = socket.getInputStream();
@@ -78,18 +70,16 @@ public class RemoteConnections implements Runnable {
                     
                     // Response
                     readVarInt(input);
-                    if (input.read() != 0) // Weird Packet ID
-                    {
+                    if (input.read() != 0) { // Weird Packet ID
                         socket.close();
                         continue;
                     }
                     byte[] jsonBytes = new byte[readVarInt(input)];
-                    input.read(jsonBytes);
+                    new DataInputStream(input).readFully(jsonBytes);
                     JsonElement response = new JsonParser().parse(new String(jsonBytes, Charsets.UTF_8));
                     String motd;
                     int online = 0, max = 0;
-                    if (response.isJsonObject())
-                    {
+                    if (response.isJsonObject()) {
                         JsonObject obj = response.getAsJsonObject();
                         JsonElement desc = obj.get("description");
                         if (desc.isJsonObject())
@@ -102,8 +92,7 @@ public class RemoteConnections implements Runnable {
                             online = playersObj.get("online").getAsInt();
                             max = playersObj.get("max").getAsInt();
                         }
-                    }
-                    else motd = response.getAsString();
+                    } else motd = response.getAsString();
                     
                     info.online = true;
                     info.motd = motd;
@@ -118,26 +107,20 @@ public class RemoteConnections implements Runnable {
                     // input.skip(10); // Length (9) + ID (1) + Keep Alive ID
                     
                     socket.close();
-                }
-                catch (Exception ex)
-                {
-                    if (plugin.warnOfflineServers())
-                    {
+                } catch (Exception ex) {
+                    if (plugin.warnOfflineServers()) {
                         plugin.nag("Failed to connect to " + info.address.getHostName() + ":" + info.address.getPort() + "!");
                         plugin.nag(ex);
                     }
                 }
             }
-            try
-            {
+            try {
                 Thread.sleep(delay);
-            }
-            catch (InterruptedException ex) {}
+            } catch (InterruptedException ex) {}
         }
     }
     
-    private void writeVarInt(OutputStream output, int i) throws IOException
-    {
+    private void writeVarInt(OutputStream output, int i) throws IOException {
         while ((i & -128) != 0) {
             output.write(i & 127 | 128);
             i >>>= 7;
@@ -146,8 +129,7 @@ public class RemoteConnections implements Runnable {
         output.write(i);
     }
     
-    private int readVarInt(InputStream stream) throws IOException
-    {
+    private int readVarInt(InputStream stream) throws IOException {
         int i = 0;
         int j = 0;
         
@@ -164,20 +146,17 @@ public class RemoteConnections implements Runnable {
         return i;
     }
     
-    public void clear()
-    {
+    public void clear() {
         statuses.clear();
     }
     
-    public ServerInfo add(String name, InetSocketAddress address)
-    {
+    public ServerInfo add(String name, InetSocketAddress address) {
         ServerInfo info = new ServerInfo(address);
         statuses.put(name, info);
         return info;
     }
     
-    public ServerInfo get(String name)
-    {
+    public ServerInfo get(String name) {
         return statuses.get(name);
     }
 
@@ -193,8 +172,7 @@ public class RemoteConnections implements Runnable {
             this.address = address;
         }
 
-        public StringBundle get(String key, Player who)
-        {
+        public StringBundle get(String key, Player who) {
             for (Entry<StringBundle, StringBundle> entry : values.entrySet())
                 if (entry.getKey().toString(who).equals(key))
                     return entry.getValue();

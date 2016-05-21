@@ -23,37 +23,45 @@ The 'Random: true' line is optional. If you add this, it will cycle through fram
 
 There are a few keys where you can customize your item with:
 <ul>
-  <li>
+  <li id="slot">
     <b>Slot</b><br/>
-    The slot to place the item in. Starts at 1
+    The slot to place the item in. Starts at 1<br/>
+    If you have AnimatedMenu Plus, you can also use placeholders & javascript in this.<br/>
+    You can use the PlaceholderAPI placeholders with %, as well as:
+    <ul>
+        <li><b>{first_empty}</b> - The first empty slot in the menu</li>
+        <li><b>{first_empty_&lt;slot&gt;}</b> - The first empty slot in the menu, starting at &lt;slot&gt;</li>
+        <li><b>{last_empty}</b> - The last empty slot in the menu</li>
+        <li><b>{last_empty_&lt;slot&gt;}</b> - The last empty slot in the menu, starting at &lt;slot&gt;</li>
+    </ul>
   </li>
-  <li>
+  <li id="framedelay">
     <b>Frame-Delay</b><br/>
     The delay in ticks between item frame updates.<br/>
     20 ticks = 1 second<br/>
     Default value is 20
   </li>
-  <li>
+  <li id="refreshdelay">
     <b>Refresh-Delay</b><br/>
     The delay in ticks between item refreshes.<br/>
     20 ticks = 1 second<br/>
     Default value is equal to Frame-Delay
   </li>
-  <li>
+  <li id="material">
     <b>Material</b> [Animatable]<br/>
     The material of the item, in format;
     &lt;type or id&gt;:&lt;amount&gt;:&lt;data value&gt;<br/>
     Default value is stone
   </li>
-  <li>
+  <li id="name">
     <b>Name</b> [Animatable]<br/>
     The name of the item. Can be colored using & and supports placeholders
   </li>
-  <li>
+  <li id="lore">
     <b>Lore</b> [Animatable]<br/>
     The lore of the item. Each line can be colored using & and supports placeholders
   </li>
-  <li>
+  <li id="enchantments">
     <b>Enchantments</b> [Animatable with AnimatedMenu Plus]<br/>
     The enchantments to be applied to the item, e.g:<br/>
     Enchantments:<br/>
@@ -61,32 +69,32 @@ There are a few keys where you can customize your item with:
     - unbreaking:3<br/>
     This adds efficiency (ID 32) level 5 and unbreaking (ID 34) level 3 to the item. It uses either IDs or minecraft enchantment names.
   </li>
-  <li>
+  <li id="color">
   	<b>Color</b> [Animatable with AnimatedMenu Plus]</br>
   	Set leather armor's color, using one of these formats:<br/>
   	&lt;red>, &lt;green&gt;, &lt;blue&gt; e.g. 0, 255, 0 is green<br/>
   	&lt;hex color&gt; e.g. 00FF00 is green.
   </li>
-  <li>
+  <li id="skullowner">
   	<b>SkullOwner</b> [Animatable with AnimatedMenu Plus]</br>
   	Set a skull's owner, self-explanatory
   </li>
-  <li>
+  <li id="bannerpattern">
   	<b>BannerPattern</b> [Animatable with AnimatedMenu Plus]</br>
   	Set a banner's pattern. At http://www.needcoolshoes.com/ you can create a banner</br>
   	When you have customized your banner, the title will say something like http://www.needcoolshoes.com/banner?=paap<br/>
   	You copy the 'paap' part into this value
   </li>
-  <li>
+  <li id="hideflags">
   	<b>Hide-Flags</b> [Animatable with AnimatedMenu Plus]</br>
   	Set the item's hide flags to hide things such as enchantments.<br/>
   	Visit http://minecraft.gamepedia.com/Tutorials/Command\_NBT\_tags for reference. If you can't find it, hit CTRL+F and search for "HideFlags"
   </li>
-  <li>
+  <li id="hideperm">
     <b>Hide-Permission</b><br/>
     If the player doesn't have this permission, the item is hidden
   </li>
-  <li>
+  <li id="commands">
     <b>Commands</b><br/>
     This has been revamped from version 2.2.0<br/>
     See <a href="https://github.com/megamichiel/AnimatedMenu/blob/master/tutorials/Setting%20up%20item%20commands.md">this</a> page

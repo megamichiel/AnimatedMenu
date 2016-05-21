@@ -2,7 +2,6 @@ package me.megamichiel.animatedmenu;
 
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuLoader;
-import org.apache.commons.lang.Validate;
 import org.bukkit.entity.Player;
 
 import java.io.File;
@@ -11,29 +10,26 @@ import java.util.logging.Logger;
 
 public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
-    private final List<MenuLoader> loaders = new ArrayList<>();
+    private MenuLoader menuLoader;
     private final List<AnimatedMenu> menus = new ArrayList<>();
     private final AnimatedMenuPlugin plugin;
     private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
-    private boolean initialized = false;
 
-    public MenuRegistry(AnimatedMenuPlugin plugin) {
+    MenuRegistry(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
     }
 
-    public Map<Player, AnimatedMenu> getOpenMenu() {
+    Map<Player, AnimatedMenu> getOpenMenu() {
         return openMenu;
     }
 
-    public List<AnimatedMenu> getMenus() {
+    List<AnimatedMenu> getMenus() {
         return menus;
     }
 
     void onDisable() {
-        for (MenuLoader loader : loaders) {
-            loader.onDisable();
-        }
-        loaders.clear();
+        if (menuLoader != null)
+            menuLoader.onDisable();
     }
     
     @Override
@@ -47,36 +43,21 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             }
         }
     }
-
-    public void registerMenuLoader(MenuLoader loader) {
-        Validate.notNull(loader);
-        loaders.add(loader);
-        if (initialized) {
-            loader.onEnable(plugin);
-            List<AnimatedMenu> list = loader.loadMenus();
-            if (list != null) {
-                for (AnimatedMenu menu : list)
-                    menu.init(plugin);
-                menus.addAll(list);
-            }
-        }
-    }
     
     /**
      * Get a player's opened menu
      * @param who the player to get the opened menu of
      * @return the player's opened menu, or null if the player doesn't have a menu open
      */
-    public AnimatedMenu getOpenedMenu(Player who) {
+    AnimatedMenu getOpenedMenu(Player who) {
         return openMenu.get(who);
     }
     
     /**
      * Clears all menus
      */
-    public void clear() {
+    private void clear() {
         menus.clear();
-        loaders.clear();
     }
     
     /**
@@ -121,7 +102,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @param who the player who should open the menu
      * @param menu the menu to open
      */
-    public void openMenu(Player who, AnimatedMenu menu) {
+    void openMenu(Player who, AnimatedMenu menu) {
         AnimatedMenu prev = openMenu.remove(who);
         if (prev != null) {
             prev.handleMenuClose(who);
@@ -133,25 +114,21 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     void loadMenus() {
         clear();
 
-        registerMenuLoader(plugin.getDefaultMenuLoader());
+        menuLoader = plugin.getDefaultMenuLoader();
         
         Logger logger = plugin.getLogger();
         logger.info("Loading menus...");
 
         File file = new File(plugin.getDataFolder(), "images");
-        if (!file.exists())
-            file.mkdir();
+        if (!file.exists() && !file.mkdir())
+            plugin.getLogger().warning("Failed to create images folder!");
 
-        initialized = true;
-
-        for (MenuLoader loader : loaders) {
-            loader.onEnable(plugin);
-            List<AnimatedMenu> list = loader.loadMenus();
-            if (list != null) {
-                for (AnimatedMenu menu : list)
-                    menu.init(plugin);
-                menus.addAll(list);
-            }
+        menuLoader.onEnable(plugin);
+        List<AnimatedMenu> list = menuLoader.loadMenus();
+        if (list != null) {
+            for (AnimatedMenu menu : list)
+                menu.init(plugin);
+            menus.addAll(list);
         }
         logger.info(this.menus.size() + " menu" + (this.menus.size() == 1 ? "" : "s") + " loaded");
     }

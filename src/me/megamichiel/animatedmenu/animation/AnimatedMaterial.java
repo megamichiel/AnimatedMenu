@@ -34,9 +34,8 @@ public class AnimatedMaterial extends Animatable<IPlaceholder<ItemStack>> {
     public static ItemStack parseItemStack(Nagger nagger, String str) {
         String[] split = str.split(":");
         MaterialMatcher matcher = MaterialMatcher.parse(split[0]);
-        if(!matcher.matches()) {
+        if(!matcher.matches())
             nagger.nag("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
-        }
         ItemStack item = new ItemStack(matcher.get(null, null));
         if(split.length > 1) {
             try {

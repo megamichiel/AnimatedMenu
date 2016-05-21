@@ -1,5 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
+import com.google.common.base.Supplier;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
 import org.bukkit.entity.Player;
@@ -11,18 +12,20 @@ public class MenuItem {
     private int frameTick, refreshTick;
     private final int slot;
     
-    public MenuItem(MenuItemSettings settings, int slot) {
+    public MenuItem(AbstractMenu menu, MenuItemSettings settings, int slot) {
         this.settings = settings;
         this.slot = slot;
     }
 
-    public MenuItem(AnimatedMenuPlugin plugin, MenuItemSettings settings, Object slot) {
+    MenuItem(AbstractMenu menu, MenuItemSettings settings, Object slot) {
         throw new IllegalArgumentException();
     }
 
-    public void handleMenuClose(Player player) {}
+    boolean hasDynamicSlot() {
+        return false;
+    }
     
-    public boolean tick() {
+    boolean tick() {
         if (frameTick++ == settings.getFrameDelay())
         {
             frameTick = 0;
@@ -36,11 +39,11 @@ public class MenuItem {
         return false;
     }
 
-    public int getLastSlot(Player p) {
+    int getLastSlot(Player p) {
         return slot;
     }
 
-    public int getSlot(AnimatedMenu menu, Player p) {
+    int getSlot(Player p, ItemStack[] contents) {
         return slot;
     }
 
@@ -52,7 +55,9 @@ public class MenuItem {
         return settings.first(nagger, p);
     }
 
-    public MenuItemSettings getSettings() {
+    MenuItemSettings getSettings() {
         return settings;
     }
+
+    void handleMenuClose(Player who) {}
 }

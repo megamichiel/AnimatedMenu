@@ -11,6 +11,7 @@ import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -29,19 +30,19 @@ import java.util.regex.Pattern;
 public class MenuItemSettings {
     
     private final String name;
-    private AnimatedMaterial material;
-    private AnimatedText displayName;
-    private AnimatedLore lore;
-    private int frameDelay, refreshDelay;
-    private Map<Enchantment, Integer> enchantments;
-    private ItemClickListener clickListener;
-    private StringBundle hidePermission;
-    private Color leatherArmorColor;
-    private Skull skull;
+    private final AnimatedMaterial material;
+    private final AnimatedText displayName;
+    private final AnimatedLore lore;
+    private final int frameDelay, refreshDelay;
+    private final Map<Enchantment, Integer> enchantments;
+    private final ItemClickListener clickListener;
+    private final StringBundle hidePermission;
+    private final Color leatherArmorColor;
+    private final Skull skull;
     private BannerPattern bannerPattern;
     private int hideFlags = 0;
 
-    public MenuItemSettings(AnimatedMenuPlugin plugin, String name,
+    MenuItemSettings(AnimatedMenuPlugin plugin, String name,
                             String menu, ConfigurationSection section) {
         this.name = name;
         frameDelay = section.getInt("frame-delay", 20);
@@ -81,7 +82,6 @@ public class MenuItemSettings {
         leatherArmorColor = getColor(section.getString("color"));
         String skullOwner = section.getString("skullowner");
         skull = skullOwner == null ? null : new Skull(plugin, skullOwner);
-        bannerPattern = null;
         try
         {
             bannerPattern = new BannerPattern(plugin, section.getString("bannerpattern"));
@@ -108,16 +108,19 @@ public class MenuItemSettings {
         hidePermission = StringBundle.parse(plugin, section.getString("hide-permission"));
     }
     
-    public boolean isHidden(AnimatedMenuPlugin plugin, Player p)
-    {
+    boolean isHidden(AnimatedMenuPlugin plugin, Player p) {
         return hidePermission != null && !p.hasPermission(hidePermission.toString(p));
     }
 
-    public ItemStack first(Nagger nagger, Player who) {
+    ItemStack getItem(Nagger nagger, Player who) {
+        return apply(nagger, who, new ItemStack(Material.AIR));
+    }
+
+    ItemStack first(Nagger nagger, Player who) {
         return applyFirst(nagger, who, material.get().invoke(nagger, who));
     }
 
-    public ItemStack applyFirst(Nagger nagger, Player who, ItemStack handle)
+    private ItemStack applyFirst(Nagger nagger, Player who, ItemStack handle)
     {
         if (this.enchantments != null)
             handle.addUnsafeEnchantments(this.enchantments);
@@ -125,14 +128,13 @@ public class MenuItemSettings {
         ItemMeta meta = handle.getItemMeta();
         meta.setDisplayName(displayName.get().toString(who));
         meta.setLore(lore.get().toStringList(who));
-        if (meta instanceof LeatherArmorMeta && getLeatherArmorColor() != null)
-            ((LeatherArmorMeta) meta).setColor(getLeatherArmorColor());
-        else if (meta instanceof SkullMeta && getSkull() != null)
-            getSkull().apply(who, (SkullMeta) meta);
-        else if (meta instanceof BannerMeta && getBannerPattern() != null)
-            getBannerPattern().apply((BannerMeta) meta);
-        for (ItemFlag itemFlag : ItemFlag.values())
-        {
+        if (meta instanceof LeatherArmorMeta && leatherArmorColor != null)
+            ((LeatherArmorMeta) meta).setColor(leatherArmorColor);
+        else if (meta instanceof SkullMeta && skull != null)
+            skull.apply(who, (SkullMeta) meta);
+        else if (meta instanceof BannerMeta && bannerPattern != null)
+            bannerPattern.apply((BannerMeta) meta);
+        for (ItemFlag itemFlag : ItemFlag.values()) {
             if ((hideFlags & (1 << itemFlag.ordinal())) != 0)
                 meta.addItemFlags(itemFlag);
             else meta.removeItemFlags(itemFlag);
@@ -143,33 +145,30 @@ public class MenuItemSettings {
         return handle;
     }
     
-    public void next()
-    {
-        getMaterial().next();
-        getDisplayName().next();
-        getLore().next();
+    public void next() {
+        material.next();
+        displayName.next();
+        lore.next();
     }
     
-    public ItemStack apply(Nagger nagger, Player p, ItemStack handle)
-    {
-        ItemStack material = getMaterial().get().invoke(nagger, p);
+    public ItemStack apply(Nagger nagger, Player p, ItemStack handle) {
+        ItemStack material = this.material.get().invoke(nagger, p);
         handle.setType(material.getType());
         handle.setAmount(material.getAmount());
         handle.setDurability(material.getDurability());
         
         ItemMeta meta = handle.getItemMeta();
-        meta.setDisplayName(getDisplayName().get().toString(p));
-        if (!getLore().isEmpty())
-            meta.setLore(getLore().get().toStringList(p));
+        meta.setDisplayName(displayName.get().toString(p));
+        if (!lore.isEmpty())
+            meta.setLore(lore.get().toStringList(p));
         
-        if (meta instanceof LeatherArmorMeta && getLeatherArmorColor() != null)
-            ((LeatherArmorMeta) meta).setColor(getLeatherArmorColor());
-        else if (meta instanceof SkullMeta && getSkull() != null)
-            getSkull().apply(p, (SkullMeta) meta);
-        else if (meta instanceof BannerMeta && getBannerPattern() != null)
-            getBannerPattern().apply((BannerMeta) meta);
-        for (ItemFlag itemFlag : ItemFlag.values())
-        {
+        if (meta instanceof LeatherArmorMeta && leatherArmorColor != null)
+            ((LeatherArmorMeta) meta).setColor(leatherArmorColor);
+        else if (meta instanceof SkullMeta && skull != null)
+            skull.apply(p, (SkullMeta) meta);
+        else if (meta instanceof BannerMeta && bannerPattern != null)
+            bannerPattern.apply((BannerMeta) meta);
+        for (ItemFlag itemFlag : ItemFlag.values()) {
             if ((hideFlags & (1 << itemFlag.ordinal())) != 0)
                 meta.addItemFlags(itemFlag);
             else meta.removeItemFlags(itemFlag);
@@ -184,7 +183,7 @@ public class MenuItemSettings {
     private Color getColor(String val) {
         if(val == null) return Bukkit.getItemFactory().getDefaultLeatherColor();
         Matcher matcher = COLOR_PATTERN.matcher(val);
-        if(matcher.matches()) {
+        if (matcher.matches()) {
             return Color.fromRGB(Integer.parseInt(matcher.group(1)),
                     Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3)));
         } else {
@@ -200,47 +199,15 @@ public class MenuItemSettings {
         return this.name;
     }
 
-    public AnimatedMaterial getMaterial() {
-        return this.material;
+    ItemClickListener getClickListener() {
+        return clickListener;
     }
 
-    public AnimatedText getDisplayName() {
-        return this.displayName;
+    int getFrameDelay() {
+        return frameDelay;
     }
 
-    public AnimatedLore getLore() {
-        return this.lore;
-    }
-
-    public int getFrameDelay() {
-        return this.frameDelay;
-    }
-
-    public int getRefreshDelay() {
-        return this.refreshDelay;
-    }
-
-    public Map<Enchantment, Integer> getEnchantments() {
-        return this.enchantments;
-    }
-
-    public ItemClickListener getClickListener() {
-        return this.clickListener;
-    }
-
-    public Color getLeatherArmorColor() {
-        return this.leatherArmorColor;
-    }
-
-    public Skull getSkull() {
-        return this.skull;
-    }
-
-    public BannerPattern getBannerPattern() {
-        return this.bannerPattern;
-    }
-
-    public int getHideFlags() {
-        return this.hideFlags;
+    int getRefreshDelay() {
+        return refreshDelay;
     }
 }

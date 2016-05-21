@@ -19,6 +19,7 @@ public class MenuSettings {
     private boolean hiddenFromCommand = false;
 
     private final List<Predicate<? super Player>> openListeners = new ArrayList<>();
+    private final List<Predicate<? super Player>> closeListeners = new ArrayList<>();
 	
 	public boolean shouldOpenOnJoin()
 	{
@@ -60,8 +61,16 @@ public class MenuSettings {
         openListeners.add(listener);
     }
 
+    public void addCloseListener(Predicate<? super Player> listener) {
+        closeListeners.add(listener);
+    }
+
     public List<Predicate<? super Player>> getOpenListeners() {
         return Collections.unmodifiableList(openListeners);
+    }
+
+    public List<Predicate<? super Player>> getCloseListeners() {
+        return Collections.unmodifiableList(closeListeners);
     }
 
     public void setOpenCommands(String[] openCommands) {

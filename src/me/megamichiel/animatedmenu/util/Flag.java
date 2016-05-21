@@ -26,39 +26,20 @@ public enum Flag {
     
     public abstract boolean matches(boolean b);
     
-    public boolean booleanValue()
-    {
-        switch (this)
-        {
-        case FALSE:
-            return false;
-        default:
-            return true;
-        }
+    public boolean booleanValue() {
+        return this != FALSE;
     }
 
-    public static boolean parseBoolean(ConfigurationSection section, String key, boolean def)
-    {
-        return parseBoolean(section.getString(key), def);
-    }
-
-    public static boolean parseBoolean(String str, boolean def)
-    {
+    public static boolean parseBoolean(String str, boolean def) {
         Flag flag = parseFlag(str, def ? Flag.TRUE : Flag.FALSE);
         return flag != Flag.BOTH && flag.booleanValue();
-    }
-
-    public static Flag parseFlag(ConfigurationSection section, String key, Flag def)
-    {
-        return parseFlag(section.getString(key), def);
     }
 
     private static final Map<String, Flag> flags = new ImmutableMap.Builder<String, Flag>()
             .put("true", Flag.TRUE).put("yes", Flag.TRUE).put("on", Flag.TRUE).put("enable", Flag.TRUE)
             .put("both", Flag.BOTH).put("all", Flag.BOTH).build();
 
-    public static Flag parseFlag(String str, Flag def)
-    {
+    public static Flag parseFlag(String str, Flag def) {
         if (str == null) return def;
         Flag flag = flags.get(str.toLowerCase());
         return flag == null ? Flag.FALSE : flag;

@@ -55,10 +55,9 @@ public class CommandExecutor {
 
     @SuppressWarnings("unchecked")
     public void execute(AnimatedMenuPlugin plugin, Player p) {
-        for (CommandHandler handler : commands) {
+        for (CommandHandler handler : commands)
             if (!handler.execute(plugin, p))
                 break;
-        }
     }
     
     private boolean isPrimitiveWrapper(Object input) {
