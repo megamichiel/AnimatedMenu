@@ -101,7 +101,6 @@ public class MaterialMatcher {
 
         enchantments.put("luck_of_the_sea", Enchantment.LUCK);
         enchantments.put("lure", Enchantment.LURE);
-        enchantments.put("mending", Enchantment.MENDING);
 
         enchantments.put("respiration", Enchantment.OXYGEN);
 
