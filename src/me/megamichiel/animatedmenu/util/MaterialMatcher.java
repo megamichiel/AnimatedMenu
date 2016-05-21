@@ -18,8 +18,7 @@ public class MaterialMatcher {
     
     static {
         Method[] methods = new Method[4];
-        try
-        {
+        try {
             String version = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
             Class<?> item = Class.forName("net.minecraft.server." + version + ".Item");
             methods[0] = item.getDeclaredMethod("d", String.class);
@@ -28,9 +27,7 @@ public class MaterialMatcher {
             Class<?> block = Class.forName("net.minecraft.server." + version + ".Block");
             methods[2] = block.getDeclaredMethod("getByName", String.class);
             methods[3] = cmn.getDeclaredMethod("getMaterial", block);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
         ITEM_BY_NAME = methods[0];
@@ -39,8 +36,7 @@ public class MaterialMatcher {
         BLOCK_TO_MATERIAL = methods[3];
     }
     
-    public static MaterialMatcher parse(String value)
-    {
+    public static MaterialMatcher parse(String value) {
         value = value.toLowerCase().replace("-", "_");
         Material m = null;
         try {
@@ -92,10 +88,10 @@ public class MaterialMatcher {
         enchantments.put("fire_aspect", Enchantment.FIRE_ASPECT);
 
         try {
-            enchantments.put("frost_walker", Enchantment.FROST_WALKER);
-            enchantments.put("mending", Enchantment.MENDING);
-        } catch (NoSuchFieldError err) {
-            // No 1.9, no prob
+            enchantments.put("frost_walker", (Enchantment) Enchantment.class.getField("FROST_WALKER").get(null));
+            enchantments.put("mending", (Enchantment) Enchantment.class.getField("MENDING").get(null));
+        } catch (Exception ex) {
+            // No 1.9, prob
         }
 
         enchantments.put("knockback", Enchantment.KNOCKBACK);
