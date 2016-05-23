@@ -4,17 +4,13 @@ import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.PlaceholderHook;
 import me.megamichiel.animatedmenu.util.FormulaPlaceholder;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
-import me.megamichiel.animationlib.placeholder.StringBundle;
+import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-import java.util.Map.Entry;
-
 /**
- * 
  * A class that handles some AnimatedMenu created placeholders
- *
  */
 public class AnimatedMenuPlaceholders extends PlaceholderHook {
     
@@ -34,56 +30,46 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
         String lower = arg.toLowerCase();
         if (lower.startsWith("motd_")) {
             ServerInfo info = plugin.getConnections().get(lower.substring(5));
-            return info == null ? null : info.getMotd();
+            if (info == null) return "<invalid>";
+            return info.isOnline() ? info.getMotd() : "";
         }
         if (lower.startsWith("onlineplayers_")) {
             ServerInfo info = plugin.getConnections().get(lower.substring(14));
-            return Integer.toString(info == null ? 0 : info.getOnlinePlayers());
+            if (info == null) return "<invalid>";
+            return info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";
         }
         if (lower.startsWith("maxplayers_")) {
             ServerInfo info = plugin.getConnections().get(lower.substring(11));
-            return Integer.toString(info == null ? 0 : info.getMaxPlayers());
+            if (info == null) return "<invalid>";
+            return info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";
         }
         if (lower.startsWith("status_")) {
             ServerInfo info = plugin.getConnections().get(lower.substring(7));
-            if (info != null)
-            {
-                StringBundle bundle = info.get(info.isOnline() ? "online" : "offline", who);
-                if (bundle != null)
-                    return bundle.toString(who);
-            }
-            return null;
+            if (info == null) return "<invalid>";
+            IPlaceholder<String> bundle = info.get(info.isOnline() ? "online" : "offline", who);
+            return bundle == null ? "<unknown>" : bundle.invoke(plugin, who);
         }
         if (lower.startsWith("motdcheck_")) {
             ServerInfo info = plugin.getConnections().get(lower.substring(10));
-            if (info != null) {
-                String motd = info.getMotd();
-                StringBundle def = null;
-                for (Entry<StringBundle, StringBundle> entry : info.getValues().entrySet()) {
-                    String str = entry.getKey().toString(who);
-                    if (str.equalsIgnoreCase(motd))
-                        return entry.getValue().toString(who);
-                    else if (str.equalsIgnoreCase("default"))
-                        def = entry.getValue();
-                }
-                if (def != null)
-                    return def.toString(who);
-            }
-            return null;
+            if (info == null) return "<invalid>";
+            IPlaceholder<String> value = info.get(
+                    info.isOnline() ? info.getMotd().toLowerCase() : "offline", who);
+            if (value == null) value = info.get("default", who);
+            return value == null ? "<unknown>" : value.invoke(plugin, who);
         }
         if (lower.startsWith("worldplayers_")) {
             String worldName = arg.substring(13);
             for (World world : Bukkit.getWorlds())
                 if (world.getName().equalsIgnoreCase(worldName))
                     return String.valueOf(world.getPlayers().size());
-            return "0";
+            return "<invalid>";
         }
         if (lower.startsWith("formula_")) {
             FormulaPlaceholder ph = plugin.getFormulaPlaceholders().get(lower.substring(8));
             if (ph != null)
                 return ph.invoke(plugin, who).toString();
-            return null;
+            return "<invalid>";
         }
-        return null;
+        return "<invalid:" + lower + ">";
     }
 }

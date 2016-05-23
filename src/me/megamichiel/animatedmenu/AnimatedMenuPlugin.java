@@ -11,6 +11,7 @@ import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.YamlConfig;
+import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import net.milkbowl.vault.economy.Economy;
 import org.apache.commons.codec.Charsets;
@@ -273,15 +274,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                         if (colonIndex > -1)
                             ip = ip.substring(0, colonIndex);
                         ServerInfo serverInfo = connections.add(key.toLowerCase(), new InetSocketAddress(ip, port));
-                        Map<StringBundle, StringBundle> map = serverInfo.getValues();
-                        for (String key2 : sec.getKeys(false)) {
-                            if (!key2.equals("ip")) {
-                                String val = sec.getString(key2);
-                                if (val != null)
-                                    map.put(StringBundle.parse(this, key2).colorAmpersands(),
-                                            StringBundle.parse(this, val).colorAmpersands());
-                            }
-                        }
+                        serverInfo.load(sec);
                     }
                 }
             }

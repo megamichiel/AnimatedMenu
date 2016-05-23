@@ -5,8 +5,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 import java.io.*;
@@ -112,6 +114,7 @@ public class RemoteConnections implements Runnable {
                         plugin.nag("Failed to connect to " + info.address.getHostName() + ":" + info.address.getPort() + "!");
                         plugin.nag(ex);
                     }
+                    info.online = false;
                 }
             }
             try {
@@ -163,7 +166,7 @@ public class RemoteConnections implements Runnable {
     public class ServerInfo {
         
         private final InetSocketAddress address;
-        private final Map<StringBundle, StringBundle> values = new HashMap<>();
+        private final Map<IPlaceholder<String>, IPlaceholder<String>> values = new HashMap<>();
         private boolean online = false;
         private String motd = ChatColor.RED + "Offline";
         private int onlinePlayers = 0, maxPlayers = 0;
@@ -172,14 +175,14 @@ public class RemoteConnections implements Runnable {
             this.address = address;
         }
 
-        public StringBundle get(String key, Player who) {
-            for (Entry<StringBundle, StringBundle> entry : values.entrySet())
-                if (entry.getKey().toString(who).equals(key))
+        public IPlaceholder<String> get(String key, Player who) {
+            for (Entry<IPlaceholder<String>, IPlaceholder<String>> entry : values.entrySet())
+                if (entry.getKey().invoke(plugin, who).equals(key))
                     return entry.getValue();
             return null;
         }
 
-        public Map<StringBundle, StringBundle> getValues() {
+        public Map<IPlaceholder<String>, IPlaceholder<String>> getValues() {
             return values;
         }
 
@@ -197,6 +200,19 @@ public class RemoteConnections implements Runnable {
 
         public int getMaxPlayers() {
             return maxPlayers;
+        }
+
+        public void load(ConfigurationSection section) {
+            for (String key : section.getKeys(false)) {
+                if (!key.equals("ip")) {
+                    String val = section.getString(key);
+                    if (val != null)
+                        values.put(
+                                StringBundle.parse(plugin, key).colorAmpersands().tryCache(),
+                                StringBundle.parse(plugin, val).colorAmpersands().tryCache()
+                        );
+                }
+            }
         }
     }
 }
