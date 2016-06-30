@@ -3,6 +3,7 @@ package me.megamichiel.animatedmenu.util;
 import com.google.common.collect.ImmutableMap;
 import org.bukkit.configuration.ConfigurationSection;
 
+import java.util.Locale;
 import java.util.Map;
 
 public enum Flag {
@@ -41,7 +42,7 @@ public enum Flag {
 
     public static Flag parseFlag(String str, Flag def) {
         if (str == null) return def;
-        Flag flag = flags.get(str.toLowerCase());
+        Flag flag = flags.get(str.toLowerCase(Locale.US));
         return flag == null ? Flag.FALSE : flag;
     }
 }

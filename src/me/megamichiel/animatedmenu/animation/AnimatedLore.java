@@ -14,10 +14,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 public class AnimatedLore extends Animatable<Frame> {
     
@@ -37,7 +34,7 @@ public class AnimatedLore extends Animatable<Frame> {
     private Frame loadFrame(Nagger nagger, List<String> list) {
         Frame frame = new Frame();
         for (String item : list) {
-            if (item.toLowerCase().startsWith("file: ")) {
+            if (item.toLowerCase(Locale.US).startsWith("file: ")) {
                 File file = new File(plugin.getDataFolder(), "images/" + item.substring(6));
                 if (file.exists() && file.isFile()) {
                     try {
@@ -55,20 +52,8 @@ public class AnimatedLore extends Animatable<Frame> {
     }
 
     @Override
-    public boolean load(Nagger nagger, ConfigurationSection section, String key, Frame defaultValue) {
-        if (section.isConfigurationSection(key)) {
-            ConfigurationSection sec = section.getConfigurationSection(key);
-            List<String> list;
-            for (int num = 1; !(list = sec.getStringList(String.valueOf(num))).isEmpty(); num++)
-                add(loadFrame(nagger, list));
-            isRandom = sec.getBoolean("random");
-            return true;
-        }
-        if (section.isList(key)) {
-            add(loadFrame(nagger, section.getStringList(key)));
-            return true;
-        }
-        return false;
+    protected Object getValue(Nagger nagger, ConfigurationSection section, String key) {
+        return section.getStringList(key);
     }
 
     public class Frame extends ArrayList<IPlaceholder<String>> {

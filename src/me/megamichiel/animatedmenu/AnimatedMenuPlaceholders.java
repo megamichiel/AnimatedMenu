@@ -9,6 +9,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
+import java.util.Locale;
+
 /**
  * A class that handles some AnimatedMenu created placeholders
  */
@@ -27,7 +29,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
     
     @Override
     public String onPlaceholderRequest(Player who, String arg) {
-        String lower = arg.toLowerCase();
+        String lower = arg.toLowerCase(Locale.US);
         if (lower.startsWith("motd_")) {
             ServerInfo info = plugin.getConnections().get(lower.substring(5));
             if (info == null) return "<invalid>";
@@ -53,7 +55,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             ServerInfo info = plugin.getConnections().get(lower.substring(10));
             if (info == null) return "<invalid>";
             IPlaceholder<String> value = info.get(
-                    info.isOnline() ? info.getMotd().toLowerCase() : "offline", who);
+                    info.isOnline() ? info.getMotd().toLowerCase(Locale.US) : "offline", who);
             if (value == null) value = info.get("default", who);
             return value == null ? "<unknown>" : value.invoke(plugin, who);
         }

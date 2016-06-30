@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class CommandExecutor {
     
@@ -17,36 +18,35 @@ public class CommandExecutor {
             if (o instanceof String || isPrimitiveWrapper(o)) {
                 String str = String.valueOf(o);
                 Command cmd = null;
+                String lowerStr = str.toLowerCase(Locale.US);
                 for (Command command : plugin.getCommands()) {
-                    if (str.toLowerCase().startsWith(command.prefix.toLowerCase() + ":")) {
+                    if (lowerStr.startsWith(command.prefix.toLowerCase(Locale.US) + ":")) {
                         cmd = command;
                         str = str.substring(command.prefix.length() + 1).trim();
                         break;
                     }
                 }
-                if (cmd == null) {
-                    cmd = new DefaultCommand();
-                }
-                final Command command = cmd;
-                final Object val = cmd.parse(plugin, str);
-                final Object cached = cmd.tryCacheValue(plugin, val);
-                if (cached != null) {
-                    this.commands.add(new CommandHandler() {
-                        @Override
-                        public boolean execute(AnimatedMenuPlugin plugin, Player p) {
-                            return command.executeCached(plugin, p, cached);
-                        }
-                    });
-                } else {
-                    this.commands.add(new CommandHandler() {
-                        @Override
-                        public boolean execute(AnimatedMenuPlugin plugin, Player p) {
-                            return command.execute(plugin, p, val);
-                        }
-                    });
-                }
+                if (cmd == null) cmd = new DefaultCommand();
+                this.commands.add(getCommandHandler(cmd, plugin, str));
             }
         }
+    }
+
+    private <T, C> CommandHandler getCommandHandler(final Command<T, C> command,
+                                                    AnimatedMenuPlugin plugin, String str) {
+        final T val = command.parse(plugin, str);
+        final C cached = command.tryCacheValue(plugin, val);
+        return cached != null ? new CommandHandler() {
+            @Override
+            public boolean execute(AnimatedMenuPlugin plugin, Player p) {
+                return command.executeCached(plugin, p, cached);
+            }
+        } : new CommandHandler() {
+            @Override
+            public boolean execute(AnimatedMenuPlugin plugin, Player p) {
+                return command.execute(plugin, p, val);
+            }
+        };
     }
     
     public boolean isEmpty() {

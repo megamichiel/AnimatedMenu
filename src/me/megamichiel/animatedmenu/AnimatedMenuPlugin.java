@@ -11,8 +11,6 @@ import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.YamlConfig;
-import me.megamichiel.animationlib.placeholder.IPlaceholder;
-import me.megamichiel.animationlib.placeholder.StringBundle;
 import net.milkbowl.vault.economy.Economy;
 import org.apache.commons.codec.Charsets;
 import org.black_ixx.playerpoints.PlayerPoints;
@@ -258,7 +256,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
             for (String key : section.getKeys(false)) {
                 String val = section.getString(key);
                 if (val != null) {
-                    formulaPlaceholders.put(key.toLowerCase(), new FormulaPlaceholder(this, val));
+                    formulaPlaceholders.put(key.toLowerCase(Locale.US), new FormulaPlaceholder(this, val));
                 }
             }
         }
@@ -273,7 +271,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                         int port = colonIndex == -1 ? 25565 : NumberConversions.toInt(ip.substring(colonIndex + 1));
                         if (colonIndex > -1)
                             ip = ip.substring(0, colonIndex);
-                        ServerInfo serverInfo = connections.add(key.toLowerCase(), new InetSocketAddress(ip, port));
+                        ServerInfo serverInfo = connections.add(key.toLowerCase(Locale.US), new InetSocketAddress(ip, port));
                         serverInfo.load(sec);
                     }
                 }
@@ -348,7 +346,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent e) {
         Player p = e.getPlayer();
-        String cmd = e.getMessage().substring(1).split(" ")[0].toLowerCase();
+        String cmd = e.getMessage().substring(1).split(" ")[0].toLowerCase(Locale.US);
         for (AnimatedMenu menu : menuRegistry) {
             String[] commands = menu.getSettings().getOpenCommands();
             if (commands == null) continue;
@@ -379,9 +377,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         e.setCancelled(true);
         int slot = e.getRawSlot();
         InventoryView view = e.getView();
-        if ((view.getTopInventory() != null) && slot >= 0 && (slot < view.getTopInventory().getSize())) {
+        if ((view.getTopInventory() != null) && slot >= 0
+                && (slot < view.getTopInventory().getSize()))
             open.getMenuGrid().click(p, e.getClick(), e.getSlot());
-        }
     }
     
     @Override
@@ -425,9 +423,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     public void reloadConfig() {
         this.config = YamlConfig.loadConfig(this.configFile);
         InputStream defConfigStream = this.getResource("config.yml");
-        if(defConfigStream != null) {
-            this.config.setDefaults(YamlConfig.loadConfig(new InputStreamReader(defConfigStream, Charsets.UTF_8)));
-        }
+        if (defConfigStream != null) this.config.setDefaults(
+                YamlConfig.loadConfig(new InputStreamReader(defConfigStream, Charsets.UTF_8)));
     }
 
     @Override

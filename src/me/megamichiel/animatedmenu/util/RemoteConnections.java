@@ -88,8 +88,7 @@ public class RemoteConnections implements Runnable {
                             motd = desc.getAsJsonObject().get("text").getAsString();
                         else motd = desc.getAsString();
                         JsonElement players = obj.get("players");
-                        if (players.isJsonObject())
-                        {
+                        if (players.isJsonObject()) {
                             JsonObject playersObj = players.getAsJsonObject();
                             online = playersObj.get("online").getAsInt();
                             max = playersObj.get("max").getAsInt();

@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @SuppressWarnings("deprecation")
@@ -37,7 +38,7 @@ public class MaterialMatcher {
     }
     
     public static MaterialMatcher parse(String value) {
-        value = value.toLowerCase().replace("-", "_");
+        value = value.toLowerCase(Locale.US).replace("-", "_");
         Material m = null;
         try {
             Object o = ITEM_BY_NAME.invoke(null, value);
@@ -118,6 +119,6 @@ public class MaterialMatcher {
     }
     
     public static Enchantment getEnchantment(String id) {
-        return enchantments.get(id.toLowerCase().replace("-", "_"));
+        return enchantments.get(id.toLowerCase(Locale.US).replace("-", "_"));
     }
 }

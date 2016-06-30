@@ -54,7 +54,7 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(String.format(messages[i], label));
             return true;
         }
-        String type = args[0].toLowerCase();
+        String type = args[0].toLowerCase(Locale.US);
         if (!validArgs.contains(type)) {
             return invalid(sender, "Invalid subcommand, type /" + label + " for help");
         }
@@ -96,18 +96,20 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         List<String> list = new ArrayList<>();
         if (args.length <= 1) {
-            String start = args.length == 0 ? "" : args[0].toLowerCase();
+            String start = args.length == 0 ? "" : args[0].toLowerCase(Locale.US);
             for (String str : new String[] { "open", "item", "reload" })
                 if (sender.hasPermission("animatedmenu.command." + str) && str.startsWith(start))
                     list.add(str);
         } else if (args.length == 2) {
-            String type = args[0].toLowerCase();
+            String type = args[0].toLowerCase(Locale.US);
             if ((type.equals("open") || type.equals("item"))
                     && sender.hasPermission("animatedmenu.command." + type + ".open")) {
+                String query = args[1].toLowerCase(Locale.US);
+                String menuName;
                 for (AnimatedMenu menu : plugin.getMenuRegistry()) {
                     if (!menu.getSettings().isHiddenFromCommand()
-                            && menu.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
-                        list.add(menu.getName().toLowerCase());
+                            && (menuName = menu.getName().toLowerCase(Locale.US)).startsWith(query)) {
+                        list.add(menuName);
                     }
                 }
             }

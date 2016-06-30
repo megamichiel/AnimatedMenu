@@ -14,8 +14,8 @@ public class AnimatedMaterial extends Animatable<IPlaceholder<ItemStack>> {
     private static final long serialVersionUID = 3993512547684702735L;
     
     @Override
-    protected IPlaceholder<ItemStack> convert(Nagger nagger, String str) {
-        final StringBundle sb = StringBundle.parse(nagger, str);
+    protected IPlaceholder<ItemStack> convert(Nagger nagger, Object o) {
+        final StringBundle sb = StringBundle.parse(nagger, o.toString());
         if (sb.containsPlaceholders()) {
             return new IPlaceholder<ItemStack>() {
                 @Override

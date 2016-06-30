@@ -161,7 +161,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         settings.setOpenOnJoin(Flag.parseBoolean(section.getString("open-on-join"), false));
         if (section.isSet("open-sound")) {
             final SoundCommand.SoundInfo sound = new SoundCommand.SoundInfo(plugin,
-                    section.getString("open-sound").toLowerCase().replace('-', '_'),
+                    section.getString("open-sound").toLowerCase(Locale.US).replace('-', '_'),
                     1F, (float) section.getDouble("open-sound-pitch", 1F)
             );
             settings.addOpenListener(new Predicate<Player>() {
@@ -172,7 +172,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 }
             });
         }
-        settings.setOpenCommands(section.contains("command") ? section.getString("command").toLowerCase().split("; ") : null);
+        settings.setOpenCommands(section.contains("command") ? section.getString("command").toLowerCase(Locale.US).split("; ") : null);
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
     }
 
