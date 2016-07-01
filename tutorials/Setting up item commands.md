@@ -67,6 +67,14 @@ There are a few keys which you can customize it with:
     Commands:<br/>
     - 'say Hello everyone!'<br/>
     - 'server: Lobby'<br/>
+    This dóes support animations. For example:<br/>
+    Commands:<br/>
+    &nbsp;&nbsp;1:<br/>
+    &nbsp;&nbsp;- 'say First Message'<br/>
+    &nbsp;&nbsp;2:<br/>
+    &nbsp;&nbsp;- 'say Second Message'<br/>
+    &nbsp;&nbsp;Random: true<br/>
+    Will make it cycle between the 2 message. If you remove "Random: true" it will cycle through the numbers in order<br/>
     Special command prefixes:<br/>
     - '<b>console</b>': Make the console execute a command, e.g. 'console: say Hello everybody!'<br/>
     - '<b>message</b>': Send a message to the player, e.g. 'message: Hello person!'<br/>

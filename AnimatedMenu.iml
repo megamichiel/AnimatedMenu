@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="EclipseModuleManager">
+    <libelement value="jar://$USER_HOME$/Downloads/Vault.jar!/" />
+    <libelement value="jar://$USER_HOME$/Downloads/PlayerPoints.jar!/" />
+    <libelement value="jar://$USER_HOME$/Downloads/lombok.jar!/" />
+    <libelement value="jar://$USER_HOME$/Downloads/PlaceholderAPI.jar!/" />
+    <libelement value="jar://$USER_HOME$/Downloads/BungeeCord (1).jar!/" />
+    <libelement value="jar://D:/../../BuildTools/craftbukkit-1.8.8.jar!/" />
+    <src_description expected_position="0">
+      <src_folder value="file://$MODULE_DIR$/src" expected_position="0" />
+    </src_description>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/bin" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="library" name="BungeeCord" level="project" />
+    <orderEntry type="library" name="PlaceholderAPI" level="project" />
+    <orderEntry type="library" name="PlayerPoints" level="project" />
+    <orderEntry type="library" name="Vault" level="project" />
+    <orderEntry type="library" name="AnimationLib" level="project" />
+    <orderEntry type="library" name="craftbukkit-1.9" level="project" />
+  </component>
+</module>

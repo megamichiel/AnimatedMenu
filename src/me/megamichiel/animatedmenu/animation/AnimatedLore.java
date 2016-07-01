@@ -56,6 +56,11 @@ public class AnimatedLore extends Animatable<Frame> {
         return section.getStringList(key);
     }
 
+    @Override
+    protected Frame convert(Nagger nagger, Object o) {
+        return loadFrame(nagger, (List<String>) o);
+    }
+
     public class Frame extends ArrayList<IPlaceholder<String>> {
         
         private static final long serialVersionUID = 3655877616632972680L;

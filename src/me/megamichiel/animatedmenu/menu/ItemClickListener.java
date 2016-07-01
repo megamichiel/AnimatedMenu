@@ -27,8 +27,8 @@ public class ItemClickListener {
             for (String key : commandSection.getKeys(false)) {
                 if (commandSection.isConfigurationSection(key)) {
                     ConfigurationSection sec = commandSection.getConfigurationSection(key);
-                    CommandExecutor commandExecutor = new CommandExecutor(plugin, sec.getList("commands")),
-                            buyCommandExecutor = new CommandExecutor(plugin, sec.getList("buy-commands"));
+                    CommandExecutor commandExecutor = new CommandExecutor(plugin, sec, "commands"),
+                            buyCommandExecutor = new CommandExecutor(plugin, sec, "buy-commands");
                     String click = sec.getString("click-type", "both").toLowerCase(Locale.US);
                     boolean rightClick = click.equals("both") || click.equals("right"),
                             leftClick = click.equals("both") || click.equals("left");
@@ -59,6 +59,7 @@ public class ItemClickListener {
     }
     
     private class ClickProcessor {
+
         private final AnimatedMenuPlugin plugin;
         private final CommandExecutor commandExecutor, buyCommandExecutor;
         private final boolean rightClick, leftClick;
