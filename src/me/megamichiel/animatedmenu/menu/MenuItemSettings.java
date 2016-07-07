@@ -37,6 +37,7 @@ public class MenuItemSettings {
     private final Map<Enchantment, Integer> enchantments;
     private final ItemClickListener clickListener;
     private final StringBundle hidePermission;
+    private final boolean negateHidePermission;
     private final Color leatherArmorColor;
     private final Skull skull;
     private BannerPattern bannerPattern;
@@ -48,13 +49,11 @@ public class MenuItemSettings {
         frameDelay = section.getInt("frame-delay", 20);
         refreshDelay = section.getInt("refresh-delay", frameDelay);
         material = new AnimatedMaterial();
-        if (!material.load(plugin, section, "material"))
-        {
+        if (!material.load(plugin, section, "material")) {
             plugin.nag("Item " + name + " in menu " + menu + " doesn't contain Material!");
         }
         displayName = new AnimatedText();
-        if (!displayName.load(plugin, section, "name", new StringBundle(plugin, name)))
-        {
+        if (!displayName.load(plugin, section, "name", new StringBundle(plugin, name))) {
             plugin.nag("Item " + name + " in menu " + menu + " doesn't contain Name!");
         }
         lore = new AnimatedLore(plugin);
@@ -82,13 +81,11 @@ public class MenuItemSettings {
         leatherArmorColor = getColor(section.getString("color"));
         String skullOwner = section.getString("skullowner");
         skull = skullOwner == null ? null : new Skull(plugin, skullOwner);
-        try
-        {
+        try {
             bannerPattern = new BannerPattern(plugin, section.getString("bannerpattern"));
-        }
-        catch (NullPointerException ex) {}
-        catch (IllegalArgumentException ex)
-        {
+        } catch (NullPointerException ex) {
+            // Don't care if it doesn't exist
+        } catch (IllegalArgumentException ex) {
             plugin.nag("Failed to parse banner pattern '" + section.getString("bannerpattern") + "'!");
             plugin.nag(ex.getMessage());
         }
@@ -105,11 +102,24 @@ public class MenuItemSettings {
                 }
             }
         }
-        hidePermission = StringBundle.parse(plugin, section.getString("hide-permission"));
+        String perm = section.getString("hide-permission");
+        if (perm == null) {
+            hidePermission = null;
+            negateHidePermission = false;
+        } else if (perm.startsWith("-")) {
+            hidePermission = StringBundle.parse(plugin, perm.substring(1));
+            negateHidePermission = true;
+        } else {
+            hidePermission = StringBundle.parse(plugin, perm);
+            negateHidePermission = false;
+        }
     }
     
     boolean isHidden(AnimatedMenuPlugin plugin, Player p) {
-        return hidePermission != null && !p.hasPermission(hidePermission.toString(p));
+        if (hidePermission != null) {
+            return p.hasPermission(hidePermission.toString(p)) == negateHidePermission;
+        }
+        return negateHidePermission;
     }
 
     ItemStack getItem(Nagger nagger, Player who) {

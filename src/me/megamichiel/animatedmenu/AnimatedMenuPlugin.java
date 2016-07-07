@@ -162,8 +162,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
             @Override
             public void run() {
                 String current = getDescription().getVersion();
-                try
-                {
+                try {
                     URLConnection connection = new URL("https://github.com/megamichiel/AnimatedMenu").openConnection();
                     Scanner scanner = new Scanner(connection.getInputStream());
                     scanner.useDelimiter("\\Z");
@@ -171,20 +170,17 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                     Matcher matcher = Pattern.compile("Current\\sVersion:\\s(<b>)?([0-9]\\.[0-9]\\.[0-9])(</b>)?").matcher(content);
                     if (!matcher.find()) {
                         nag("Failed to check for updates: Unknown page format!");
+                        return;
                     }
                     String version = matcher.group(2);
                     update = current.equals(version) ? null : version;
                     scanner.close();
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     nag("Failed to check for updates:");
                     nag(ex);
                 }
                 if (update != null)
-                {
                     getLogger().info("A new version is available! (Current version: " + current + ", new version: " + update + ")");
-                }
             }
         }.runTaskAsynchronously(this);
     }
