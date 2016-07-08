@@ -364,8 +364,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     }
     
     @EventHandler
-    public void onInventoryClick(InventoryClickEvent e)
-    {
+    public void onInventoryClick(InventoryClickEvent e) {
         if (!(e.getWhoClicked() instanceof Player)) return;
         Player p = (Player) e.getWhoClicked();
         AnimatedMenu open = menuRegistry.getOpenedMenu(p);

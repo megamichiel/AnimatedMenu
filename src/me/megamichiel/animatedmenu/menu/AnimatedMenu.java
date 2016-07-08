@@ -94,9 +94,6 @@ public class AnimatedMenu extends AbstractMenu {
 
     public void handleMenuClose(Player who) {
         openMenu.remove(who);
-        for (int i = 0; i < menuGrid.getSize(); i++) {
-            menuGrid.getItems()[i].handleMenuClose(who);
-        }
         for (Predicate<? super Player> predicate : settings.getCloseListeners())
             predicate.apply(who);
     }

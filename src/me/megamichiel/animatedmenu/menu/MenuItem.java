@@ -26,21 +26,15 @@ public class MenuItem {
     }
     
     boolean tick() {
-        if (frameTick++ == settings.getFrameDelay())
-        {
+        if (frameTick++ == settings.getFrameDelay()) {
             frameTick = 0;
             settings.next();
         }
-        if (refreshTick++ == settings.getRefreshDelay())
-        {
+        if (refreshTick++ == settings.getRefreshDelay()) {
             refreshTick = 0;
             return true;
         }
         return false;
-    }
-
-    int getLastSlot(Player p) {
-        return slot;
     }
 
     int getSlot(Player p, ItemStack[] contents) {
@@ -58,6 +52,4 @@ public class MenuItem {
     MenuItemSettings getSettings() {
         return settings;
     }
-
-    void handleMenuClose(Player who) {}
 }

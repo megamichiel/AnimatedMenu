@@ -1,5 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
+import com.google.common.collect.Sets;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
@@ -23,7 +24,10 @@ import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -114,11 +118,12 @@ public class MenuItemSettings {
             negateHidePermission = false;
         }
     }
+
+    private final Set<Player> hidden = Sets.newSetFromMap(new ConcurrentHashMap<Player, Boolean>());
     
     boolean isHidden(AnimatedMenuPlugin plugin, Player p) {
-        if (hidePermission != null) {
+        if (hidePermission != null)
             return p.hasPermission(hidePermission.toString(p)) == negateHidePermission;
-        }
         return negateHidePermission;
     }
 
@@ -130,8 +135,7 @@ public class MenuItemSettings {
         return applyFirst(nagger, who, material.get().invoke(nagger, who));
     }
 
-    private ItemStack applyFirst(Nagger nagger, Player who, ItemStack handle)
-    {
+    private ItemStack applyFirst(Nagger nagger, Player who, ItemStack handle) {
         if (this.enchantments != null)
             handle.addUnsafeEnchantments(this.enchantments);
         
