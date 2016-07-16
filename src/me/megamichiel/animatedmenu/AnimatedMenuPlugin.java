@@ -102,7 +102,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
             //No Vault
         }
         Plugin pp = Bukkit.getPluginManager().getPlugin("PlayerPoints");
-        if (pp instanceof PlayerPoints) {
+        if (pp != null && pp instanceof PlayerPoints) {
             playerPointsAPI = ((PlayerPoints) pp).getAPI();
             playerPointsPresent = true;
         }

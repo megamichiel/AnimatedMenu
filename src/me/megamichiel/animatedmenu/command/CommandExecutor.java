@@ -47,6 +47,7 @@ public class CommandExecutor extends Animatable<List<CommandExecutor.CommandHand
     @Override
     protected List<CommandHandler> convert(Nagger nagger, Object o) {
         List<CommandHandler> result = new ArrayList<>();
+        if (!(o instanceof List)) return result;
         for (Object raw : (List) o) {
             if (raw instanceof String || isPrimitiveWrapper(raw)) {
                 String str = raw.toString();

@@ -22,7 +22,7 @@ public abstract class AbstractMenu {
     protected AnimatedMenuPlugin plugin;
     private boolean dynamicSlots;
 
-    private final PlayerMap<MenuItem[]> items = new PlayerMap<>();
+    protected final PlayerMap<MenuItem[]> items = new PlayerMap<>();
 
     protected AbstractMenu(Nagger nagger, String name, int size) {
         this.nagger = nagger;

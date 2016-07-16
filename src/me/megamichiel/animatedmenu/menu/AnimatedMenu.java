@@ -105,17 +105,18 @@ public class AnimatedMenu extends AbstractMenu {
 
     private Inventory createInventory(Player who) {
         String title = menuTitle.get().toString(who);
-        if (title.length() > 32)
-            title = title.substring(0, 32);
+        if (title.length() > 32) title = title.substring(0, 32);
         Inventory inv;
         if (menuType.getInventoryType() == InventoryType.CHEST)
             inv = Bukkit.createInventory(null, menuType.getSize(), title);
         else inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
         ItemStack[] contents = new ItemStack[inv.getSize()];
+        MenuItem[] items = this.items.get(who);
+        if (items == null) items = new MenuItem[inv.getSize()];
         for (int slot = 0; slot < menuGrid.getSize(); slot++) {
             MenuItem item = menuGrid.getItems()[slot];
             if (!item.getSettings().isHidden(plugin, who))
-                contents[item.getSlot(who, contents)] = item.load(nagger, who);
+                contents[(items[slot] = item).getSlot(who, contents)] = item.load(nagger, who);
         }
         inv.setContents(contents);
         return inv;
