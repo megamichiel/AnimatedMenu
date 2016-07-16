@@ -54,17 +54,21 @@ public class RemoteConnections implements Runnable {
                     InputStream input = socket.getInputStream();
                     
                     // Handshake
-                    ByteArrayOutputStream handshake = new ByteArrayOutputStream();
-                    handshake.write(new byte[] { 0, 47 }); // Packet ID + Protocol Version
+
                     String address = info.address.getHostString();
-                    byte[] bytes = address.getBytes(Charsets.UTF_8);
-                    writeVarInt(handshake, bytes.length);
-                    handshake.write(bytes);
+                    byte[] addressBytes = address.getBytes(Charsets.UTF_8);
+
+                    ByteArrayOutputStream handshake = new ByteArrayOutputStream();
+                    writeVarInt(handshake, 5
+                            + varIntLength(addressBytes.length)
+                            + addressBytes.length);
+                    handshake.write(new byte[] { 0, 47 }); // Packet ID + Protocol Version
+                    writeVarInt(handshake, addressBytes.length);
+                    handshake.write(addressBytes);
                     int port = info.address.getPort();
                     handshake.write((port >> 8) & 0xFF);
                     handshake.write(port & 0xFF);
                     handshake.write(1); // Next protocol state: Status
-                    writeVarInt(output, handshake.size());
                     output.write(handshake.toByteArray());
                     
                     // Request
@@ -129,6 +133,13 @@ public class RemoteConnections implements Runnable {
         }
         
         output.write(i);
+    }
+
+    private int varIntLength(int i) {
+        for (int j = 1; j < 5; j++)
+            if ((i & (0xffffffff << (j * 7))) == 0)
+                return j;
+        return 5;
     }
     
     private int readVarInt(InputStream stream) throws IOException {
