@@ -1,9 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
-import com.google.common.base.Predicate;
-import com.google.common.base.Supplier;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
@@ -17,9 +14,11 @@ import org.bukkit.inventory.ItemStack;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class AnimatedMenu extends AbstractMenu {
     
@@ -81,7 +80,7 @@ public class AnimatedMenu extends AbstractMenu {
         this.menuType = type;
         this.permission = permission == null ? null : permission.tryCache();
         this.permissionMessage = permissionMessage == null ?
-                IPlaceholder.ConstantPlaceholder.of(ChatColor.RED + "You are not allows to open that menu!") : permissionMessage.tryCache();
+                IPlaceholder.constant(ChatColor.RED + "You are not allows to open that menu!") : permissionMessage.tryCache();
     }
 
     public MenuSettings getSettings() {
@@ -94,8 +93,8 @@ public class AnimatedMenu extends AbstractMenu {
 
     public void handleMenuClose(Player who) {
         openMenu.remove(who);
-        for (Predicate<? super Player> predicate : settings.getCloseListeners())
-            predicate.apply(who);
+        for (Consumer<? super Player> consumer : settings.getCloseListeners())
+            consumer.accept(who);
     }
 
     @Override
@@ -128,8 +127,8 @@ public class AnimatedMenu extends AbstractMenu {
             if (permissionMessage != null) who.sendMessage(permissionMessage.invoke(plugin, who));
             return;
         }
-        for (Predicate<? super Player> predicate : settings.getOpenListeners())
-            predicate.apply(who);
+        for (Consumer<? super Player> consumer : settings.getOpenListeners())
+            consumer.accept(who);
         Inventory inv = createInventory(who);
         who.openInventory(inv);
         openMenu.put(who, inv);

@@ -9,11 +9,11 @@ import me.megamichiel.animatedmenu.util.MaterialMatcher;
 import me.megamichiel.animatedmenu.util.Skull;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.AnimatedText;
+import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Material;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
@@ -48,7 +48,7 @@ public class MenuItemSettings {
     private int hideFlags = 0;
 
     MenuItemSettings(AnimatedMenuPlugin plugin, String name,
-                            String menu, ConfigurationSection section) {
+                            String menu, AbstractConfig section) {
         this.name = name;
         frameDelay = section.getInt("frame-delay", 20);
         refreshDelay = section.getInt("refresh-delay", frameDelay);

@@ -3,7 +3,7 @@ package me.megamichiel.animatedmenu.command;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.Animatable;
-import org.bukkit.configuration.ConfigurationSection;
+import me.megamichiel.animationlib.config.AbstractConfig;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ public class CommandExecutor extends Animatable<List<CommandExecutor.CommandHand
     private final AnimatedMenuPlugin plugin;
     
     public CommandExecutor(AnimatedMenuPlugin plugin,
-                           ConfigurationSection section, String key) {
+                           AbstractConfig section, String key) {
         this.plugin = plugin;
         load(plugin, section, key);
     }
@@ -68,7 +68,7 @@ public class CommandExecutor extends Animatable<List<CommandExecutor.CommandHand
     }
 
     @Override
-    protected Object getValue(Nagger nagger, ConfigurationSection section, String key) {
+    protected Object getValue(Nagger nagger, AbstractConfig section, String key) {
         return section.getList(key);
     }
 

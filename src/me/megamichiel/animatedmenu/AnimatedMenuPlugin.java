@@ -10,14 +10,14 @@ import me.megamichiel.animatedmenu.util.FormulaPlaceholder;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
 import me.megamichiel.animationlib.Nagger;
-import me.megamichiel.animationlib.YamlConfig;
+import me.megamichiel.animationlib.config.AbstractConfig;
+import me.megamichiel.animationlib.config.ConfigManager;
+import me.megamichiel.animationlib.config.YamlConfig;
 import net.milkbowl.vault.economy.Economy;
-import org.apache.commons.codec.Charsets;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -36,7 +36,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.NumberConversions;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URLConnection;
@@ -60,10 +62,12 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     private boolean vaultPresent = false, playerPointsPresent = false;
     public Economy economy;
     public PlayerPointsAPI playerPointsAPI;
+
+    private final ConfigManager<YamlConfig> config = ConfigManager.of(YamlConfig::new);
     
     @Override
     public void onEnable() {
-        if (!requirePlugin("AnimationLib", "1.1.1", "https://www.spigotmc.org/resources/22295/")) {
+        if (!requirePlugin("AnimationLib", "1.2.0", "https://www.spigotmc.org/resources/22295/")) {
             return;
         } else {
             try {
@@ -84,6 +88,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         getCommand("animatedmenu").setExecutor(new AnimatedMenuCommand(this));
         
         /* Config / API */
+        config.file(new File(getDataFolder(), "config.yml"));
         saveDefaultConfig();
         
         registerDefaultCommandHandlers();
@@ -151,6 +156,20 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         asyncTasks.clear();
         connections.cancel();
         menuRegistry.onDisable();
+    }
+
+    @Override
+    public void reloadConfig() {
+        config.reloadConfig();
+    }
+
+    public YamlConfig getConfiguration() {
+        return config.getConfig();
+    }
+
+    @Override
+    public void saveDefaultConfig() {
+        config.saveDefaultConfig(() -> getResource("config.yml"));
     }
 
     protected MenuLoader getDefaultMenuLoader() {
@@ -247,34 +266,34 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     }
     
     protected void loadConfig() {
-        if (getConfig().isConfigurationSection("formulas")) {
-            ConfigurationSection section = getConfig().getConfigurationSection("formulas");
-            for (String key : section.getKeys(false)) {
+        AbstractConfig config = getConfiguration();
+        if (config.isSection("formulas")) {
+            AbstractConfig section = config.getSection("formulas");
+            for (String key : section.keys()) {
                 String val = section.getString(key);
-                if (val != null) {
-                    formulaPlaceholders.put(key.toLowerCase(Locale.US), new FormulaPlaceholder(this, val));
-                }
+                if (val != null)
+                    formulaPlaceholders.put(key.toLowerCase(Locale.US),
+                            new FormulaPlaceholder(this, val));
             }
         }
-        if (getConfig().isConfigurationSection("connections")) {
-            ConfigurationSection section = getConfig().getConfigurationSection("connections");
-            for (String key : section.getKeys(false)) {
-                if (section.isConfigurationSection(key)) {
-                    ConfigurationSection sec = section.getConfigurationSection(key);
+        if (config.isSection("connections")) {
+            AbstractConfig section = config.getSection("connections");
+            for (String key : section.keys()) {
+                if (section.isSection(key)) {
+                    AbstractConfig sec = section.getSection(key);
                     String ip = sec.getString("ip");
                     if (ip != null) {
                         int colonIndex = ip.indexOf(':');
                         int port = colonIndex == -1 ? 25565 : NumberConversions.toInt(ip.substring(colonIndex + 1));
-                        if (colonIndex > -1)
-                            ip = ip.substring(0, colonIndex);
+                        if (colonIndex > -1) ip = ip.substring(0, colonIndex);
                         ServerInfo serverInfo = connections.add(key.toLowerCase(Locale.US), new InetSocketAddress(ip, port));
                         serverInfo.load(sec);
                     }
                 }
             }
         }
-        warnOfflineServers = getConfig().getBoolean("warn-offline-servers");
-        connections.schedule(getConfig().getLong("connection-refresh-delay", 10 * 20L));
+        warnOfflineServers = config.getBoolean("warn-offline-servers");
+        connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L));
     }
     
     void reload() {
@@ -409,22 +428,5 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 
     public boolean isPlayerPointsPresent() {
         return playerPointsPresent;
-    }
-
-    private final File configFile = new File(getDataFolder(), "config.yml");
-    private YamlConfig config;
-
-    @Override
-    public void reloadConfig() {
-        this.config = YamlConfig.loadConfig(this.configFile);
-        InputStream defConfigStream = this.getResource("config.yml");
-        if (defConfigStream != null) this.config.setDefaults(
-                YamlConfig.loadConfig(new InputStreamReader(defConfigStream, Charsets.UTF_8)));
-    }
-
-    @Override
-    public YamlConfig getConfig() {
-        if (config == null) reloadConfig();
-        return config;
     }
 }

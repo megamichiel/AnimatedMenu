@@ -6,7 +6,6 @@ import me.megamichiel.animationlib.animation.Animatable;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 public class AnimatedMaterial extends Animatable<IPlaceholder<ItemStack>> {
@@ -17,18 +16,13 @@ public class AnimatedMaterial extends Animatable<IPlaceholder<ItemStack>> {
     protected IPlaceholder<ItemStack> convert(Nagger nagger, Object o) {
         final StringBundle sb = StringBundle.parse(nagger, o.toString());
         if (sb.containsPlaceholders()) {
-            return new IPlaceholder<ItemStack>() {
-                @Override
-                public ItemStack invoke(Nagger nagger, Player player) {
-                    return parseItemStack(nagger, sb.toString(player));
-                }
-            };
-        } else return IPlaceholder.ConstantPlaceholder.of(parseItemStack(nagger, sb.toString(null)));
+            return (n, player) -> parseItemStack(n, sb.toString(player));
+        } else return IPlaceholder.constant(parseItemStack(nagger, sb.toString(null)));
     }
     
     @Override
     protected IPlaceholder<ItemStack> defaultValue() {
-        return IPlaceholder.ConstantPlaceholder.of(new ItemStack(Material.STONE));
+        return IPlaceholder.constant(new ItemStack(Material.STONE));
     }
 
     public static ItemStack parseItemStack(Nagger nagger, String str) {

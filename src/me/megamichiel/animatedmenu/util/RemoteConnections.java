@@ -5,10 +5,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 import java.io.*;
@@ -104,10 +104,14 @@ public class RemoteConnections implements Runnable {
                     info.onlinePlayers = online;
                     info.maxPlayers = max;
 
-                    output.write(new byte[] { 9, 1 }); // Length + ID
+                    byte[] write = new byte[10];
+                    write[0] = 9;
+                    write[1] = 1;
+                    int index = 2;
                     long time = System.currentTimeMillis();
                     for (int i = 7; i >= 0; i--)
-                        output.write((byte) (time >> (i * 8)) & 0xFF);
+                        write[index++] = (byte) ((time >> (i * 8)) & 0xFF);
+                    output.write(write);
 
                     // input.skip(10); // Length (9) + ID (1) + Keep Alive ID
                     
@@ -127,8 +131,8 @@ public class RemoteConnections implements Runnable {
     }
     
     private void writeVarInt(OutputStream output, int i) throws IOException {
-        while ((i & -128) != 0) {
-            output.write(i & 127 | 128);
+        while ((i & -0x80) != 0) {
+            output.write(i & 0x7F | 0x80);
             i >>>= 7;
         }
         
@@ -150,11 +154,11 @@ public class RemoteConnections implements Runnable {
         
         do {
             b0 = stream.read();
-            i |= (b0 & 127) << j++ * 7;
+            i |= (b0 & 0x7F) << j++ * 7;
             if (j > 5) {
                 throw new RuntimeException("VarInt too big");
             }
-        } while ((b0 & 128) == 128);
+        } while ((b0 & 0x80) == 0x80);
         
         return i;
     }
@@ -212,8 +216,8 @@ public class RemoteConnections implements Runnable {
             return maxPlayers;
         }
 
-        public void load(ConfigurationSection section) {
-            for (String key : section.getKeys(false)) {
+        public void load(AbstractConfig section) {
+            for (String key : section.keys()) {
                 if (!key.equals("ip")) {
                     String val = section.getString(key);
                     if (val != null)

@@ -46,7 +46,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             return info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";
         }
         if (lower.startsWith("status_")) {
-            ServerInfo info = plugin.getConnections().get(lower.substring(7));
+            ServerInfo info = plugin.getConnections().get(lower.substring(7).toLowerCase(Locale.US));
             if (info == null) return "<invalid>";
             IPlaceholder<String> bundle = info.get(info.isOnline() ? "online" : "offline", who);
             return bundle == null ? "<unknown>" : bundle.invoke(plugin, who);
@@ -60,7 +60,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             return value == null ? "<unknown>" : value.invoke(plugin, who);
         }
         if (lower.startsWith("worldplayers_")) {
-            String worldName = arg.substring(13);
+            String worldName = lower.substring(13);
             for (World world : Bukkit.getWorlds())
                 if (world.getName().equalsIgnoreCase(worldName))
                     return String.valueOf(world.getPlayers().size());
@@ -72,6 +72,6 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
                 return ph.invoke(plugin, who).toString();
             return "<invalid>";
         }
-        return "<invalid:" + lower + ">";
+        return "<invalid:" + arg + ">";
     }
 }

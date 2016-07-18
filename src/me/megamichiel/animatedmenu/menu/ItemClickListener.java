@@ -3,9 +3,9 @@ package me.megamichiel.animatedmenu.menu;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.command.CommandExecutor;
 import me.megamichiel.animatedmenu.util.Flag;
+import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import net.milkbowl.vault.economy.Economy;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
@@ -21,12 +21,12 @@ public class ItemClickListener {
     
     private final List<ClickProcessor> clicks = new ArrayList<>();
     
-    public ItemClickListener(AnimatedMenuPlugin plugin, ConfigurationSection section) {
-        if (section.isConfigurationSection("commands")) {
-            ConfigurationSection commandSection = section.getConfigurationSection("commands");
-            for (String key : commandSection.getKeys(false)) {
-                if (commandSection.isConfigurationSection(key)) {
-                    ConfigurationSection sec = commandSection.getConfigurationSection(key);
+    public ItemClickListener(AnimatedMenuPlugin plugin, AbstractConfig section) {
+        if (section.isSection("commands")) {
+            AbstractConfig commandSection = section.getSection("commands");
+            for (String key : commandSection.keys()) {
+                if (commandSection.isSection(key)) {
+                    AbstractConfig sec = commandSection.getSection(key);
                     CommandExecutor commandExecutor = new CommandExecutor(plugin, sec, "commands"),
                             buyCommandExecutor = new CommandExecutor(plugin, sec, "buy-commands");
                     String click = sec.getString("click-type", "both").toLowerCase(Locale.US);

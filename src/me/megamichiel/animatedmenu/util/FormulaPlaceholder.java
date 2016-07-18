@@ -27,8 +27,8 @@ public class FormulaPlaceholder implements IPlaceholder<Integer> {
     }
     
     @Override
-    public Integer invoke(Nagger nagger, Player who) {
-        return formula.calculate(nagger, who);
+    public Integer invoke(Nagger nagger, Object who) {
+        return formula.calculate(nagger, (Player) who);
     }
     
     public enum FormulaType {

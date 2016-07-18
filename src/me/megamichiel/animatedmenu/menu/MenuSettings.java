@@ -1,6 +1,5 @@
 package me.megamichiel.animatedmenu.menu;
 
-import com.google.common.base.Predicate;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -8,6 +7,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class MenuSettings {
 
@@ -18,8 +18,8 @@ public class MenuSettings {
 	private String[] openCommands;
     private boolean hiddenFromCommand = false;
 
-    private final List<Predicate<? super Player>> openListeners = new ArrayList<>();
-    private final List<Predicate<? super Player>> closeListeners = new ArrayList<>();
+    private final List<Consumer<? super Player>> openListeners = new ArrayList<>();
+    private final List<Consumer<? super Player>> closeListeners = new ArrayList<>();
 	
 	public boolean shouldOpenOnJoin()
 	{
@@ -57,19 +57,19 @@ public class MenuSettings {
         return openerJoinSlot;
     }
 
-    public void addOpenListener(Predicate<? super Player> listener) {
+    public void addOpenListener(Consumer<? super Player> listener) {
         openListeners.add(listener);
     }
 
-    public void addCloseListener(Predicate<? super Player> listener) {
+    public void addCloseListener(Consumer<? super Player> listener) {
         closeListeners.add(listener);
     }
 
-    public List<Predicate<? super Player>> getOpenListeners() {
+    public List<Consumer<? super Player>> getOpenListeners() {
         return Collections.unmodifiableList(openListeners);
     }
 
-    public List<Predicate<? super Player>> getCloseListeners() {
+    public List<Consumer<? super Player>> getCloseListeners() {
         return Collections.unmodifiableList(closeListeners);
     }
 

@@ -3,10 +3,10 @@ package me.megamichiel.animatedmenu.animation;
 import me.megamichiel.animatedmenu.animation.AnimatedLore.Frame;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.Animatable;
+import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -52,7 +52,7 @@ public class AnimatedLore extends Animatable<Frame> {
     }
 
     @Override
-    protected Object getValue(Nagger nagger, ConfigurationSection section, String key) {
+    protected Object getValue(Nagger nagger, AbstractConfig section, String key) {
         return section.getStringList(key);
     }
 
@@ -79,8 +79,7 @@ public class AnimatedLore extends Animatable<Frame> {
         
         public List<String> toStringList(Player p) {
             List<String> list = new ArrayList<>(size());
-            for (IPlaceholder<String> bundle : this)
-                list.add(bundle.invoke(null, p));
+            this.stream().map(b -> b.invoke(null, p)).forEach(list::add);
             return list;
         }
         
@@ -107,7 +106,7 @@ public class AnimatedLore extends Animatable<Frame> {
                 }
                 sb.append(StringBundle.BOX);
             }
-            lines.set(y, IPlaceholder.ConstantPlaceholder.of(sb.toString()));
+            lines.set(y, IPlaceholder.constant(sb.toString()));
         }
         return lines;
     }

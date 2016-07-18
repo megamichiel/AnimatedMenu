@@ -1,6 +1,5 @@
 package me.megamichiel.animatedmenu.menu;
 
-import com.google.common.base.Predicate;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.MenuRegistry;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
@@ -8,18 +7,17 @@ import me.megamichiel.animatedmenu.command.SoundCommand;
 import me.megamichiel.animatedmenu.util.DirectoryListener;
 import me.megamichiel.animatedmenu.util.DirectoryListener.FileAction;
 import me.megamichiel.animatedmenu.util.Flag;
-import me.megamichiel.animationlib.YamlConfig;
 import me.megamichiel.animationlib.animation.AnimatedText;
+import me.megamichiel.animationlib.config.AbstractConfig;
+import me.megamichiel.animationlib.config.ConfigManager;
+import me.megamichiel.animationlib.config.YamlConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -40,7 +38,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 plugin.nag("Failed to create menus folder!");
             }
         }
-        if (plugin.getConfig().getBoolean("auto-menu-refresh")) {
+        if (plugin.getConfiguration().getBoolean("auto-menu-refresh")) {
             try {
                 listener = new DirectoryListener(plugin.getLogger(), new File(plugin.getDataFolder(), "menus"), this);
             } catch (IOException ex) {
@@ -77,14 +75,14 @@ public class MenuLoader implements DirectoryListener.FileListener {
             String name = file.getName(), extension = name.substring(name.lastIndexOf('.') + 1);
             if (extension.equalsIgnoreCase("yml")) {
                 name = name.substring(0, name.lastIndexOf('.')).replace(' ', '-');
-                FileConfiguration config = YamlConfig.loadConfig(file);
+                YamlConfig config = ConfigManager.quickLoad(YamlConfig::new, file);
                 AnimatedMenu menu = loadMenu(name, config);
                 menus.add(menu);
             }
         }
     }
 
-    protected AnimatedMenu loadMenu(String name, ConfigurationSection config) {
+    protected AnimatedMenu loadMenu(String name, AbstractConfig config) {
         AnimatedText title = new AnimatedText();
         title.load(plugin, config, "menu-name", new StringBundle(plugin, name));
         MenuType type;
@@ -104,16 +102,16 @@ public class MenuLoader implements DirectoryListener.FileListener {
         return menu;
     }
 
-    protected void loadMenu(AnimatedMenu menu, ConfigurationSection config) {
+    protected void loadMenu(AnimatedMenu menu, AbstractConfig config) {
         loadSettings(menu.getSettings(), config);
-        ConfigurationSection items = config.getConfigurationSection("items");
+        AbstractConfig items = config.getSection("items");
         if (items == null) {
             plugin.nag("No items specified for " + menu.getName() + "!");
             return;
         }
         MenuType type = menu.getMenuType();
-        for (String key : items.getKeys(false)) {
-            ConfigurationSection section = items.getConfigurationSection(key);
+        for (String key : items.keys()) {
+            AbstractConfig section = items.getSection(key);
             MenuItemSettings settings = new MenuItemSettings(plugin, key, menu.getName(), section);
             MenuItem item;
             if (section.isInt("x") && section.isInt("y")) {
@@ -138,7 +136,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         menu.getMenuGrid().sortSlots(); // Put items with non-dynamic slot before those with it
     }
 
-    protected void loadSettings(MenuSettings settings, ConfigurationSection section) {
+    protected void loadSettings(MenuSettings settings, AbstractConfig section) {
         if (section.isSet("menu-opener")) {
             ItemStack opener = AnimatedMaterial.parseItemStack(plugin, section.getString("menu-opener"));
             boolean openerName = section.isSet("menu-opener-name"),
@@ -164,15 +162,9 @@ public class MenuLoader implements DirectoryListener.FileListener {
                     section.getString("open-sound").toLowerCase(Locale.US).replace('-', '_'),
                     1F, (float) section.getDouble("open-sound-pitch", 1F)
             );
-            settings.addOpenListener(new Predicate<Player>() {
-                @Override
-                public boolean apply(@Nullable Player player) {
-                    sound.play(player);
-                    return false;
-                }
-            });
+            settings.addOpenListener(sound::play);
         }
-        settings.setOpenCommands(section.contains("command") ? section.getString("command").toLowerCase(Locale.US).split("; ") : null);
+        settings.setOpenCommands(section.isString("command") ? section.getString("command").toLowerCase(Locale.US).split("; ") : null);
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
     }
 
@@ -200,8 +192,8 @@ public class MenuLoader implements DirectoryListener.FileListener {
                                 it.next().getKey().closeInventory();
                             registry.remove(menu);
                         }
-                        FileConfiguration cfg = YamlConfig.loadConfig(file);
-                        menu = loadMenu(name, cfg);
+                        YamlConfig config = ConfigManager.quickLoad(YamlConfig::new, file);
+                        menu = loadMenu(name, config);
                         plugin.getLogger().info("Loaded " + file.getName());
                         registry.add(menu);
                         break;
@@ -214,9 +206,9 @@ public class MenuLoader implements DirectoryListener.FileListener {
                         if (file.length() == 0) return;
                         for (Iterator<Map.Entry<Player, Inventory>> it = menu.getViewers(); it.hasNext();)
                             it.next().getKey().closeInventory();
-                        cfg = YamlConfig.loadConfig(file);
+                        config = ConfigManager.quickLoad(YamlConfig::new, file);
                         registry.remove(menu);
-                        menu = loadMenu(name, cfg);
+                        menu = loadMenu(name, config);
                         registry.add(menu);
                         for (Iterator<Map.Entry<Player, Inventory>> it = menu.getViewers(); it.hasNext();)
                             it.next().getKey().closeInventory();
