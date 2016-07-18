@@ -62,8 +62,8 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
         if (lower.startsWith("worldplayers_")) {
             String worldName = lower.substring(13);
             for (World world : Bukkit.getWorlds())
-                if (world.getName().equalsIgnoreCase(worldName))
-                    return String.valueOf(world.getPlayers().size());
+                if (worldName.equalsIgnoreCase(world.getName()))
+                    return Integer.toString(world.getPlayers().size());
             return "<invalid>";
         }
         if (lower.startsWith("formula_")) {

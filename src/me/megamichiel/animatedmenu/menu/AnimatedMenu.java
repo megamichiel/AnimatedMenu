@@ -111,7 +111,7 @@ public class AnimatedMenu extends AbstractMenu {
         else inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
         ItemStack[] contents = new ItemStack[inv.getSize()];
         MenuItem[] items = this.items.get(who);
-        if (items == null) items = new MenuItem[inv.getSize()];
+        if (items == null) this.items.put(who, items = new MenuItem[inv.getSize()]);
         for (int slot = 0; slot < menuGrid.getSize(); slot++) {
             MenuItem item = menuGrid.getItems()[slot];
             if (!item.getSettings().isHidden(plugin, who))

@@ -39,8 +39,6 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
     AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
     }
-
-    private final List<String> validArgs = Arrays.asList("reload", "open", "item");
     
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -55,41 +53,45 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         String type = args[0].toLowerCase(Locale.US);
-        if (!validArgs.contains(type)) {
-            return invalid(sender, "Invalid subcommand, type /" + label + " for help");
-        }
-        if (!sender.hasPermission("animatedmenu.command." + type)) {
-            return invalid(sender, "You don't have permission for that!");
-        }
-        switch (type.charAt(0)) {
+        if (!type.isEmpty()) switch (type.charAt(0)) {
             case 'r': // Reload
-                plugin.reload();
-                sender.sendMessage(DARK_GRAY + "[" + GOLD + plugin.getDescription().getName() + DARK_GRAY + "] "
-                        + ChatColor.GREEN + "Plugin reloaded! "
-                        + plugin.getMenuRegistry().getMenus().size() + " menu(s) loaded.");
+                if (type.equals("reload")) {
+                    if (!sender.hasPermission("animatedmenu.command.reload"))
+                        return invalid(sender, "You don't have permission for that!");
+                    plugin.reload();
+                    sender.sendMessage(DARK_GRAY + "[" + GOLD + plugin.getDescription().getName() + DARK_GRAY + "] "
+                            + ChatColor.GREEN + "Plugin reloaded! "
+                            + plugin.getMenuRegistry().getMenus().size() + " menu(s) loaded.");
+                    return true;
+                }
                 break;
-            case 'o':case 'i': // Open/Item
-                if (args.length < 2) return invalid(sender, "You must specify a menu!");
-                AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
-                if (menu == null) return invalid(sender, "Couldn't find a menu by that name!");
-                Player target = null;
-                if (args.length > 2) {
-                    if (!sender.hasPermission("animatedmenu.command." + type + ".other"))
-                        return invalid(sender, "You are not permitted to do that for other players!");
-                    for (Player player : Bukkit.getOnlinePlayers())
-                        if (player.getName().equals(args[2])) {
-                            target = player;
-                            break;
-                        }
-                    if (target == null) return invalid(sender, "Couldn't find a player by that name!");
-                } else if (sender instanceof Player) target = (Player) sender;
-                else return invalid(sender, '/' + label + ' ' + type + " <menu> <player>");
-                if (type.charAt(0) == 'o') plugin.getMenuRegistry().openMenu(target, menu);
-                else if (menu.getSettings().getOpener() != null) target.getInventory().addItem(menu.getSettings().getOpener());
-                else return invalid(sender, "That menu doesn't have a menu opener!");
+            case 'o': case 'i': // Open/Item
+                if (type.equals("open") && type.equals("item")) {
+                    if (!sender.hasPermission("animatedmenu.command." + type))
+                        return invalid(sender, "You don't have permission for that!");
+                    if (args.length < 2) return invalid(sender, "You must specify a menu!");
+                    AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
+                    if (menu == null) return invalid(sender, "Couldn't find a menu by that name!");
+                    Player target = null;
+                    if (args.length > 2) {
+                        if (!sender.hasPermission("animatedmenu.command." + type + ".other"))
+                            return invalid(sender, "You are not permitted to do that for other players!");
+                        for (Player player : Bukkit.getOnlinePlayers())
+                            if (player.getName().equals(args[2])) {
+                                target = player;
+                                break;
+                            }
+                        if (target == null) return invalid(sender, "Couldn't find a player by that name!");
+                    } else if (sender instanceof Player) target = (Player) sender;
+                    else return invalid(sender, '/' + label + ' ' + type + " <menu> <player>");
+                    if (type.charAt(0) == 'o') plugin.getMenuRegistry().openMenu(target, menu);
+                    else if (menu.getSettings().getOpener() != null) target.getInventory().addItem(menu.getSettings().getOpener());
+                    else return invalid(sender, "That menu doesn't have a menu opener!");
+                    return true;
+                }
                 break;
         }
-        return true;
+        return invalid(sender, "Invalid subcommand, type /" + label + " for help");
     }
     
     @Override
