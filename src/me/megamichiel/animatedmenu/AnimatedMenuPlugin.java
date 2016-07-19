@@ -67,7 +67,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     
     @Override
     public void onEnable() {
-        if (!requirePlugin("AnimationLib", "1.2.0", "https://www.spigotmc.org/resources/22295/")) {
+        if (!requirePlugin("AnimationLib", "1.2.1", "https://www.spigotmc.org/resources/22295/")) {
             return;
         } else {
             try {

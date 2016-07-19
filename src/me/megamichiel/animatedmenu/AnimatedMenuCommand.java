@@ -66,7 +66,7 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
                 }
                 break;
             case 'o': case 'i': // Open/Item
-                if (type.equals("open") && type.equals("item")) {
+                if (type.equals("open") || type.equals("item")) {
                     if (!sender.hasPermission("animatedmenu.command." + type))
                         return invalid(sender, "You don't have permission for that!");
                     if (args.length < 2) return invalid(sender, "You must specify a menu!");

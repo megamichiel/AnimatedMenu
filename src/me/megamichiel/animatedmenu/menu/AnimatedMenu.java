@@ -61,7 +61,6 @@ public class AnimatedMenu extends AbstractMenu {
 
     private final AnimatedText menuTitle;
     private final MenuSettings settings = new MenuSettings();
-    private final MenuType menuType;
     private final int titleUpdateDelay;
     private final IPlaceholder<String> permission, permissionMessage;
 
@@ -72,12 +71,11 @@ public class AnimatedMenu extends AbstractMenu {
     public AnimatedMenu(AnimatedMenuPlugin plugin, String name, AnimatedText title,
                         int titleUpdateDelay, MenuType type,
                         StringBundle permission, StringBundle permissionMessage) {
-        super(plugin, name, type.getSize());
+        super(plugin, name, type);
         this.plugin = plugin;
         this.menuTitle = title;
         this.titleUpdateDelay = titleUpdateDelay;
-        
-        this.menuType = type;
+
         this.permission = permission == null ? null : permission.tryCache();
         this.permissionMessage = permissionMessage == null ?
                 IPlaceholder.constant(ChatColor.RED + "You are not allows to open that menu!") : permissionMessage.tryCache();
@@ -87,14 +85,10 @@ public class AnimatedMenu extends AbstractMenu {
         return settings;
     }
 
-    public MenuType getMenuType() {
-        return menuType;
-    }
-
     public void handleMenuClose(Player who) {
+        remove(who);
         openMenu.remove(who);
-        for (Consumer<? super Player> consumer : settings.getCloseListeners())
-            consumer.accept(who);
+        settings.getOpenListeners().forEach(c -> c.accept(who));
     }
 
     @Override
@@ -112,10 +106,12 @@ public class AnimatedMenu extends AbstractMenu {
         ItemStack[] contents = new ItemStack[inv.getSize()];
         MenuItem[] items = this.items.get(who);
         if (items == null) this.items.put(who, items = new MenuItem[inv.getSize()]);
-        for (int slot = 0; slot < menuGrid.getSize(); slot++) {
+        for (int slot = 0, result; slot < menuGrid.getSize(); slot++) {
             MenuItem item = menuGrid.getItems()[slot];
-            if (!item.getSettings().isHidden(plugin, who))
-                contents[(items[slot] = item).getSlot(who, contents)] = item.load(nagger, who);
+            if (!item.getSettings().isHidden(plugin, who)) {
+                items[result = item.getSlot(who, contents)] = item;
+                contents[result] = item.load(nagger, who);
+            }
         }
         inv.setContents(contents);
         return inv;

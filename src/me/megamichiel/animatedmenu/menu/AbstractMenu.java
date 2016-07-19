@@ -17,6 +17,7 @@ public abstract class AbstractMenu {
 
     protected final Nagger nagger;
     protected final String name;
+    protected final MenuType menuType;
     protected final MenuGrid menuGrid;
 
     protected AnimatedMenuPlugin plugin;
@@ -24,10 +25,11 @@ public abstract class AbstractMenu {
 
     protected final PlayerMap<MenuItem[]> items = new PlayerMap<>();
 
-    protected AbstractMenu(Nagger nagger, String name, int size) {
+    protected AbstractMenu(Nagger nagger, String name, MenuType menuType) {
         this.nagger = nagger;
         this.name = name;
-        menuGrid = new MenuGrid(this, size);
+        this.menuType = menuType;
+        menuGrid = new MenuGrid(this, menuType.getSize());
     }
 
     public void init(AnimatedMenuPlugin plugin) {
@@ -47,6 +49,10 @@ public abstract class AbstractMenu {
         return name;
     }
 
+    public MenuType getMenuType() {
+        return menuType;
+    }
+
     public MenuGrid getMenuGrid() {
         return menuGrid;
     }
@@ -62,33 +68,41 @@ public abstract class AbstractMenu {
         return i == null ? null : i[slot];
     }
 
+    public void remove(Player player) {
+        items.remove(player);
+    }
+
     public void tick() {
         if (plugin == null) return;
         MenuItem[] items = menuGrid.getItems();
         int size = menuGrid.getSize();
         if (dynamicSlots) {
-            for (MenuItem[] menuItems : this.items.values())
-                Arrays.fill(menuItems, null);
-            for (int i = 0; i < size; i++) items[i].tick();
-            ItemStack[] contents = new ItemStack[items.length];
-            Iterator<Map.Entry<Player, Inventory>> viewers = getViewers();
-            while (viewers.hasNext()) {
-                Map.Entry<Player, Inventory> entry = viewers.next();
-                Player player = entry.getKey();
-                Inventory inv = entry.getValue();
-                MenuItem[] visible = this.items.get(player);
-                if (visible == null) this.items.put(player,
-                        visible = new MenuItem[inv.getSize()]);
-                MenuItem item;
-                for (int i = 0; i < size; i++)
-                    if (!(item = items[i]).getSettings().isHidden(plugin, player)) {
-                        int slot = item.getSlot(player, contents);
-                        visible[slot] = item;
-                        contents[slot] = item.getSettings().getItem(nagger, player);
+            boolean changed = false;
+            for (int i = 0; i < size; i++) changed |= items[i].tick();
+            if (changed) {
+                for (MenuItem[] menuItems : this.items.values())
+                    Arrays.fill(menuItems, null);
+                ItemStack[] contents = new ItemStack[items.length];
+                Iterator<Map.Entry<Player, Inventory>> viewers = getViewers();
+                while (viewers.hasNext()) {
+                    Map.Entry<Player, Inventory> entry = viewers.next();
+                    Player player = entry.getKey();
+                    Inventory inv = entry.getValue();
+                    MenuItem[] visible = this.items.get(player);
+                    if (visible == null) this.items.put(player,
+                            visible = new MenuItem[inv.getSize()]);
+                    MenuItem item;
+                    for (int i = 0; i < size; i++)
+                        if (!(item = items[i])
+                                .getSettings().isHidden(plugin, player)) {
+                            int slot = item.getSlot(player, contents);
+                            visible[slot] = item;
+                            contents[slot] = item.getSettings().getItem(nagger, player);
+                        }
+                    for (int i = 0; i < contents.length; i++) {
+                        inv.setItem(i, contents[i]);
+                        contents[i] = null;
                     }
-                for (int i = 0; i < contents.length; i++) {
-                    inv.setItem(i, contents[i]);
-                    contents[i] = null;
                 }
             }
         } else for (int index = 0; index < size; index++) {

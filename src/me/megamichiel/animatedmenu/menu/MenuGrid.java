@@ -37,8 +37,7 @@ public class MenuGrid {
     }
 
     public void clear() {
-        while (size > 0)
-            items[--size] = null;
+        while (size > 0) items[--size] = null;
     }
 
     public MenuItem[] getItems() {

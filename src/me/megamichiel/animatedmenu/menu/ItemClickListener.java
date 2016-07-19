@@ -25,33 +25,34 @@ public class ItemClickListener {
         if (section.isSection("commands")) {
             AbstractConfig commandSection = section.getSection("commands");
             for (String key : commandSection.keys()) {
-                if (commandSection.isSection(key)) {
-                    AbstractConfig sec = commandSection.getSection(key);
-                    CommandExecutor commandExecutor = new CommandExecutor(plugin, sec, "commands"),
-                            buyCommandExecutor = new CommandExecutor(plugin, sec, "buy-commands");
-                    String click = sec.getString("click-type", "both").toLowerCase(Locale.US);
-                    boolean rightClick = click.equals("both") || click.equals("right"),
-                            leftClick = click.equals("both") || click.equals("left");
-                    Flag shiftClick = Flag.parseFlag(sec.getString("shift-click"), Flag.BOTH);
-                    int price = sec.getInt("price", -1), points = sec.getInt("points", -1);
-                    String permission = sec.getString("permission"),
-                            permissionMessage = sec.getString("permission-message", PERMISSION_MESSAGE),
-                            bypassPermission = sec.getString("bypass-permission"),
-                            priceMessage = sec.getString("price-message", PRICE_MESSAGE),
-                            pointsMessage = sec.getString("points-message", POINTS_MESSAGE);
-                    boolean close = Flag.parseBoolean(sec.getString("close"), false);
-                    ClickProcessor processor = new ClickProcessor(plugin, commandExecutor, buyCommandExecutor,
-                            rightClick, leftClick, shiftClick, price, points,
-                            StringBundle.parse(plugin, permission),
-                            StringBundle.parse(plugin, permissionMessage).colorAmpersands(),
-                            StringBundle.parse(plugin, bypassPermission),
-                            StringBundle.parse(plugin, priceMessage).colorAmpersands(),
-                            StringBundle.parse(plugin, pointsMessage).colorAmpersands(),
-                            close);
-                    clicks.add(processor);
-                }
+                if (commandSection.isSection(key))
+                    clicks.add(parse(plugin, commandSection.getSection(key)));
             }
-        }
+        } else clicks.add(parse(plugin, section));
+    }
+
+    private ClickProcessor parse(AnimatedMenuPlugin plugin, AbstractConfig section) {
+        CommandExecutor commandExecutor = new CommandExecutor(plugin, section, "commands"),
+                buyCommandExecutor = new CommandExecutor(plugin, section, "buy-commands");
+        String click = section.getString("click-type", "both").toLowerCase(Locale.US);
+        boolean rightClick = click.equals("both") || click.equals("right"),
+                leftClick = click.equals("both") || click.equals("left");
+        Flag shiftClick = Flag.parseFlag(section.getString("shift-click"), Flag.BOTH);
+        int price = section.getInt("price", -1), points = section.getInt("points", -1);
+        String permission = section.getString("permission"),
+                permissionMessage = section.getString("permission-message", PERMISSION_MESSAGE),
+                bypassPermission = section.getString("bypass-permission"),
+                priceMessage = section.getString("price-message", PRICE_MESSAGE),
+                pointsMessage = section.getString("points-message", POINTS_MESSAGE);
+        boolean close = Flag.parseBoolean(section.getString("close"), false);
+        return new ClickProcessor(plugin, commandExecutor, buyCommandExecutor,
+                rightClick, leftClick, shiftClick, price, points,
+                StringBundle.parse(plugin, permission),
+                StringBundle.parse(plugin, permissionMessage).colorAmpersands(),
+                StringBundle.parse(plugin, bypassPermission),
+                StringBundle.parse(plugin, priceMessage).colorAmpersands(),
+                StringBundle.parse(plugin, pointsMessage).colorAmpersands(),
+                close);
     }
     
     public void onClick(Player who, ClickType click) {
