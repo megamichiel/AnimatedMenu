@@ -77,16 +77,16 @@ public class AnimatedLore extends Animatable<Frame> {
             super(Arrays.asList(bundles));
         }
         
-        public List<String> toStringList(Player p) {
+        public List<String> toStringList(Nagger nagger, Player p) {
             List<String> list = new ArrayList<>(size());
-            this.stream().map(b -> b.invoke(null, p)).forEach(list::add);
+            this.stream().map(b -> b.invoke(nagger, p)).forEach(list::add);
             return list;
         }
         
-        public String toString(Player p) {
+        public String toString(Nagger nagger, Player p) {
             StringBuilder sb = new StringBuilder();
             for (IPlaceholder<String> bundle : this)
-                sb.append(bundle.invoke(null, p));
+                sb.append(bundle.invoke(nagger, p));
             return sb.toString();
         }
     }

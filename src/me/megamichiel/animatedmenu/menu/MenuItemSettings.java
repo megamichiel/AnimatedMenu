@@ -141,7 +141,7 @@ public class MenuItemSettings {
         
         ItemMeta meta = handle.getItemMeta();
         meta.setDisplayName(displayName.get().toString(who));
-        meta.setLore(lore.get().toStringList(who));
+        meta.setLore(lore.get().toStringList(nagger, who));
         if (meta instanceof LeatherArmorMeta && leatherArmorColor != null)
             ((LeatherArmorMeta) meta).setColor(leatherArmorColor);
         else if (meta instanceof SkullMeta && skull != null)
@@ -174,7 +174,7 @@ public class MenuItemSettings {
         ItemMeta meta = handle.getItemMeta();
         meta.setDisplayName(displayName.get().toString(p));
         if (!lore.isEmpty())
-            meta.setLore(lore.get().toStringList(p));
+            meta.setLore(lore.get().toStringList(nagger, p));
         
         if (meta instanceof LeatherArmorMeta && leatherArmorColor != null)
             ((LeatherArmorMeta) meta).setColor(leatherArmorColor);

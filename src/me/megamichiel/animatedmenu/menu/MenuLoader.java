@@ -10,7 +10,7 @@ import me.megamichiel.animatedmenu.util.Flag;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
-import me.megamichiel.animationlib.config.YamlConfig;
+import me.megamichiel.animationlib.config.type.YamlConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
