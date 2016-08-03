@@ -18,6 +18,7 @@ import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -148,11 +149,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 
     @Override
     public void onDisable() {
-        for (Player p : new HashSet<>(menuRegistry.getOpenMenu().keySet())) { // InventoryCloseEvent could cause ConcurrentModificationException
-            p.closeInventory();
-        }
-        for (BukkitTask task : asyncTasks)
-            task.cancel();
+        // InventoryCloseEvent could cause ConcurrentModificationException
+        new HashSet<>(menuRegistry.getOpenMenu().keySet()).forEach(HumanEntity::closeInventory);
+        asyncTasks.forEach(BukkitTask::cancel);
         asyncTasks.clear();
         connections.cancel();
         menuRegistry.onDisable();
@@ -206,7 +205,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     
     protected void registerDefaultCommandHandlers() {
         commands.clear();
-        commands.addAll(Arrays.asList(new TextCommand("console") {
+        Collections.addAll(commands, new TextCommand("console") {
             @Override
             public boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), value);
@@ -258,7 +257,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                 else plugin.nag("No menu with name " + value + " found!");
                 return true;
             }
-        }, new TellRawCommand(), new SoundCommand()));
+        }, new TellRawCommand(), new SoundCommand());
     }
     
     public boolean warnOfflineServers() {

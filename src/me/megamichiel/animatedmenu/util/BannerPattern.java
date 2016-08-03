@@ -20,11 +20,12 @@ public class BannerPattern {
         for (int i = 0; i < 16; i++)
             colors.put((char) ('a' + i), DyeColor.getByWoolData((byte) (15 - i)));
     }
-    
-    private final List<Pattern> patterns;
+
+    private final Pattern baseColor;
+    private final List<Pattern> patterns = new ArrayList<>();
     
     public BannerPattern(Nagger nagger, String pattern) throws IllegalArgumentException {
-        ImmutableList.Builder<Pattern> patterns = ImmutableList.builder();
+        List<Pattern> patterns = new ArrayList<>();
         char[] array = pattern.toCharArray();
         if (array.length % 2 != 0) throw new IllegalArgumentException("Banner pattern length must be a multiple of 2!");
         for (int length = array.length, index = 0; index < length; index += 2) {
@@ -41,17 +42,18 @@ public class BannerPattern {
             }
             patterns.add(new Pattern(dyeColor, patternType.patternType));
         }
-        this.patterns = patterns.build();
+        Iterator<Pattern> it = patterns.iterator();
+        if (it.hasNext()) {
+            baseColor = it.next();
+            it.forEachRemaining(this.patterns::add);
+        } else baseColor = null;
     }
 
     public void apply(BannerMeta meta) {
-        Iterator<Pattern> iterator = patterns.iterator();
-        if (iterator.hasNext())
-            meta.setBaseColor(iterator.next().getColor());
-        List<Pattern> patterns = new ArrayList<>();
-        while (iterator.hasNext())
-            patterns.add(iterator.next());
-        meta.setPatterns(patterns);
+        if (baseColor != null) {
+            meta.setBaseColor(baseColor.getColor());
+            meta.setPatterns(patterns);
+        }
     }
 
     public enum BannerPatternType {

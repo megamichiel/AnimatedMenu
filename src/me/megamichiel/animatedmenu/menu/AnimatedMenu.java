@@ -109,8 +109,9 @@ public class AnimatedMenu extends AbstractMenu {
         for (int slot = 0, result; slot < menuGrid.getSize(); slot++) {
             MenuItem item = menuGrid.getItems()[slot];
             if (!item.getSettings().isHidden(plugin, who)) {
-                items[result = item.getSlot(who, contents)] = item;
-                contents[result] = item.load(nagger, who);
+                ItemStack stack = item.load(nagger, who);
+                items[result = item.getSlot(who, contents, stack)] = item;
+                contents[result] = stack;
             }
         }
         inv.setContents(contents);

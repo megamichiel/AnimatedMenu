@@ -30,11 +30,8 @@ public class CommandExecutor extends Animatable<List<CommandExecutor.CommandHand
     }
     
     private boolean isStringOrPrimitive(Object input) {
-        return input instanceof String ||
-                input instanceof Integer || input instanceof Boolean ||
-                input instanceof Character || input instanceof Byte ||
-                input instanceof Short || input instanceof Double ||
-                input instanceof Long || input instanceof Float;
+        return input instanceof String || input instanceof Boolean
+                || input instanceof Character || input instanceof Number;
     }
 
     @Override
@@ -46,11 +43,15 @@ public class CommandExecutor extends Animatable<List<CommandExecutor.CommandHand
                 String str = raw.toString();
                 Command cmd = getCommand(str.toLowerCase(Locale.US));
                 if (cmd.prefix != null)
-                    str = str.substring(cmd.prefix.length());
+                    str = str.substring(cmd.prefix.length() + 1).trim();
                 result.add(getCommandHandler(cmd, plugin, str));
             } else if (raw instanceof AbstractConfig) {
                 for (Map.Entry<String, Object> entry : ((AbstractConfig) raw).values().entrySet()) {
-                    Command command = getCommand(entry.getKey().toLowerCase(Locale.US));
+                    String name = entry.getKey().toLowerCase(Locale.US);
+                    Command command = plugin.getCommands().stream()
+                            .filter(cmd -> name.equals(cmd.prefix.toLowerCase(Locale.US)))
+                            .findAny().orElse(null);
+                    if (command == null) continue;
                     Object value = entry.getValue();
                     if (isStringOrPrimitive(value))
                         result.add(getCommandHandler(command, plugin, value.toString()));

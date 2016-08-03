@@ -95,9 +95,10 @@ public abstract class AbstractMenu {
                     for (int i = 0; i < size; i++)
                         if (!(item = items[i])
                                 .getSettings().isHidden(plugin, player)) {
-                            int slot = item.getSlot(player, contents);
+                            ItemStack stack = item.getSettings().getItem(nagger, player);
+                            int slot = item.getSlot(player, contents, stack);
                             visible[slot] = item;
-                            contents[slot] = item.getSettings().getItem(nagger, player);
+                            contents[slot] = stack;
                         }
                     for (int i = 0; i < contents.length; i++) {
                         inv.setItem(i, contents[i]);
@@ -113,7 +114,7 @@ public abstract class AbstractMenu {
                     Map.Entry<Player, Inventory> entry = viewers.next();
                     Player player = entry.getKey();
                     Inventory inv = entry.getValue();
-                    int slot = item.getSlot(player, EMPTY_ITEM_ARRAY);
+                    int slot = item.getSlot(player, EMPTY_ITEM_ARRAY, null);
                     boolean hidden = item.getSettings().isHidden(plugin, player);
                     ItemStack is = inv.getItem(slot);
                     if (hidden && is != null) {

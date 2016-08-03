@@ -1,7 +1,5 @@
 package me.megamichiel.animatedmenu.menu;
 
-import com.google.common.base.Supplier;
-import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -37,7 +35,7 @@ public class MenuItem {
         return false;
     }
 
-    int getSlot(Player p, ItemStack[] contents) {
+    int getSlot(Player p, ItemStack[] contents, ItemStack stack) {
         return slot;
     }
 
