@@ -12,6 +12,7 @@ import org.bukkit.event.inventory.ClickType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public class ItemClickListener {
     
@@ -21,19 +22,23 @@ public class ItemClickListener {
     
     private final List<ClickProcessor> clicks = new ArrayList<>();
     
-    public ItemClickListener(AnimatedMenuPlugin plugin, AbstractConfig section) {
+    ItemClickListener(AnimatedMenuPlugin plugin, AbstractConfig section) {
+        ClickProcessor click;
         if (section.isSection("commands")) {
             AbstractConfig commandSection = section.getSection("commands");
-            for (String key : commandSection.keys()) {
-                if (commandSection.isSection(key))
-                    clicks.add(parse(plugin, commandSection.getSection(key)));
-            }
-        } else clicks.add(parse(plugin, section));
+            commandSection.keys().stream().filter(commandSection::isSection)
+                    .map(key -> parse(plugin, commandSection.getSection(key)))
+                    .filter(Objects::nonNull).forEach(clicks::add);
+        } else if ((click = parse(plugin, section)) != null) clicks.add(click);
     }
 
     private ClickProcessor parse(AnimatedMenuPlugin plugin, AbstractConfig section) {
-        CommandExecutor commandExecutor = new CommandExecutor(plugin, section, "commands"),
-                buyCommandExecutor = new CommandExecutor(plugin, section, "buy-commands");
+        CommandExecutor commandExecutor = new CommandExecutor(plugin),
+                buyCommandExecutor = new CommandExecutor(plugin);
+        commandExecutor.load(plugin, section, "commands");
+        buyCommandExecutor.load(plugin, section, "buy-commands");
+        if (commandExecutor.isEmpty() && buyCommandExecutor.isEmpty())
+            return null;
         String click = section.getString("click-type", "both").toLowerCase(Locale.US);
         boolean rightClick = click.equals("both") || click.equals("right"),
                 leftClick = click.equals("both") || click.equals("left");

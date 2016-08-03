@@ -23,10 +23,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -99,7 +96,7 @@ public class MenuItemSettings {
             String[] split = section.getString("hide-flags").split(", ");
             for (String str : split) {
                 try {
-                    ItemFlag flag = ItemFlag.valueOf("HIDE_" + str.toUpperCase().replace('-', '_'));
+                    ItemFlag flag = ItemFlag.valueOf("HIDE_" + str.toUpperCase(Locale.US).replace('-', '_'));
                     hideFlags |= (1 << flag.ordinal());
                 } catch (IllegalArgumentException ex) {
                     plugin.nag("No Hide Flag by name \"" + str + "\" found!");

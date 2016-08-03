@@ -21,6 +21,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class MenuLoader implements DirectoryListener.FileListener {
 
@@ -49,9 +50,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
     }
 
     public void onDisable() {
-        if (listener != null) {
-            listener.stop();
-        }
+        if (listener != null) listener.stop();
     }
 
     public List<AnimatedMenu> loadMenus() {
@@ -64,7 +63,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         return list;
     }
 
-    protected void loadMenus(List<AnimatedMenu> menus, File dir) {
+    private void loadMenus(List<AnimatedMenu> menus, File dir) {
         File[] files = dir.listFiles();
         if (files == null) return;
         for (File file : files) {
@@ -82,7 +81,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         }
     }
 
-    protected AnimatedMenu loadMenu(String name, AbstractConfig config) {
+    private AnimatedMenu loadMenu(String name, AbstractConfig config) {
         AnimatedText title = new AnimatedText();
         title.load(plugin, config, "menu-name", new StringBundle(plugin, name));
         MenuType type;
@@ -102,7 +101,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         return menu;
     }
 
-    protected void loadMenu(AnimatedMenu menu, AbstractConfig config) {
+    private void loadMenu(AnimatedMenu menu, AbstractConfig config) {
         loadSettings(menu.getSettings(), config);
         AbstractConfig items = config.getSection("items");
         if (items == null) {
@@ -143,13 +142,11 @@ public class MenuLoader implements DirectoryListener.FileListener {
                     openerLore = section.isSet("menu-opener-lore");
             if (openerName || openerLore) {
                 ItemMeta meta = opener.getItemMeta();
-                if(openerName)
+                if (openerName)
                     meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', section.getString("menu-opener-name")));
-                if(openerLore) {
-                    List<String> lore = new ArrayList<>();
-                    for (String line : section.getStringList("menu-opener-lore"))
-                        lore.add(ChatColor.translateAlternateColorCodes('&', line));
-                    meta.setLore(lore);
+                if (openerLore) {
+                    meta.setLore(section.getStringList("menu-opener-lore").stream()
+                            .map(StringBundle::colorAmpersands).collect(Collectors.toList()));
                 }
                 opener.setItemMeta(meta);
             }

@@ -4,6 +4,8 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
 import org.bukkit.entity.Player;
 
+import java.util.Locale;
+
 public abstract class Command<T, C> {
 
 	final String prefix;
