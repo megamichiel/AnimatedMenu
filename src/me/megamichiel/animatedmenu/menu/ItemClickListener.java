@@ -6,6 +6,7 @@ import me.megamichiel.animatedmenu.util.Flag;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-public class ItemClickListener {
+class ItemClickListener {
     
     private static final String PERMISSION_MESSAGE = "&cYou are not permitted to do that!",
             PRICE_MESSAGE = "&cYou don't have enough money for that!",
@@ -49,7 +50,17 @@ public class ItemClickListener {
                 bypassPermission = section.getString("bypass-permission"),
                 priceMessage = section.getString("price-message", PRICE_MESSAGE),
                 pointsMessage = section.getString("points-message", POINTS_MESSAGE);
-        boolean close = Flag.parseBoolean(section.getString("close"), false);
+        CloseAction closeAction = CloseAction.NEVER;
+        if (section.isString("close")) {
+            String close = section.getString("close");
+            try {
+                closeAction = CloseAction.valueOf(close
+                        .toUpperCase(Locale.US).replace('-', '_'));
+            } catch (IllegalArgumentException ex) {
+                if (Flag.parseBoolean(close, false))
+                    closeAction = CloseAction.ON_SUCCESS;
+            }
+        }
         return new ClickProcessor(plugin, commandExecutor, buyCommandExecutor,
                 rightClick, leftClick, shiftClick, price, points,
                 StringBundle.parse(plugin, permission),
@@ -57,7 +68,7 @@ public class ItemClickListener {
                 StringBundle.parse(plugin, bypassPermission),
                 StringBundle.parse(plugin, priceMessage).colorAmpersands(),
                 StringBundle.parse(plugin, pointsMessage).colorAmpersands(),
-                close);
+                closeAction);
     }
     
     public void onClick(Player who, ClickType click) {
@@ -72,13 +83,14 @@ public class ItemClickListener {
         private final Flag shiftClick;
         private final int price, pointPrice;
         private final StringBundle permission, permissionMessage, bypassPermission, priceMessage, pointsMessage;
-        private final boolean close;
+        private final CloseAction closeAction;
 
         private ClickProcessor(AnimatedMenuPlugin plugin, CommandExecutor commandExecutor,
                                CommandExecutor buyCommandExecutor, boolean rightClick, boolean leftClick,
                                Flag shiftClick, int price, int pointPrice, StringBundle permission,
                                StringBundle permissionMessage, StringBundle bypassPermission,
-                               StringBundle priceMessage, StringBundle pointsMessage, boolean close) {
+                               StringBundle priceMessage, StringBundle pointsMessage,
+                               CloseAction closeAction) {
             this.plugin = plugin;
             this.commandExecutor = commandExecutor;
             this.buyCommandExecutor = buyCommandExecutor;
@@ -92,7 +104,7 @@ public class ItemClickListener {
             this.bypassPermission = bypassPermission;
             this.priceMessage = priceMessage;
             this.pointsMessage = pointsMessage;
-            this.close = close;
+            this.closeAction = closeAction;
         }
 
         public void onClick(Player who, ClickType click) {
@@ -101,6 +113,7 @@ public class ItemClickListener {
                 if (bypassPermission == null || !who.hasPermission(bypassPermission.toString(who))) {
                     if (permission != null && !who.hasPermission(permission.toString(who))) {
                         who.sendMessage(permissionMessage.toString(who));
+                        close(who, false);
                         return;
                     }
                     boolean bought = false;
@@ -112,6 +125,7 @@ public class ItemClickListener {
                             bought = true;
                         } else {
                             who.sendMessage(priceMessage.toString(who));
+                            close(who, false);
                             return;
                         }
                     }
@@ -121,14 +135,35 @@ public class ItemClickListener {
                             bought = true;
                         } else {
                             who.sendMessage(pointsMessage.toString(who));
+                            close(who, false);
                             return;
                         }
                     }
                     if (bought) buyCommandExecutor.execute(plugin, who);
                 }
                 commandExecutor.execute(plugin, who);
-                if (close) who.closeInventory();
+                close(who, true);
             }
+        }
+
+        private void close(HumanEntity who, boolean success) {
+            if ((closeAction.onSuccess && success) ||
+                    (closeAction.onFailure && !success))
+                who.closeInventory();
+        }
+    }
+
+    private enum CloseAction {
+        ALWAYS(true, true),
+        ON_SUCCESS(true, false),
+        ON_FAILURE(false, true),
+        NEVER(false, false);
+
+        private final boolean onSuccess, onFailure;
+
+        CloseAction(boolean onSuccess, boolean onFailure) {
+            this.onSuccess = onSuccess;
+            this.onFailure = onFailure;
         }
     }
 }

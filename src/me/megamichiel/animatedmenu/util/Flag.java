@@ -32,17 +32,17 @@ public enum Flag {
     }
 
     public static boolean parseBoolean(String str, boolean def) {
-        Flag flag = parseFlag(str, def ? Flag.TRUE : Flag.FALSE);
-        return flag != Flag.BOTH && flag.booleanValue();
+        Flag flag = parseFlag(str, def ? TRUE : FALSE);
+        return flag != BOTH && flag.booleanValue();
     }
 
     private static final Map<String, Flag> flags = new ImmutableMap.Builder<String, Flag>()
-            .put("true", Flag.TRUE).put("yes", Flag.TRUE).put("on", Flag.TRUE).put("enable", Flag.TRUE)
-            .put("both", Flag.BOTH).put("all", Flag.BOTH).build();
+            .put("true", TRUE).put("yes", TRUE).put("on", TRUE).put("enable", TRUE)
+            .put("both", BOTH).put("all", BOTH).build();
 
     public static Flag parseFlag(String str, Flag def) {
         if (str == null) return def;
         Flag flag = flags.get(str.toLowerCase(Locale.US));
-        return flag == null ? Flag.FALSE : flag;
+        return flag == null ? FALSE : flag;
     }
 }

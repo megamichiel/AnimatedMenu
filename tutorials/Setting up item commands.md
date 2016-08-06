@@ -58,7 +58,9 @@ There are a few keys which you can customize it with:
   </li>
   <li>
     <b>Close</b><br/>
-    If set to 'true', 'yes', 'on' or 'enable', the player's inventory will be closed after these commands are performed.
+    When to close the menu when the player clicks the item.<br/>
+    Can be 'always', 'on-success', 'on-failure' (no permission, not enough money etc.) or 'never'<br/>
+    To support backwards compatibility, 'true', 'yes', 'on' and 'enable' also mean 'on-success'
   </li>
   <li>
     <b>Commands</b><br/>
