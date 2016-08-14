@@ -68,10 +68,11 @@ public class AnimatedMenu extends AbstractMenu {
     
     private final Map<Player, Inventory> openMenu = new ConcurrentHashMap<>();
     
-    public AnimatedMenu(AnimatedMenuPlugin plugin, String name, AnimatedText title,
+    public AnimatedMenu(AnimatedMenuPlugin plugin, String name,
+                        MenuLoader loader, AnimatedText title,
                         int titleUpdateDelay, MenuType type,
                         StringBundle permission, StringBundle permissionMessage) {
-        super(plugin, name, type);
+        super(plugin, name, type, loader);
         this.plugin = plugin;
         this.menuTitle = title;
         this.titleUpdateDelay = titleUpdateDelay;
@@ -104,13 +105,13 @@ public class AnimatedMenu extends AbstractMenu {
             inv = Bukkit.createInventory(null, menuType.getSize(), title);
         else inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
         ItemStack[] contents = new ItemStack[inv.getSize()];
-        MenuItem[] items = this.items.get(who);
-        if (items == null) this.items.put(who, items = new MenuItem[inv.getSize()]);
+        IMenuItem[] items = this.items.get(who);
+        if (items == null) this.items.put(who, items = new IMenuItem[inv.getSize()]);
         for (int slot = 0, result; slot < menuGrid.getSize(); slot++) {
-            MenuItem item = menuGrid.getItems()[slot];
-            if (!item.getSettings().isHidden(plugin, who)) {
+            IMenuItem item = menuGrid.getItems()[slot];
+            if (!item.isHidden(plugin, who)) {
                 ItemStack stack = item.load(nagger, who);
-                items[result = item.getSlot(who, contents, stack)] = item;
+                items[result = item.getSlot(who, contents, stack, true)] = item;
                 contents[result] = stack;
             }
         }

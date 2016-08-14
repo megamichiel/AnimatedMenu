@@ -10,6 +10,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerMap<V> extends ConcurrentHashMap<Player, V> implements Listener {
 
+    public PlayerMap() {}
+
+    public PlayerMap(Plugin plugin) {
+        init(plugin);
+    }
+
     public void init(Plugin plugin) {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }

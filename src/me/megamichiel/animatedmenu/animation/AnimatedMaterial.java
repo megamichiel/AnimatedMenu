@@ -25,6 +25,11 @@ public class AnimatedMaterial extends Animatable<IPlaceholder<ItemStack>> {
         return IPlaceholder.constant(new ItemStack(Material.STONE));
     }
 
+    @Override
+    public AnimatedMaterial clone() {
+        return (AnimatedMaterial) super.clone();
+    }
+
     public static ItemStack parseItemStack(Nagger nagger, String str) {
         String[] split = str.split(":");
         MaterialMatcher matcher = MaterialMatcher.parse(split[0]);

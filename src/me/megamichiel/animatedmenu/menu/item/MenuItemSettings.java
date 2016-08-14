@@ -1,4 +1,4 @@
-package me.megamichiel.animatedmenu.menu;
+package me.megamichiel.animatedmenu.menu.item;
 
 import com.google.common.collect.Sets;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
@@ -129,7 +129,7 @@ public class MenuItemSettings {
     }
 
     ItemStack first(Nagger nagger, Player who) {
-        return applyFirst(nagger, who, material.get().invoke(nagger, who));
+        return applyFirst(nagger, who, material.get().invoke(nagger, who).clone());
     }
 
     private ItemStack applyFirst(Nagger nagger, Player who, ItemStack handle) {

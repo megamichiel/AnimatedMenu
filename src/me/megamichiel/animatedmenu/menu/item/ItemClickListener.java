@@ -1,4 +1,4 @@
-package me.megamichiel.animatedmenu.menu;
+package me.megamichiel.animatedmenu.menu.item;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.command.CommandExecutor;
@@ -13,7 +13,6 @@ import org.bukkit.event.inventory.ClickType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 
 class ItemClickListener {
     
@@ -24,13 +23,12 @@ class ItemClickListener {
     private final List<ClickProcessor> clicks = new ArrayList<>();
     
     ItemClickListener(AnimatedMenuPlugin plugin, AbstractConfig section) {
-        ClickProcessor click;
         if (section.isSection("commands")) {
             AbstractConfig commandSection = section.getSection("commands");
             commandSection.keys().stream().filter(commandSection::isSection)
                     .map(key -> parse(plugin, commandSection.getSection(key)))
-                    .filter(Objects::nonNull).forEach(clicks::add);
-        } else if ((click = parse(plugin, section)) != null) clicks.add(click);
+                    .forEach(clicks::add);
+        } else clicks.add(parse(plugin, section));
     }
 
     private ClickProcessor parse(AnimatedMenuPlugin plugin, AbstractConfig section) {
@@ -38,8 +36,6 @@ class ItemClickListener {
                 buyCommandExecutor = new CommandExecutor(plugin);
         commandExecutor.load(plugin, section, "commands");
         buyCommandExecutor.load(plugin, section, "buy-commands");
-        if (commandExecutor.isEmpty() && buyCommandExecutor.isEmpty())
-            return null;
         String click = section.getString("click-type", "both").toLowerCase(Locale.US);
         boolean rightClick = click.equals("both") || click.equals("right"),
                 leftClick = click.equals("both") || click.equals("left");
@@ -71,7 +67,7 @@ class ItemClickListener {
                 closeAction);
     }
     
-    public void onClick(Player who, ClickType click) {
+    void onClick(Player who, ClickType click) {
         for (ClickProcessor cp : this.clicks) cp.onClick(who, click);
     }
     

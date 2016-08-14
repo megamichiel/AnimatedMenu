@@ -130,4 +130,8 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
         }
         logger.info(this.menus.size() + " menu" + (this.menus.size() == 1 ? "" : "s") + " loaded");
     }
+
+    public MenuLoader getMenuLoader() {
+        return menuLoader;
+    }
 }

@@ -4,6 +4,7 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.MenuRegistry;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
 import me.megamichiel.animatedmenu.command.SoundCommand;
+import me.megamichiel.animatedmenu.menu.item.MenuItem;
 import me.megamichiel.animatedmenu.util.DirectoryListener;
 import me.megamichiel.animatedmenu.util.DirectoryListener.FileAction;
 import me.megamichiel.animatedmenu.util.Flag;
@@ -81,7 +82,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         }
     }
 
-    private AnimatedMenu loadMenu(String name, AbstractConfig config) {
+    protected AnimatedMenu loadMenu(String name, AbstractConfig config) {
         AnimatedText title = new AnimatedText();
         title.load(plugin, config, "menu-name", new StringBundle(plugin, name));
         MenuType type;
@@ -95,7 +96,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         StringBundle permission = StringBundle.parse(plugin, config.getString("permission")),
                 permissionMessage = StringBundle.parse(plugin, config.getString("permission-message"));
         if (permissionMessage != null) permissionMessage.colorAmpersands();
-        AnimatedMenu menu = type.newMenu(plugin, name, title,
+        AnimatedMenu menu = type.newMenu(plugin, name, this, title,
                 config.getInt("title-update-delay", 20), permission, permissionMessage);
         loadMenu(menu, config);
         return menu;
@@ -108,29 +109,11 @@ public class MenuLoader implements DirectoryListener.FileListener {
             plugin.nag("No items specified for " + menu.getName() + "!");
             return;
         }
-        MenuType type = menu.getMenuType();
         for (String key : items.keys()) {
             AbstractConfig section = items.getSection(key);
-            MenuItemSettings settings = new MenuItemSettings(plugin, key, menu.getName(), section);
-            MenuItem item;
-            if (section.isInt("x") && section.isInt("y")) {
-                int x = clamp(1, type.getWidth(), section.getInt("x")) - 1,
-                        y = clamp(1, type.getHeight(), section.getInt("y")) - 1;
-                item = new MenuItem(menu, settings, (y * type.getWidth()) + x);
-            } else if (section.isInt("slot")) {
-                item = new MenuItem(menu, settings, clamp(1, type.getSize(), section.getInt("slot")) - 1);
-            } else if (section.isSet("slot")) {
-                try {
-                    item = new MenuItem(menu, settings, section.get("slot"));
-                } catch (IllegalArgumentException ex) {
-                    plugin.nag("Invalid slot specified for item " + key + " in menu " + menu.getName() + "!");
-                    continue;
-                }
-            } else {
-                plugin.nag("No slot specified for item " + key + " in menu " + menu.getName() + "!");
-                continue;
-            }
-            menu.getMenuGrid().addItem(item);
+            IMenuItem item = createItem(menu, key,
+                    items.getSection(key));
+            if (item != null) menu.getMenuGrid().addItem(item);
         }
         menu.getMenuGrid().sortSlots(); // Put items with non-dynamic slot before those with it
     }
@@ -165,8 +148,14 @@ public class MenuLoader implements DirectoryListener.FileListener {
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
     }
 
-    private int clamp(int min, int max, int val) {
-        return val < min ? min : val > max ? max : val;
+    public IMenuItem createItem(AbstractMenu menu,
+                                String name, AbstractConfig section) {
+        try {
+            return new MenuItem(plugin, menu, name, section);
+        } catch (IllegalArgumentException ex) {
+            plugin.nag(ex.getMessage());
+            return null;
+        }
     }
 
     @Override

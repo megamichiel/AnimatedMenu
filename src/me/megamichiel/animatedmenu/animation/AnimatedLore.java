@@ -61,6 +61,15 @@ public class AnimatedLore extends Animatable<Frame> {
         return loadFrame(nagger, (List<String>) o);
     }
 
+    @Override
+    public AnimatedLore clone() {
+        AnimatedLore lore = (AnimatedLore) super.clone();
+        for (int i = lore.size(); i-- != 0;) {
+            lore.set(i, new Frame(lore.get(i)));
+        }
+        return lore;
+    }
+
     public class Frame extends ArrayList<IPlaceholder<String>> {
         
         private static final long serialVersionUID = 3655877616632972680L;
@@ -69,7 +78,7 @@ public class AnimatedLore extends Animatable<Frame> {
             super();
         }
         
-        public Frame(Collection<? extends StringBundle> list) {
+        public Frame(Collection<? extends IPlaceholder<String>> list) {
             super(list);
         }
 

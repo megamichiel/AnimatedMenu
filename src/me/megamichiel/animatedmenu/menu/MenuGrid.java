@@ -3,20 +3,22 @@ package me.megamichiel.animatedmenu.menu;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
+import java.util.Arrays;
+
 public class MenuGrid {
 
     private final AbstractMenu menu;
-    private final MenuItem[] items;
+    private IMenuItem[] items;
     private int size = 0;
     
     MenuGrid(AbstractMenu menu, int size) {
         this.menu = menu;
-        items = new MenuItem[size];
+        items = new IMenuItem[size];
     }
 
     void sortSlots() {
-        MenuItem[] solid = new MenuItem[size],
-                dynamic = new MenuItem[size];
+        IMenuItem[] solid = new IMenuItem[size],
+                dynamic = new IMenuItem[size];
         int solidSize = 0, dynamicSize = 0;
         for (int i = 0; i < size; i++) {
             if (items[i].hasDynamicSlot()) dynamic[dynamicSize++] = items[i];
@@ -27,12 +29,13 @@ public class MenuGrid {
     }
     
     public void click(Player p, ClickType click, int slot) {
-        MenuItem item = menu.getItem(p, slot);
-        if (item != null && item.getSettings().getClickListener() != null)
-            item.getSettings().getClickListener().onClick(p, click);
+        IMenuItem item = menu.getItem(p, slot);
+        if (item != null) item.click(p, click);
     }
     
-    public void addItem(MenuItem item) {
+    public void addItem(IMenuItem item) {
+        if (size == items.length)
+            items = Arrays.copyOf(items, size + 9);
         items[size++] = item;
     }
 
@@ -40,7 +43,7 @@ public class MenuGrid {
         while (size > 0) items[--size] = null;
     }
 
-    public MenuItem[] getItems() {
+    public IMenuItem[] getItems() {
         return items;
     }
 

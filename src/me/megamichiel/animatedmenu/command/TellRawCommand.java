@@ -18,12 +18,9 @@ public class TellRawCommand extends TextCommand {
 		{
 			String pkg = Bukkit.getServer().getClass().getPackage().getName();
 			String nms = "net.minecraft.server." + pkg.split("\\.")[3];
-			try
-			{
+			try {
 				m1 = Class.forName(nms + ".IChatBaseComponent$ChatSerializer").getDeclaredMethod("a", String.class);
-			}
-			catch (Exception ex)
-			{
+			} catch (Exception ex) {
 				m1 = Class.forName(nms + ".ChatSerializer").getDeclaredMethod("a", String.class);
 			}
 			Class<?> chatComponent = Class.forName(nms + ".IChatBaseComponent");

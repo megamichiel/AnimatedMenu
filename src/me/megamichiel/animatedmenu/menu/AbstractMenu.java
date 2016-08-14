@@ -18,18 +18,27 @@ public abstract class AbstractMenu {
     protected final Nagger nagger;
     protected final String name;
     protected final MenuType menuType;
+    protected final MenuLoader loader;
     protected final MenuGrid menuGrid;
 
     protected AnimatedMenuPlugin plugin;
     private boolean dynamicSlots;
 
-    protected final PlayerMap<MenuItem[]> items = new PlayerMap<>();
+    private int slotUpdateDelay, slotUpdateTimer;
 
-    protected AbstractMenu(Nagger nagger, String name, MenuType menuType) {
+    protected final PlayerMap<IMenuItem[]> items = new PlayerMap<>();
+
+    protected AbstractMenu(Nagger nagger, String name,
+                           MenuType menuType, MenuLoader loader) {
         this.nagger = nagger;
         this.name = name;
         this.menuType = menuType;
+        this.loader = loader;
         menuGrid = new MenuGrid(this, menuType.getSize());
+    }
+
+    public void setSlotUpdateDelay(int slotUpdateDelay) {
+        this.slotUpdateDelay = slotUpdateDelay;
     }
 
     public void init(AnimatedMenuPlugin plugin) {
@@ -63,8 +72,8 @@ public abstract class AbstractMenu {
 
     protected abstract Iterator<Map.Entry<Player, Inventory>> getViewers();
 
-    public MenuItem getItem(Player who, int slot) {
-        MenuItem[] i = items.get(who);
+    public IMenuItem getItem(Player who, int slot) {
+        IMenuItem[] i = items.get(who);
         return i == null ? null : i[slot];
     }
 
@@ -74,29 +83,30 @@ public abstract class AbstractMenu {
 
     public void tick() {
         if (plugin == null) return;
-        MenuItem[] items = menuGrid.getItems();
+        IMenuItem[] items = menuGrid.getItems();
         int size = menuGrid.getSize();
         if (dynamicSlots) {
             boolean changed = false;
             for (int i = 0; i < size; i++) changed |= items[i].tick();
             if (changed) {
-                for (MenuItem[] menuItems : this.items.values())
+                for (IMenuItem[] menuItems : this.items.values())
                     Arrays.fill(menuItems, null);
                 ItemStack[] contents = new ItemStack[items.length];
                 Iterator<Map.Entry<Player, Inventory>> viewers = getViewers();
+                boolean updateSlots = slotUpdateTimer-- == 0;
+                if (updateSlots) slotUpdateTimer = slotUpdateDelay;
                 while (viewers.hasNext()) {
                     Map.Entry<Player, Inventory> entry = viewers.next();
                     Player player = entry.getKey();
                     Inventory inv = entry.getValue();
-                    MenuItem[] visible = this.items.get(player);
+                    IMenuItem[] visible = this.items.get(player);
                     if (visible == null) this.items.put(player,
-                            visible = new MenuItem[inv.getSize()]);
-                    MenuItem item;
+                            visible = new IMenuItem[inv.getSize()]);
+                    IMenuItem item;
                     for (int i = 0; i < size; i++)
-                        if (!(item = items[i])
-                                .getSettings().isHidden(plugin, player)) {
-                            ItemStack stack = item.getSettings().getItem(nagger, player);
-                            int slot = item.getSlot(player, contents, stack);
+                        if (!(item = items[i]).isHidden(plugin, player)) {
+                            ItemStack stack = item.getItem(nagger, player);
+                            int slot = item.getSlot(player, contents, stack, updateSlots);
                             visible[slot] = item;
                             contents[slot] = stack;
                         }
@@ -107,15 +117,15 @@ public abstract class AbstractMenu {
                 }
             }
         } else for (int index = 0; index < size; index++) {
-            MenuItem item = items[index];
+            IMenuItem item = items[index];
             if (item.tick()) {
                 Iterator<Map.Entry<Player, Inventory>> viewers = getViewers();
                 while (viewers.hasNext()) {
                     Map.Entry<Player, Inventory> entry = viewers.next();
                     Player player = entry.getKey();
                     Inventory inv = entry.getValue();
-                    int slot = item.getSlot(player, EMPTY_ITEM_ARRAY, null);
-                    boolean hidden = item.getSettings().isHidden(plugin, player);
+                    int slot = item.getSlot(player, EMPTY_ITEM_ARRAY, null, false);
+                    boolean hidden = item.isHidden(plugin, player);
                     ItemStack is = inv.getItem(slot);
                     if (hidden && is != null) {
                         inv.setItem(slot, null);
@@ -124,13 +134,13 @@ public abstract class AbstractMenu {
                         inv.setItem(slot, item.load(nagger, player));
                         is = inv.getItem(slot);
                     }
-                    MenuItem[] i = this.items.get(player);
-                    if (i == null) this.items.put(player, i = new MenuItem[inv.getSize()]);
+                    IMenuItem[] i = this.items.get(player);
+                    if (i == null) this.items.put(player, i = new IMenuItem[inv.getSize()]);
                     if (!hidden) {
                         item.apply(nagger, player, is);
                         i[slot] = item;
                     } else {
-                        if (i[slot] == item) i[slot] = null;
+                        if (i[slot] == item) i[slot] = null; // Only replace if the same item
                     }
                 }
             }
