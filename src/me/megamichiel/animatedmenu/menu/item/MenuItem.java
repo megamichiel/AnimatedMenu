@@ -80,6 +80,6 @@ public class MenuItem implements IMenuItem {
 
     @Override
     public void click(Player player, ClickType click) {
-        settings.getClickListener().onClick(player, click);
+        settings.clickListener.onClick(player, click);
     }
 }

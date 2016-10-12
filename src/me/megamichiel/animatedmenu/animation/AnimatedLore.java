@@ -64,9 +64,8 @@ public class AnimatedLore extends Animatable<Frame> {
     @Override
     public AnimatedLore clone() {
         AnimatedLore lore = (AnimatedLore) super.clone();
-        for (int i = lore.size(); i-- != 0;) {
+        for (int i = lore.size(); i-- != 0;)
             lore.set(i, new Frame(lore.get(i)));
-        }
         return lore;
     }
 

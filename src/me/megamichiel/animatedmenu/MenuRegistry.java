@@ -111,8 +111,6 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     
     void loadMenus() {
         clear();
-
-        menuLoader = plugin.getDefaultMenuLoader();
         
         Logger logger = plugin.getLogger();
         logger.info("Loading menus...");
@@ -121,8 +119,8 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
         if (!file.exists() && !file.mkdir())
             plugin.getLogger().warning("Failed to create images folder!");
 
-        menuLoader.onEnable(plugin);
-        List<AnimatedMenu> list = menuLoader.loadMenus();
+        getMenuLoader().onEnable(plugin);
+        List<AnimatedMenu> list = getMenuLoader().loadMenus();
         if (list != null) {
             for (AnimatedMenu menu : list)
                 menu.init(plugin);
@@ -132,6 +130,8 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     }
 
     public MenuLoader getMenuLoader() {
+        if (menuLoader == null)
+            return menuLoader = plugin.getDefaultMenuLoader();
         return menuLoader;
     }
 }

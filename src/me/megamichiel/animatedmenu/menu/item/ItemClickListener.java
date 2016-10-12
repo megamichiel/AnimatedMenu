@@ -51,7 +51,7 @@ class ItemClickListener {
             String close = section.getString("close");
             try {
                 closeAction = CloseAction.valueOf(close
-                        .toUpperCase(Locale.US).replace('-', '_'));
+                        .toUpperCase(Locale.ENGLISH).replace('-', '_'));
             } catch (IllegalArgumentException ex) {
                 if (Flag.parseBoolean(close, false))
                     closeAction = CloseAction.ON_SUCCESS;
@@ -103,7 +103,7 @@ class ItemClickListener {
             this.closeAction = closeAction;
         }
 
-        public void onClick(Player who, ClickType click) {
+        void onClick(Player who, ClickType click) {
             if (((rightClick && click.isRightClick()) || (leftClick && click.isLeftClick()))
                     && shiftClick.matches(click.isShiftClick())) {
                 if (bypassPermission == null || !who.hasPermission(bypassPermission.toString(who))) {
@@ -135,9 +135,9 @@ class ItemClickListener {
                             return;
                         }
                     }
-                    if (bought) buyCommandExecutor.execute(plugin, who);
+                    if (bought) buyCommandExecutor.execute(who);
                 }
-                commandExecutor.execute(plugin, who);
+                commandExecutor.execute(who);
                 close(who, true);
             }
         }
@@ -150,6 +150,7 @@ class ItemClickListener {
     }
 
     private enum CloseAction {
+
         ALWAYS(true, true),
         ON_SUCCESS(true, false),
         ON_FAILURE(false, true),

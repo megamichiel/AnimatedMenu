@@ -1,6 +1,5 @@
 package me.megamichiel.animatedmenu.menu.item;
 
-import com.google.common.collect.Sets;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
@@ -9,6 +8,7 @@ import me.megamichiel.animatedmenu.util.MaterialMatcher;
 import me.megamichiel.animatedmenu.util.Skull;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.AnimatedText;
+import me.megamichiel.animationlib.bukkit.NBTUtil;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
@@ -23,8 +23,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,13 +37,14 @@ public class MenuItemSettings {
     private final AnimatedLore lore;
     private final int frameDelay, refreshDelay;
     private final Map<Enchantment, Integer> enchantments;
-    private final ItemClickListener clickListener;
+    final ItemClickListener clickListener;
     private final StringBundle hidePermission;
     private final boolean negateHidePermission;
     private final Color leatherArmorColor;
     private final Skull skull;
-    private BannerPattern bannerPattern;
-    private int hideFlags = 0;
+    private final BannerPattern bannerPattern;
+    private final int hideFlags;
+    private final boolean unbreakable;
 
     MenuItemSettings(AnimatedMenuPlugin plugin, String name,
                             String menu, AbstractConfig section) {
@@ -82,14 +84,17 @@ public class MenuItemSettings {
         leatherArmorColor = getColor(section.getString("color"));
         String skullOwner = section.getString("skullowner");
         skull = skullOwner == null ? null : new Skull(plugin, skullOwner);
+        BannerPattern pattern = BannerPattern.EMPTY;
         try {
-            bannerPattern = new BannerPattern(plugin, section.getString("bannerpattern"));
-        } catch (NullPointerException ex) {
-            // Don't care if it doesn't exist
+            String s = section.getString("bannerpattern");
+            if (s != null)
+                pattern = new BannerPattern(plugin, s);
         } catch (IllegalArgumentException ex) {
             plugin.nag("Failed to parse banner pattern '" + section.getString("bannerpattern") + "'!");
             plugin.nag(ex.getMessage());
         }
+        bannerPattern = pattern;
+        int hideFlags = 0;
         if (section.isInt("hide-flags")) {
             hideFlags = section.getInt("hide-flags");
         } else if (section.isString("hide-flags")) {
@@ -103,6 +108,7 @@ public class MenuItemSettings {
                 }
             }
         }
+        this.hideFlags = hideFlags;
         String perm = section.getString("hide-permission");
         if (perm == null) {
             hidePermission = null;
@@ -114,9 +120,8 @@ public class MenuItemSettings {
             hidePermission = StringBundle.parse(plugin, perm);
             negateHidePermission = false;
         }
+        unbreakable = section.getBoolean("unbreakable");
     }
-
-    private final Set<Player> hidden = Sets.newSetFromMap(new ConcurrentHashMap<Player, Boolean>());
     
     boolean isHidden(AnimatedMenuPlugin plugin, Player p) {
         if (hidePermission != null)
@@ -129,10 +134,14 @@ public class MenuItemSettings {
     }
 
     ItemStack first(Nagger nagger, Player who) {
-        return applyFirst(nagger, who, material.get().invoke(nagger, who).clone());
-    }
+        ItemStack handle = this.material.get().invoke(nagger, who);
+        if (unbreakable) {
+            NBTUtil nbt = NBTUtil.getInstance();
+            if (handle != (handle = nbt.asNMS(handle)))
+                nbt.getOrCreateTagMap(handle).put("Unbreakable", nbt.TRUE);
+            else handle = new ItemStack(handle.getType(), handle.getAmount(), handle.getDurability());
+        } else handle = new ItemStack(handle.getType(), handle.getAmount(), handle.getDurability());
 
-    private ItemStack applyFirst(Nagger nagger, Player who, ItemStack handle) {
         if (this.enchantments != null)
             handle.addUnsafeEnchantments(this.enchantments);
         
@@ -163,6 +172,16 @@ public class MenuItemSettings {
     }
     
     public ItemStack apply(Nagger nagger, Player p, ItemStack handle) {
+        if (unbreakable) {
+            NBTUtil nbt = NBTUtil.getInstance();
+            handle = nbt.asNMS(handle);
+            if (nbt.isSupported(handle)) try {
+                nbt.getOrCreateTagMap(handle).put("Unbreakable", nbt.TRUE);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
         ItemStack material = this.material.get().invoke(nagger, p);
         handle.setType(material.getType());
         handle.setAmount(material.getAmount());
@@ -208,10 +227,6 @@ public class MenuItemSettings {
 
     public String getName() {
         return this.name;
-    }
-
-    ItemClickListener getClickListener() {
-        return clickListener;
     }
 
     int getFrameDelay() {

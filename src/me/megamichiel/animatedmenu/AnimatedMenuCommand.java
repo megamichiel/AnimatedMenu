@@ -1,11 +1,6 @@
 package me.megamichiel.animatedmenu;
 
-import static org.bukkit.ChatColor.*;
-
-import java.util.*;
-
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
-
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -13,6 +8,12 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+import static org.bukkit.ChatColor.*;
 
 /**
  * 
@@ -72,10 +73,11 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
                     if (args.length < 2) return invalid(sender, "You must specify a menu!");
                     AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
                     if (menu == null) return invalid(sender, "Couldn't find a menu by that name!");
-                    Player target = null;
+                    Player target;
                     if (args.length > 2) {
                         if (!sender.hasPermission("animatedmenu.command." + type + ".other"))
                             return invalid(sender, "You are not permitted to do that for other players!");
+                        target = null;
                         for (Player player : Bukkit.getOnlinePlayers())
                             if (player.getName().equals(args[2])) {
                                 target = player;

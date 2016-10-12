@@ -9,15 +9,10 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class AnimatedMenu extends AbstractMenu {
@@ -66,14 +61,12 @@ public class AnimatedMenu extends AbstractMenu {
 
     private int titleUpdateTick = 0;
     
-    private final Map<Player, Inventory> openMenu = new ConcurrentHashMap<>();
-    
     public AnimatedMenu(AnimatedMenuPlugin plugin, String name,
                         MenuLoader loader, AnimatedText title,
                         int titleUpdateDelay, MenuType type,
                         StringBundle permission, StringBundle permissionMessage) {
         super(plugin, name, type, loader);
-        this.plugin = plugin;
+        init(plugin);
         this.menuTitle = title;
         this.titleUpdateDelay = titleUpdateDelay;
 
@@ -87,14 +80,8 @@ public class AnimatedMenu extends AbstractMenu {
     }
 
     public void handleMenuClose(Player who) {
-        remove(who);
-        openMenu.remove(who);
-        settings.getOpenListeners().forEach(c -> c.accept(who));
-    }
-
-    @Override
-    protected Iterator<Entry<Player, Inventory>> getViewers() {
-        return openMenu.entrySet().iterator();
+        removeViewer(who);
+        settings.getCloseListeners().forEach(c -> c.accept(who));
     }
 
     private Inventory createInventory(Player who) {
@@ -104,18 +91,7 @@ public class AnimatedMenu extends AbstractMenu {
         if (menuType.getInventoryType() == InventoryType.CHEST)
             inv = Bukkit.createInventory(null, menuType.getSize(), title);
         else inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
-        ItemStack[] contents = new ItemStack[inv.getSize()];
-        IMenuItem[] items = this.items.get(who);
-        if (items == null) this.items.put(who, items = new IMenuItem[inv.getSize()]);
-        for (int slot = 0, result; slot < menuGrid.getSize(); slot++) {
-            IMenuItem item = menuGrid.getItems()[slot];
-            if (!item.isHidden(plugin, who)) {
-                ItemStack stack = item.load(nagger, who);
-                items[result = item.getSlot(who, contents, stack, true)] = item;
-                contents[result] = stack;
-            }
-        }
-        inv.setContents(contents);
+        setup(who, inv);
         return inv;
     }
     
@@ -129,16 +105,21 @@ public class AnimatedMenu extends AbstractMenu {
             consumer.accept(who);
         Inventory inv = createInventory(who);
         who.openInventory(inv);
-        openMenu.put(who, inv);
     }
-    
+
+    @Override
+    protected Inventory getInventory(Player player) {
+        return player.getOpenInventory().getTopInventory();
+    }
+
+    @Override
     public void tick() {
         if (plugin == null) return;
         if (menuTitle.size() > 1 && titleUpdateTick++ == titleUpdateDelay) {
             titleUpdateTick = 0;
             menuTitle.next();
             try {
-                for (Player player : openMenu.keySet()) {
+                for (Player player : getViewers()) {
                     String title = this.menuTitle.get().toString(player);
                     if (title.length() > 32) title = title.substring(0, 32);
                     Object handle = GET_HANDLE.invoke(player);

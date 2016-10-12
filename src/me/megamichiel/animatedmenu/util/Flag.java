@@ -1,7 +1,6 @@
 package me.megamichiel.animatedmenu.util;
 
 import com.google.common.collect.ImmutableMap;
-import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.Locale;
 import java.util.Map;

@@ -78,7 +78,7 @@ public class CommandExecutor extends Animatable<List<CommandExecutor.CommandHand
         return section.getList(key);
     }
 
-    public void execute(AnimatedMenuPlugin plugin, Player p) {
+    public void execute(Player p) {
         List<CommandHandler> commands = next();
         if (commands != null) for (CommandHandler handler : commands)
             if (!handler.execute(plugin, p))

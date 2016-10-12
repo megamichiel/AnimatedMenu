@@ -11,6 +11,8 @@ import org.bukkit.entity.Player;
 
 import java.util.Locale;
 
+import static java.util.Locale.ENGLISH;
+
 /**
  * A class that handles some AnimatedMenu created placeholders
  */
@@ -29,7 +31,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
     
     @Override
     public String onPlaceholderRequest(Player who, String arg) {
-        String lower = arg.toLowerCase(Locale.US);
+        String lower = arg.toLowerCase(ENGLISH);
         if (lower.startsWith("motd_")) {
             ServerInfo info = plugin.getConnections().get(lower.substring(5));
             if (info == null) return "<invalid>";
@@ -46,7 +48,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             return info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";
         }
         if (lower.startsWith("status_")) {
-            ServerInfo info = plugin.getConnections().get(lower.substring(7).toLowerCase(Locale.US));
+            ServerInfo info = plugin.getConnections().get(lower.substring(7).toLowerCase(ENGLISH));
             if (info == null) return "<invalid>";
             IPlaceholder<String> bundle = info.get(info.isOnline() ? "online" : "offline", who);
             return bundle == null ? "<unknown>" : bundle.invoke(plugin, who);
@@ -55,7 +57,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             ServerInfo info = plugin.getConnections().get(lower.substring(10));
             if (info == null) return "<invalid>";
             IPlaceholder<String> value = info.get(
-                    info.isOnline() ? info.getMotd().toLowerCase(Locale.US) : "offline", who);
+                    info.isOnline() ? info.getMotd().toLowerCase(ENGLISH) : "offline", who);
             if (value == null) value = info.get("default", who);
             return value == null ? "<unknown>" : value.invoke(plugin, who);
         }

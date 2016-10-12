@@ -1,6 +1,5 @@
 package me.megamichiel.animatedmenu.util;
 
-import com.google.common.collect.ImmutableList;
 import me.megamichiel.animationlib.Nagger;
 import org.bukkit.DyeColor;
 import org.bukkit.block.banner.Pattern;
@@ -13,6 +12,8 @@ import java.util.*;
 
 @SuppressWarnings("deprecation")
 public class BannerPattern {
+
+    public static final BannerPattern EMPTY = new BannerPattern(null, "");
     
     private static final Map<Character, DyeColor> colors = new HashMap<>();
     

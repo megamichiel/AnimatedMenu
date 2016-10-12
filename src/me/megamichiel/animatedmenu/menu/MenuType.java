@@ -1,7 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.event.inventory.InventoryType;
@@ -14,6 +13,8 @@ public class MenuType {
     public static final MenuType CRAFTING = new MenuType(InventoryType.CRAFTING, "minecraft:crafting_table", 3, 3);
     
     public static final MenuType[] VALUES = new MenuType[] { HOPPER, DISPENSER, DROPPER, CRAFTING };
+
+    private static final MenuType[] CHEST = new MenuType[6];
     
     private final InventoryType inventoryType;
     private final String nmsName;
@@ -27,30 +28,29 @@ public class MenuType {
     }
     
     private MenuType(int rows) {
-        inventoryType = InventoryType.CHEST;
-        this.nmsName = "minecraft:chest";
-        this.width = 9;
-        this.height = rows;
+        this(InventoryType.CHEST, "minecraft:chest", 9, rows);
     }
 
     public int getSize() {
         return width * height;
     }
     
-    public AnimatedMenu newMenu(AnimatedMenuPlugin plugin, String name,
+    AnimatedMenu newMenu(AnimatedMenuPlugin plugin, String name,
                                 MenuLoader loader,
                                 AnimatedText title, int titleUpdateDelay,
                                 StringBundle permission, StringBundle permissionMessage) {
-        return new AnimatedMenu(plugin, name, loader, title, titleUpdateDelay, this, permission, permissionMessage);
+        return loader.createMenu(plugin, name, title, titleUpdateDelay, this, permission, permissionMessage);
     }
     
     public static MenuType chest(int rows) {
-        return new MenuType(rows);
+        MenuType type = CHEST[rows - 1];
+        if (type == null) return CHEST[rows - 1] = new MenuType(rows);
+        return type;
     }
     
     public static MenuType fromName(String name) {
         for (MenuType type : VALUES)
-            if (type.getInventoryType().name().equals(name))
+            if (type.inventoryType.name().equals(name))
                 return type;
         return null;
     }

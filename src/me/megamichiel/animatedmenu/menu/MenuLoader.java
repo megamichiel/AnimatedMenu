@@ -15,13 +15,14 @@ import me.megamichiel.animationlib.config.type.YamlConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 public class MenuLoader implements DirectoryListener.FileListener {
@@ -82,6 +83,13 @@ public class MenuLoader implements DirectoryListener.FileListener {
         }
     }
 
+    protected AnimatedMenu createMenu(AnimatedMenuPlugin plugin, String name,
+                                      AnimatedText title, int titleUpdateDelay,
+                                      MenuType type, StringBundle permission,
+                                      StringBundle permissionMessage) {
+        return new AnimatedMenu(plugin, name, this, title, titleUpdateDelay, type, permission, permissionMessage);
+    }
+
     protected AnimatedMenu loadMenu(String name, AbstractConfig config) {
         AnimatedText title = new AnimatedText();
         title.load(plugin, config, "menu-name", new StringBundle(plugin, name));
@@ -110,7 +118,6 @@ public class MenuLoader implements DirectoryListener.FileListener {
             return;
         }
         for (String key : items.keys()) {
-            AbstractConfig section = items.getSection(key);
             IMenuItem item = createItem(menu, key,
                     items.getSection(key));
             if (item != null) menu.getMenuGrid().addItem(item);
@@ -137,19 +144,18 @@ public class MenuLoader implements DirectoryListener.FileListener {
             settings.setOpenerJoinSlot(section.getInt("menu-opener-slot", -1));
         }
         settings.setOpenOnJoin(Flag.parseBoolean(section.getString("open-on-join"), false));
-        if (section.isSet("open-sound")) {
-            final SoundCommand.SoundInfo sound = new SoundCommand.SoundInfo(plugin,
+        if (section.isString("open-sound")) {
+            SoundCommand.SoundInfo sound = new SoundCommand.SoundInfo(plugin,
                     section.getString("open-sound").toLowerCase(Locale.US).replace('-', '_'),
-                    1F, (float) section.getDouble("open-sound-pitch", 1F)
-            );
+                    1F, (float) section.getDouble("open-sound-pitch", 1F));
             settings.addOpenListener(sound::play);
         }
         settings.setOpenCommands(section.isString("command") ? section.getString("command").toLowerCase(Locale.US).split("; ") : null);
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
     }
 
-    public IMenuItem createItem(AbstractMenu menu,
-                                String name, AbstractConfig section) {
+    public IMenuItem createItem(AbstractMenu menu, String name,
+                                AbstractConfig section) {
         try {
             return new MenuItem(plugin, menu, name, section);
         } catch (IllegalArgumentException ex) {
@@ -174,8 +180,8 @@ public class MenuLoader implements DirectoryListener.FileListener {
                         if (menu != null) {
                             plugin.getLogger().warning("A new menu file was created," +
                                     " but a menu already existed with it's name!");
-                            for (Iterator<Map.Entry<Player, Inventory>> it = menu.getViewers(); it.hasNext();)
-                                it.next().getKey().closeInventory();
+
+                            menu.getViewers().forEach(Player::closeInventory);
                             registry.remove(menu);
                         }
                         YamlConfig config = ConfigManager.quickLoad(YamlConfig::new, file);
@@ -190,14 +196,12 @@ public class MenuLoader implements DirectoryListener.FileListener {
                             return;
                         }
                         if (file.length() == 0) return;
-                        for (Iterator<Map.Entry<Player, Inventory>> it = menu.getViewers(); it.hasNext();)
-                            it.next().getKey().closeInventory();
+                        menu.getViewers().forEach(Player::closeInventory);
                         config = ConfigManager.quickLoad(YamlConfig::new, file);
                         registry.remove(menu);
                         menu = loadMenu(name, config);
                         registry.add(menu);
-                        for (Iterator<Map.Entry<Player, Inventory>> it = menu.getViewers(); it.hasNext();)
-                            it.next().getKey().closeInventory();
+                        menu.getViewers().forEach(Player::closeInventory);
                         plugin.getLogger().info("Updated " + file.getName());
                         break;
                     case DELETE:
@@ -206,8 +210,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                             plugin.getLogger().warning("Failed to remove " + name + ": No menu by that name found!");
                             return;
                         }
-                        for (Iterator<Map.Entry<Player, Inventory>> it = menu.getViewers(); it.hasNext();)
-                            it.next().getKey().closeInventory();
+                        menu.getViewers().forEach(Player::closeInventory);
                         registry.remove(menu);
                         plugin.getLogger().info("Removed " + file.getName());
                         break;

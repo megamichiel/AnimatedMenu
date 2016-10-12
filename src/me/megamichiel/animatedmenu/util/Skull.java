@@ -1,6 +1,7 @@
 package me.megamichiel.animatedmenu.util;
 
 import com.google.common.base.Predicate;
+import com.google.common.io.ByteStreams;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -17,8 +18,8 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -97,7 +98,7 @@ public class Skull {
 		int length = name.length();
 		if (length <= 36) { // uuid/name
 			final GameProfile profile;
-			if (length <= 16) { // name!
+			if (length <= 16) { // name :O
                 load(name, name);
                 return;
 			} else if (length == 32) { // non-hyphen uuid
@@ -110,25 +111,23 @@ public class Skull {
 			}
             cachedProfiles.put(name, profile);
             // Load skin from UUID asynchronous:
-            runAsync(new Runnable() {
-                @Override
-                public void run() {
-                    UUID uuid = profile.getId();
-                    try {
-                        HttpURLConnection connection = (HttpURLConnection)
-                                new URL("https://api.mojang.com/user/profiles/"
-                                        + uuid.toString().replace("-", "") + "/names").openConnection();
-                        InputStream in = connection.getInputStream();
-                        byte[] data = new byte[in.available()];
-                        in.read(data, 0, data.length);
-                        JsonArray array = (JsonArray) new JsonParser().parse(new String(data, "UTF-8"));
-                        String currentName = array.get(array.size() - 1).getAsJsonObject().get("name").getAsString();
-                        load(name, currentName);
-                    } catch (IOException ex) {
-                        // Cannot connect/no such player
-                    }
+            Thread thread = new Thread(() -> {
+                UUID uuid = profile.getId();
+                try {
+                    URLConnection connection = new URL("https://api.mojang.com/user/profiles/"
+                                    + uuid.toString().replace("-", "") + "/names").openConnection();
+                    InputStream in = connection.getInputStream();
+                    byte[] data = new byte[in.available()];
+                    ByteStreams.readFully(in, data);
+                    JsonArray array = (JsonArray) new JsonParser().parse(new String(data, "UTF-8"));
+                    String currentName = array.get(array.size() - 1).getAsJsonObject().get("name").getAsString();
+                    load(name, currentName);
+                } catch (IOException ex) {
+                    // Cannot connect/no such player
                 }
             });
+            thread.setDaemon(true);
+            thread.start();
 		} else { // gson?
 			try {
                 JsonObject obj = new JsonParser().parse(name).getAsJsonObject();
@@ -143,11 +142,5 @@ public class Skull {
                 cachedProfiles.put(name, new GameProfile(null, name));
 			}
 		}
-    }
-
-    private static void runAsync(Runnable runnable) {
-        Thread thread = new Thread(runnable);
-        thread.setDaemon(true);
-        thread.start();
     }
 }

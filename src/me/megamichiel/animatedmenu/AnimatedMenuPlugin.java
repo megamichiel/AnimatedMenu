@@ -1,5 +1,6 @@
 package me.megamichiel.animatedmenu;
 
+import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.command.Command;
 import me.megamichiel.animatedmenu.command.SoundCommand;
 import me.megamichiel.animatedmenu.command.TellRawCommand;
@@ -23,6 +24,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
@@ -47,6 +49,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.util.Locale.ENGLISH;
+
 public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 
     protected final List<Command<?, ?>> commands = new ArrayList<>();
@@ -68,7 +72,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     
     @Override
     public void onEnable() {
-        if (!requirePlugin("AnimationLib", "1.2.1", "https://www.spigotmc.org/resources/22295/")) {
+        if (!requirePlugin("AnimationLib", "1.3.0", "https://www.spigotmc.org/resources/22295/")) {
             return;
         } else {
             try {
@@ -93,8 +97,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         saveDefaultConfig();
         
         registerDefaultCommandHandlers();
-        try
-        {
+        try {
             Class.forName("me.clip.placeholderapi.PlaceholderAPI");
             AnimatedMenuPlaceholders.register(this);
         } catch (Exception ex) {
@@ -122,8 +125,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         /* Other Stuff */
         checkForUpdate();
         loadConfig();
-        
-        asyncTasks.add(Bukkit.getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
+
+        asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
     }
 
     private boolean requirePlugin(String name, String version, String url) {
@@ -271,7 +274,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
             for (String key : section.keys()) {
                 String val = section.getString(key);
                 if (val != null)
-                    formulaPlaceholders.put(key.toLowerCase(Locale.US),
+                    formulaPlaceholders.put(key.toLowerCase(ENGLISH),
                             new FormulaPlaceholder(this, val));
             }
         }
@@ -285,7 +288,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                         int colonIndex = ip.indexOf(':');
                         int port = colonIndex == -1 ? 25565 : NumberConversions.toInt(ip.substring(colonIndex + 1));
                         if (colonIndex > -1) ip = ip.substring(0, colonIndex);
-                        ServerInfo serverInfo = connections.add(key.toLowerCase(Locale.US), new InetSocketAddress(ip, port));
+                        ServerInfo serverInfo = connections.add(key.toLowerCase(ENGLISH), new InetSocketAddress(ip, port));
                         serverInfo.load(sec);
                     }
                 }
@@ -297,6 +300,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     
     void reload() {
         menuRegistry.onDisable();
+        saveDefaultConfig();
         reloadConfig();
         
         formulaPlaceholders.clear();
@@ -311,7 +315,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     /* Listeners */
     
     @EventHandler(priority = EventPriority.MONITOR)
-    void onPlayerJoin(PlayerJoinEvent e) {
+    public void on(PlayerJoinEvent e) {
         final Player player = e.getPlayer();
         if (update != null && player.hasPermission("animatedmenu.seeupdate")) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', "&8[&6" + getDescription().getName() + "&8] &aA new version is available! (Current version: " + getDescription().getVersion() + ", new version: " + update + ")"));
@@ -320,20 +324,15 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
             if (menu.getSettings().getOpener() != null && menu.getSettings().getOpenerJoinSlot() > -1) {
                 player.getInventory().setItem(menu.getSettings().getOpenerJoinSlot(), menu.getSettings().getOpener());
             }
-            if (menu.getSettings().shouldOpenOnJoin()) {
-                getServer().getScheduler().runTask(this, new Runnable() {
-                    @Override
-                    public void run() {
-                        menuRegistry.openMenu(player, menu);
-                    }
-                });
-            }
+            if (menu.getSettings().shouldOpenOnJoin())
+                getServer().getScheduler().runTask(this, () -> menuRegistry.openMenu(player, menu));
         }
     }
     
     @EventHandler
-    void onPlayerInteract(PlayerInteractEvent e) {
-        if (!e.getPlayer().hasPermission("animatedmenu.open"))
+    public void on(PlayerInteractEvent e) {
+        Player p = e.getPlayer();
+        if (!p.hasPermission("animatedmenu.open"))
             return;
         if (e.getItem() != null) {
             for (AnimatedMenu menu : menuRegistry) {
@@ -345,7 +344,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                         continue;
                     if (menu.getSettings().hasOpenerLore() && notEqual(meta.getLore(), meta1.getLore()))
                         continue;
-                    menuRegistry.openMenu(e.getPlayer(), menu);
+                    menuRegistry.openMenu(p, menu);
                     e.setCancelled(true);
                     return;
                 }
@@ -358,9 +357,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     }
     
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent e) {
+    public void on(PlayerCommandPreprocessEvent e) {
         Player p = e.getPlayer();
-        String cmd = e.getMessage().substring(1).split(" ")[0].toLowerCase(Locale.US);
+        String cmd = e.getMessage().substring(1).split(" ")[0].toLowerCase(ENGLISH);
         for (AnimatedMenu menu : menuRegistry) {
             String[] commands = menu.getSettings().getOpenCommands();
             if (commands == null) continue;
@@ -375,14 +374,14 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     }
     
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onInventoryClose(InventoryCloseEvent e) {
+    public void on(InventoryCloseEvent e) {
         if (!(e.getPlayer() instanceof Player)) return;
         AnimatedMenu menu = menuRegistry.getOpenMenu().remove(e.getPlayer());
         if (menu != null) menu.handleMenuClose((Player) e.getPlayer());
     }
     
     @EventHandler
-    public void onInventoryClick(InventoryClickEvent e) {
+    public void on(InventoryClickEvent e) {
         if (!(e.getWhoClicked() instanceof Player)) return;
         Player p = (Player) e.getWhoClicked();
         AnimatedMenu open = menuRegistry.getOpenedMenu(p);
@@ -403,6 +402,14 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     @Override
     public void nag(Throwable throwable) {
         getLogger().warning(throwable.getClass().getName() + ": " + throwable.getMessage());
+    }
+
+    public OpenAnimation.Type resolveAnimationType(String name) {
+        try {
+            return OpenAnimation.DefaultType.valueOf(name);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     public List<Command<?, ?>> getCommands() {

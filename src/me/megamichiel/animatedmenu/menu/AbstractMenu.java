@@ -1,8 +1,11 @@
 package me.megamichiel.animatedmenu.menu;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animatedmenu.animation.AnimatedOpenAnimation;
+import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.util.PlayerMap;
 import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.config.AbstractConfig;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -10,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class AbstractMenu {
 
@@ -21,12 +25,15 @@ public abstract class AbstractMenu {
     protected final MenuLoader loader;
     protected final MenuGrid menuGrid;
 
+    private final AnimatedOpenAnimation openAnimation;
+
     protected AnimatedMenuPlugin plugin;
     private boolean dynamicSlots;
 
     private int slotUpdateDelay, slotUpdateTimer;
 
     protected final PlayerMap<IMenuItem[]> items = new PlayerMap<>();
+    protected final PlayerMap<OpenAnimation.Animation> opening = new PlayerMap<>();
 
     protected AbstractMenu(Nagger nagger, String name,
                            MenuType menuType, MenuLoader loader) {
@@ -35,23 +42,40 @@ public abstract class AbstractMenu {
         this.menuType = menuType;
         this.loader = loader;
         menuGrid = new MenuGrid(this, menuType.getSize());
+        openAnimation = new AnimatedOpenAnimation(menuType);
     }
 
-    public void setSlotUpdateDelay(int slotUpdateDelay) {
-        this.slotUpdateDelay = slotUpdateDelay;
+    private AbstractConfig config;
+
+    public void dankLoad(AbstractConfig config) {
+        int delay = config.getInt("slot-update-delay", 20);
+        if (delay < 0) delay = 0;
+        slotUpdateDelay = delay;
+
+        if (plugin != null) {
+            double speed = config.getDouble("animation-speed", 1);
+            openAnimation.init(plugin, speed <= 0 ? 1 : speed);
+            openAnimation.load(plugin, config, "open-animation");
+        } else this.config = config;
     }
 
     public void init(AnimatedMenuPlugin plugin) {
         if (this.plugin == null) {
             this.plugin = plugin;
             items.init(plugin);
+
+            if (config != null) {
+                double speed = config.getDouble("animation-speed", 1);
+                openAnimation.init(plugin, speed <= 0 ? 1 : speed);
+                openAnimation.load(plugin, config, "open-animation");
+            }
         }
-        for (int i = 0; i < menuGrid.getSize(); i++) {
+        dynamicSlots = false;
+        for (int i = 0; i < menuGrid.getSize(); i++)
             if (menuGrid.getItems()[i].hasDynamicSlot()) {
                 dynamicSlots = true;
                 break;
             }
-        }
     }
 
     public String getName() {
@@ -70,38 +94,62 @@ public abstract class AbstractMenu {
         return plugin;
     }
 
-    protected abstract Iterator<Map.Entry<Player, Inventory>> getViewers();
+    protected void removeViewer(Player player) {
+        items.remove(player);
+        opening.remove(player);
+    }
+
+    protected abstract Inventory getInventory(Player player);
+
+    protected void setup(Player who, Inventory inv) {
+        ItemStack[] contents = new ItemStack[inv.getSize()];
+        IMenuItem[] items = new IMenuItem[contents.length];
+        for (int slot = 0, result; slot < menuGrid.getSize(); slot++) {
+            IMenuItem item = menuGrid.getItems()[slot];
+            if (!item.isHidden(plugin, who)) {
+                ItemStack stack = item.load(nagger, who);
+                items[result = item.getSlot(who, contents, stack, true)] = item;
+                contents[result] = stack;
+            }
+        }
+        OpenAnimation anim = openAnimation.next();
+        if (anim != null) opening.put(who, anim.newAnimation(slots -> {
+            for (int slot : slots) if (slot != -1 && contents[slot] != null)
+                inv.setItem(slot, contents[slot]);
+        }));
+        else {
+            inv.setContents(contents);
+            this.items.put(who, items);
+        }
+    }
 
     public IMenuItem getItem(Player who, int slot) {
         IMenuItem[] i = items.get(who);
         return i == null ? null : i[slot];
     }
 
-    public void remove(Player player) {
-        items.remove(player);
+    public Set<Player> getViewers() {
+        return items.keySet();
     }
 
     public void tick() {
         if (plugin == null) return;
+        for (Iterator<OpenAnimation.Animation> it = opening.values().iterator(); it.hasNext(); )
+            if (it.next().tick()) it.remove();
         IMenuItem[] items = menuGrid.getItems();
         int size = menuGrid.getSize();
         if (dynamicSlots) {
-            boolean changed = false;
+            boolean updateSlots = slotUpdateTimer-- == 0;
+            if (updateSlots) slotUpdateTimer = slotUpdateDelay;
+            boolean changed = updateSlots;
             for (int i = 0; i < size; i++) changed |= items[i].tick();
             if (changed) {
                 for (IMenuItem[] menuItems : this.items.values())
                     Arrays.fill(menuItems, null);
                 ItemStack[] contents = new ItemStack[items.length];
-                Iterator<Map.Entry<Player, Inventory>> viewers = getViewers();
-                boolean updateSlots = slotUpdateTimer-- == 0;
-                if (updateSlots) slotUpdateTimer = slotUpdateDelay;
-                while (viewers.hasNext()) {
-                    Map.Entry<Player, Inventory> entry = viewers.next();
+                for (Map.Entry<Player, IMenuItem[]> entry : this.items.entrySet()) {
                     Player player = entry.getKey();
-                    Inventory inv = entry.getValue();
-                    IMenuItem[] visible = this.items.get(player);
-                    if (visible == null) this.items.put(player,
-                            visible = new IMenuItem[inv.getSize()]);
+                    IMenuItem[] visible = entry.getValue();
                     IMenuItem item;
                     for (int i = 0; i < size; i++)
                         if (!(item = items[i]).isHidden(plugin, player)) {
@@ -110,7 +158,8 @@ public abstract class AbstractMenu {
                             visible[slot] = item;
                             contents[slot] = stack;
                         }
-                    for (int i = 0; i < contents.length; i++) {
+                    Inventory inv = getInventory(player);
+                    for (int i = contents.length; i-- != 0;) {
                         inv.setItem(i, contents[i]);
                         contents[i] = null;
                     }
@@ -119,11 +168,9 @@ public abstract class AbstractMenu {
         } else for (int index = 0; index < size; index++) {
             IMenuItem item = items[index];
             if (item.tick()) {
-                Iterator<Map.Entry<Player, Inventory>> viewers = getViewers();
-                while (viewers.hasNext()) {
-                    Map.Entry<Player, Inventory> entry = viewers.next();
+                for (Map.Entry<Player, IMenuItem[]> entry : this.items.entrySet()) {
                     Player player = entry.getKey();
-                    Inventory inv = entry.getValue();
+                    Inventory inv = getInventory(player);
                     int slot = item.getSlot(player, EMPTY_ITEM_ARRAY, null, false);
                     boolean hidden = item.isHidden(plugin, player);
                     ItemStack is = inv.getItem(slot);
@@ -134,13 +181,12 @@ public abstract class AbstractMenu {
                         inv.setItem(slot, item.load(nagger, player));
                         is = inv.getItem(slot);
                     }
-                    IMenuItem[] i = this.items.get(player);
-                    if (i == null) this.items.put(player, i = new IMenuItem[inv.getSize()]);
+                    IMenuItem[] visible = entry.getValue();
                     if (!hidden) {
                         item.apply(nagger, player, is);
-                        i[slot] = item;
+                        visible[slot] = item;
                     } else {
-                        if (i[slot] == item) i[slot] = null; // Only replace if the same item
+                        if (visible[slot] == item) visible[slot] = null; // Only replace if the same item
                     }
                 }
             }
