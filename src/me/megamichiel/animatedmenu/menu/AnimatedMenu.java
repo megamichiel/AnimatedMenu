@@ -72,7 +72,7 @@ public class AnimatedMenu extends AbstractMenu {
 
         this.permission = permission == null ? null : permission.tryCache();
         this.permissionMessage = permissionMessage == null ?
-                IPlaceholder.constant(ChatColor.RED + "You are not allows to open that menu!") : permissionMessage.tryCache();
+                IPlaceholder.constant(ChatColor.RED + "You are not allowed to open that menu!") : permissionMessage.tryCache();
     }
 
     public MenuSettings getSettings() {

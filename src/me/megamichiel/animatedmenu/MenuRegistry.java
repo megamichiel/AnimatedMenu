@@ -83,10 +83,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @return the menu by name, or null if none was found
      */
     public AnimatedMenu getMenu(String name) {
-        for(AnimatedMenu menu : this)
-            if(menu.getName().equalsIgnoreCase(name))
-                return menu;
-        return null;
+        return menus.stream().filter(m -> m.getName().equalsIgnoreCase(name)).findAny().orElse(null);
     }
     
     /**

@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static java.util.Locale.ENGLISH;
 import static org.bukkit.ChatColor.*;
 
 /**
@@ -53,7 +54,7 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(String.format(messages[i], label));
             return true;
         }
-        String type = args[0].toLowerCase(Locale.US);
+        String type = args[0].toLowerCase(ENGLISH);
         if (!type.isEmpty()) switch (type.charAt(0)) {
             case 'r': // Reload
                 if (type.equals("reload")) {
@@ -79,7 +80,7 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
                             return invalid(sender, "You are not permitted to do that for other players!");
                         target = null;
                         for (Player player : Bukkit.getOnlinePlayers())
-                            if (player.getName().equals(args[2])) {
+                            if (player.getName().equalsIgnoreCase(args[2])) {
                                 target = player;
                                 break;
                             }
@@ -100,19 +101,19 @@ class AnimatedMenuCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         List<String> list = new ArrayList<>();
         if (args.length <= 1) {
-            String start = args.length == 0 ? "" : args[0].toLowerCase(Locale.US);
+            String start = args.length == 0 ? "" : args[0].toLowerCase(ENGLISH);
             for (String str : new String[] { "open", "item", "reload" })
                 if (sender.hasPermission("animatedmenu.command." + str) && str.startsWith(start))
                     list.add(str);
         } else if (args.length == 2) {
-            String type = args[0].toLowerCase(Locale.US);
+            String type = args[0].toLowerCase(ENGLISH);
             if ((type.equals("open") || type.equals("item"))
                     && sender.hasPermission("animatedmenu.command." + type + ".open")) {
-                String query = args[1].toLowerCase(Locale.US);
+                String query = args[1].toLowerCase(ENGLISH);
                 String menuName;
                 for (AnimatedMenu menu : plugin.getMenuRegistry()) {
                     if (!menu.getSettings().isHiddenFromCommand()
-                            && (menuName = menu.getName().toLowerCase(Locale.US)).startsWith(query)) {
+                            && (menuName = menu.getName().toLowerCase(ENGLISH)).startsWith(query)) {
                         list.add(menuName);
                     }
                 }

@@ -87,7 +87,8 @@ public class MenuLoader implements DirectoryListener.FileListener {
                                       AnimatedText title, int titleUpdateDelay,
                                       MenuType type, StringBundle permission,
                                       StringBundle permissionMessage) {
-        return new AnimatedMenu(plugin, name, this, title, titleUpdateDelay, type, permission, permissionMessage);
+        return new AnimatedMenu(plugin, name, this, title,
+                titleUpdateDelay, type, permission, permissionMessage);
     }
 
     protected AnimatedMenu loadMenu(String name, AbstractConfig config) {
