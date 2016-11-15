@@ -28,8 +28,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     }
 
     void onDisable() {
-        if (menuLoader != null)
-            menuLoader.onDisable();
+        if (menuLoader != null) menuLoader.onDisable();
     }
     
     @Override
@@ -116,7 +115,6 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
         if (!file.exists() && !file.mkdir())
             plugin.getLogger().warning("Failed to create images folder!");
 
-        getMenuLoader().onEnable(plugin);
         List<AnimatedMenu> list = getMenuLoader().loadMenus();
         if (list != null) {
             for (AnimatedMenu menu : list)

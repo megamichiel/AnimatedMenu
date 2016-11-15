@@ -32,7 +32,7 @@ public abstract class AbstractMenu {
 
     private int slotUpdateDelay, slotUpdateTimer;
 
-    protected final PlayerMap<IMenuItem[]> items = new PlayerMap<>();
+    protected final PlayerMap<Session> items = new PlayerMap<>();
     protected final PlayerMap<OpenAnimation.Animation> opening = new PlayerMap<>();
 
     protected AbstractMenu(Nagger nagger, String name,
@@ -99,8 +99,6 @@ public abstract class AbstractMenu {
         opening.remove(player);
     }
 
-    protected abstract Inventory getInventory(Player player);
-
     protected void setup(Player who, Inventory inv) {
         ItemStack[] contents = new ItemStack[inv.getSize()];
         IMenuItem[] items = new IMenuItem[contents.length];
@@ -119,13 +117,13 @@ public abstract class AbstractMenu {
         }));
         else {
             inv.setContents(contents);
-            this.items.put(who, items);
+            this.items.put(who, new Session(inv, items));
         }
     }
 
     public IMenuItem getItem(Player who, int slot) {
-        IMenuItem[] i = items.get(who);
-        return i == null ? null : i[slot];
+        Session s = items.get(who);
+        return s == null ? null : s.items[slot];
     }
 
     public Set<Player> getViewers() {
@@ -144,12 +142,12 @@ public abstract class AbstractMenu {
             boolean changed = updateSlots;
             for (int i = 0; i < size; i++) changed |= items[i].tick();
             if (changed) {
-                for (IMenuItem[] menuItems : this.items.values())
-                    Arrays.fill(menuItems, null);
+                for (Session session : this.items.values())
+                    Arrays.fill(session.items, null);
                 ItemStack[] contents = new ItemStack[items.length];
-                for (Map.Entry<Player, IMenuItem[]> entry : this.items.entrySet()) {
+                for (Map.Entry<Player, Session> entry : this.items.entrySet()) {
                     Player player = entry.getKey();
-                    IMenuItem[] visible = entry.getValue();
+                    IMenuItem[] visible = entry.getValue().items;
                     IMenuItem item;
                     for (int i = 0; i < size; i++)
                         if (!(item = items[i]).isHidden(plugin, player)) {
@@ -158,7 +156,7 @@ public abstract class AbstractMenu {
                             visible[slot] = item;
                             contents[slot] = stack;
                         }
-                    Inventory inv = getInventory(player);
+                    Inventory inv = entry.getValue().inventory;
                     for (int i = contents.length; i-- != 0;) {
                         inv.setItem(i, contents[i]);
                         contents[i] = null;
@@ -168,28 +166,36 @@ public abstract class AbstractMenu {
         } else for (int index = 0; index < size; index++) {
             IMenuItem item = items[index];
             if (item.tick()) {
-                for (Map.Entry<Player, IMenuItem[]> entry : this.items.entrySet()) {
+                for (Map.Entry<Player, Session> entry : this.items.entrySet()) {
                     Player player = entry.getKey();
-                    Inventory inv = getInventory(player);
+                    Inventory inv = entry.getValue().inventory;
+                    IMenuItem[] visible = entry.getValue().items;
                     int slot = item.getSlot(player, EMPTY_ITEM_ARRAY, null, false);
                     boolean hidden = item.isHidden(plugin, player);
                     ItemStack is = inv.getItem(slot);
-                    if (hidden && is != null) {
-                        inv.setItem(slot, null);
-                        continue;
-                    } else if (!hidden && is == null) {
-                        inv.setItem(slot, item.load(nagger, player));
-                        is = inv.getItem(slot);
-                    }
-                    IMenuItem[] visible = entry.getValue();
-                    if (!hidden) {
-                        item.apply(nagger, player, is);
-                        visible[slot] = item;
+                    if (hidden) {
+                        if (is != null && visible[slot] == item) {
+                            visible[slot] = null;
+                            inv.setItem(slot, null);
+                        }
                     } else {
-                        if (visible[slot] == item) visible[slot] = null; // Only replace if the same item
+                        if (is != null) item.apply(nagger, player, is);
+                        else inv.setItem(slot, item.load(nagger, player));
+                        visible[slot] = item;
                     }
                 }
             }
+        }
+    }
+
+    private static class Session {
+
+        private final Inventory inventory;
+        private final IMenuItem[] items;
+
+        private Session(Inventory inventory, IMenuItem[] items) {
+            this.inventory = inventory;
+            this.items = items;
         }
     }
 }

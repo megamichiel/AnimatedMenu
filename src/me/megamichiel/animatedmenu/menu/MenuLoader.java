@@ -27,10 +27,10 @@ import java.util.stream.Collectors;
 
 public class MenuLoader implements DirectoryListener.FileListener {
 
-    private DirectoryListener listener;
-    protected AnimatedMenuPlugin plugin;
+    private final DirectoryListener listener;
+    protected final AnimatedMenuPlugin plugin;
 
-    public void onEnable(AnimatedMenuPlugin plugin) {
+    public MenuLoader(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
         File menus = new File(plugin.getDataFolder(), "menus");
         if (!menus.exists()) {
@@ -41,6 +41,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 plugin.nag("Failed to create menus folder!");
             }
         }
+        DirectoryListener listener = null;
         if (plugin.getConfiguration().getBoolean("auto-menu-refresh")) {
             try {
                 listener = new DirectoryListener(plugin.getLogger(), new File(plugin.getDataFolder(), "menus"), this);
@@ -49,6 +50,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 plugin.nag(ex);
             }
         }
+        this.listener = listener;
     }
 
     public void onDisable() {
@@ -155,8 +157,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
     }
 
-    public IMenuItem createItem(AbstractMenu menu, String name,
-                                AbstractConfig section) {
+    public IMenuItem createItem(AbstractMenu menu, String name, AbstractConfig section) {
         try {
             return new MenuItem(plugin, menu, name, section);
         } catch (IllegalArgumentException ex) {

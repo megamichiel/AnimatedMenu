@@ -189,8 +189,7 @@ public class MenuItemSettings {
         
         ItemMeta meta = handle.getItemMeta();
         meta.setDisplayName(displayName.get().toString(p));
-        if (!lore.isEmpty())
-            meta.setLore(lore.get().toStringList(nagger, p));
+        if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(nagger, p));
         
         if (meta instanceof LeatherArmorMeta && leatherArmorColor != null)
             ((LeatherArmorMeta) meta).setColor(leatherArmorColor);

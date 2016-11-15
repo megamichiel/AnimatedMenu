@@ -175,7 +175,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     }
 
     protected MenuLoader getDefaultMenuLoader() {
-        return new MenuLoader();
+        return new MenuLoader(this);
     }
     
     private void checkForUpdate() {

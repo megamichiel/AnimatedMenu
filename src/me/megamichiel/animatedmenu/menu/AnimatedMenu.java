@@ -103,13 +103,7 @@ public class AnimatedMenu extends AbstractMenu {
         }
         for (Consumer<? super Player> consumer : settings.getOpenListeners())
             consumer.accept(who);
-        Inventory inv = createInventory(who);
-        who.openInventory(inv);
-    }
-
-    @Override
-    protected Inventory getInventory(Player player) {
-        return player.getOpenInventory().getTopInventory();
+        who.openInventory(createInventory(who));
     }
 
     @Override
