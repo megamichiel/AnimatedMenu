@@ -5,7 +5,7 @@ import me.megamichiel.animatedmenu.menu.MenuType;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.Animatable;
 
-import static java.util.Locale.ENGLISH;
+import java.util.Locale;
 
 public class AnimatedOpenAnimation extends Animatable<OpenAnimation> {
 
@@ -39,7 +39,7 @@ public class AnimatedOpenAnimation extends Animatable<OpenAnimation> {
                 if (speed <= 0) speed = this.speed;
             }
             OpenAnimation.Type animationType = plugin.resolveAnimationType(
-                    type.toUpperCase(ENGLISH).replace('-', '_'));
+                    type.toUpperCase(Locale.ENGLISH).replace('-', '_'));
             if (animationType == null) {
                 nagger.nag("Unknown animation type: " + type);
                 return null;

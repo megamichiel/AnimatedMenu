@@ -66,7 +66,6 @@ public class AnimatedMenu extends AbstractMenu {
                         int titleUpdateDelay, MenuType type,
                         StringBundle permission, StringBundle permissionMessage) {
         super(plugin, name, type, loader);
-        init(plugin);
         this.menuTitle = title;
         this.titleUpdateDelay = titleUpdateDelay;
 
@@ -80,8 +79,8 @@ public class AnimatedMenu extends AbstractMenu {
     }
 
     public void handleMenuClose(Player who) {
-        removeViewer(who);
-        settings.getCloseListeners().forEach(c -> c.accept(who));
+        if (removeViewer(who))
+            settings.getCloseListeners().forEach(c -> c.accept(who));
     }
 
     private Inventory createInventory(Player who) {
@@ -96,7 +95,6 @@ public class AnimatedMenu extends AbstractMenu {
     }
     
     public void open(Player who) {
-        if (plugin == null) return;
         if (permission != null && !who.hasPermission(permission.invoke(plugin, who))) {
             if (permissionMessage != null) who.sendMessage(permissionMessage.invoke(plugin, who));
             return;
@@ -124,8 +122,8 @@ public class AnimatedMenu extends AbstractMenu {
                     UPDATE_INVENTORY.invoke(handle, container);
                 }
             } catch (Exception ex) {
-                nagger.nag("Unable to update menu title!");
-                nagger.nag(ex);
+                plugin.nag("Unable to update menu title!");
+                plugin.nag(ex);
             }
         }
         super.tick();

@@ -32,29 +32,29 @@ public class AnimatedMaterial extends Animatable<IPlaceholder<ItemStack>> {
 
     public static ItemStack parseItemStack(Nagger nagger, String str) {
         String[] split = str.split(":");
-        MaterialMatcher matcher = MaterialMatcher.parse(split[0]);
-        if (!matcher.matches())
+        Material type = MaterialMatcher.parse(split[0]);
+        if (type == null) {
             nagger.nag("Couldn't find appropiate material for " + split[0] + "! Defaulting to stone");
-        ItemStack item = new ItemStack(matcher.get(null, null));
-        if(split.length > 1) {
+            type = Material.STONE;
+        }
+        if (split.length == 1) return new ItemStack(type);
+        int amount = 1;
+        short data = 0;
+        try {
+            amount = Integer.parseInt(split[1]);
+            if (amount < 0) amount = 0;
+            if (amount > 64) amount = 64;
+        } catch (NumberFormatException ex) {
+            nagger.nag("Invalid amount in " + str + "! Defaulting to 1");
+        }
+        if(split.length > 2) {
             try {
-                int amount = Integer.parseInt(split[1]);
-                if (amount < 0) amount = 0;
-                if (amount > 64) amount = 64;
-                item.setAmount(amount);
+                data = Short.parseShort(split[2]);
+                if (data < 0) data = 0;
             } catch (NumberFormatException ex) {
-                nagger.nag("Invalid amount in " + str + "! Defaulting to 1");
-            }
-            if(split.length > 2) {
-                try {
-                    short data = Short.parseShort(split[2]);
-                    if (data < 0) data = 0;
-                    item.setDurability(data);
-                } catch (NumberFormatException ex) {
-                    nagger.nag("Invalid data value in " + str + "! Defaulting to 0");
-                }
+                nagger.nag("Invalid data value in " + str + "! Defaulting to 0");
             }
         }
-        return item;
+        return new ItemStack(type, amount, data);
     }
 }

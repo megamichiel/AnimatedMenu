@@ -24,6 +24,7 @@
     <orderEntry type="library" name="PlayerPoints" level="project" />
     <orderEntry type="library" name="Vault" level="project" />
     <orderEntry type="library" name="AnimationLib" level="project" />
-    <orderEntry type="library" name="craftbukkit-1.9" level="project" />
+    <orderEntry type="library" name="craftbukkit-1.11" level="project" />
+    <orderEntry type="library" name="Essentials-2.x-SNAPSHOT" level="project" />
   </component>
 </module>

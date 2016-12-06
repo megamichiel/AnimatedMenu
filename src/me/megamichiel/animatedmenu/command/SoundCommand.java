@@ -44,7 +44,7 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
         public SoundInfo(Nagger nagger, String value) {
             this.nagger = nagger;
             String[] split = value.split(" ");
-            sound = split[0].toLowerCase(Locale.US).replace('-', '_');
+            sound = split[0].toLowerCase(Locale.ENGLISH).replace('-', '_');
             float volume = 0, pitch = 0;
             if (split.length > 1) {
                 try {
@@ -52,12 +52,10 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
                 } catch (NumberFormatException ex) {
                     nagger.nag("Invalid volume: " + split[1]);
                 }
-                if (split.length > 2) {
-                    try {
-                        pitch = Float.parseFloat(split[2]);
-                    } catch (NumberFormatException ex) {
-                        nagger.nag("Invalid pitch: " + split[2]);
-                    }
+                if (split.length > 2) try {
+                    pitch = Float.parseFloat(split[2]);
+                } catch (NumberFormatException ex) {
+                    nagger.nag("Invalid pitch: " + split[2]);
                 }
             }
             this.volume = volume;

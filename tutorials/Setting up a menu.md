@@ -62,11 +62,33 @@ Now on to the config:
   </li>
   <li>
     <b>Open-Sound</b><br/>
-    The sound to make when the menu opens (not required).<br/>
+    The sound to make when the menu opens (not required).
   </li>
   <li>
     <b>Open-Sound-Pitch</b><br/>
-    The pitch of the open sound (makes the sound higher or deeper).<br/>
+    The pitch of the open sound (makes the sound higher or deeper).
+  </li>
+  <li>
+    <b>Open-Animation [AnimatedMenu Plus feature|Animatable]</b><br/>
+    Use this to specify an animation (the order of item placement) when opening a menu.<br/>
+    Format is &lt;name&gt;:&lt;speed&gt; where :&lt;speed&gt; is optional<br/>
+    Possible default values:<br/>
+    <ul>
+      <li>Down</li>
+      <li>Up</li>
+      <li>Left</li>
+      <li>Right</li>
+      <li>Down-Left</li>
+      <li>Down-Right</li>
+      <li>Up-Left</li>
+      <li>Up-Right</li>
+      <li>In</li>
+      <li>Out</li>
+      <li>Snake-Down</li>
+      <li>Snake-Up</li>
+      <li>Snake-Left</li>
+      <li>Snake-Right</li>
+    </ul>
   </li>
   <li>
     <b>Command</b><br/>

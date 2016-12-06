@@ -217,15 +217,12 @@ public class RemoteConnections implements Runnable {
         }
 
         public void load(AbstractConfig section) {
-            for (String key : section.keys()) {
-                if (!key.equals("ip")) {
-                    String val = section.getString(key);
-                    if (val != null)
-                        values.put(
-                                StringBundle.parse(plugin, key).colorAmpersands().tryCache(),
-                                StringBundle.parse(plugin, val).colorAmpersands().tryCache()
-                        );
-                }
+            for (String key : section.keys()) if (!key.equals("ip")) {
+                String val = section.getString(key);
+                if (val != null) values.put(
+                        StringBundle.parse(plugin, key).colorAmpersands().tryCache(),
+                        StringBundle.parse(plugin, val).colorAmpersands().tryCache()
+                );
             }
         }
     }

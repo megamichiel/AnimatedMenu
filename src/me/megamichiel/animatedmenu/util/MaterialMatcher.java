@@ -1,13 +1,11 @@
 package me.megamichiel.animatedmenu.util;
 
-import me.megamichiel.animationlib.Nagger;
-import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Player;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -22,7 +20,14 @@ public class MaterialMatcher {
         try {
             String version = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
             Class<?> item = Class.forName("net.minecraft.server." + version + ".Item");
-            methods[0] = item.getDeclaredMethod("d", String.class);
+            Class<?>[] params;
+            for (Method m : item.getDeclaredMethods()) {
+                if ((params = m.getParameterTypes()).length == 1 &&
+                        params[0] == String.class && Modifier.isStatic(m.getModifiers())) {
+                    methods[0] = m;
+                    break;
+                }
+            }
             Class<?> cmn = Class.forName("org.bukkit.craftbukkit." + version + ".util.CraftMagicNumbers");
             methods[1] = cmn.getDeclaredMethod("getMaterial", item);
             Class<?> block = Class.forName("net.minecraft.server." + version + ".Block");
@@ -37,88 +42,66 @@ public class MaterialMatcher {
         BLOCK_TO_MATERIAL = methods[3];
     }
     
-    public static MaterialMatcher parse(String value) {
-        value = value.toLowerCase(Locale.US).replace("-", "_");
-        Material m = null;
+    public static Material parse(String value) {
+        value = value.toLowerCase(Locale.ENGLISH).replace("-", "_");
         try {
             Object o = ITEM_BY_NAME.invoke(null, value);
             if (o != null)
-                m = (Material) ITEM_TO_MATERIAL.invoke(null, o);
-            else if (((o = BLOCK_BY_NAME.invoke(null, value))) != null)
-                m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
-            else m = Material.matchMaterial(value);
+                return (Material) ITEM_TO_MATERIAL.invoke(null, o);
+            if (((o = BLOCK_BY_NAME.invoke(null, value))) != null)
+                return (Material) BLOCK_TO_MATERIAL.invoke(null, o);
         } catch (Exception ex) {
-            // No material found ;c
+            // Failed to load in <clinit>
         }
-        return new MaterialMatcher(m == null ? Material.STONE : m, m != null);
-    }
-    
-    private final IPlaceholder<Material> match;
-    private final boolean matched;
-    
-    private MaterialMatcher(Material type, boolean matched) {
-        match = new IPlaceholder.ConstantPlaceholder<>(type);
-        this.matched = matched;
-    }
-    
-    public boolean matches() {
-        return matched;
-    }
-    
-    public Material get(Nagger nagger, Player who) {
-        return match.invoke(nagger, who);
+        return Material.matchMaterial(value);
     }
     
     private static final Map<String, Enchantment> enchantments = new HashMap<>();
 
     static {
-        enchantments.put("power", Enchantment.ARROW_DAMAGE);
-        enchantments.put("flame", Enchantment.ARROW_FIRE);
-        enchantments.put("infinity", Enchantment.ARROW_INFINITE);
-        enchantments.put("punch", Enchantment.ARROW_KNOCKBACK);
-
-        enchantments.put("sharpness", Enchantment.DAMAGE_ALL);
-        enchantments.put("bane_of_arthropods", Enchantment.DAMAGE_ARTHROPODS);
-        enchantments.put("smite", Enchantment.DAMAGE_UNDEAD);
-
-        enchantments.put("depth_strider", Enchantment.DEPTH_STRIDER);
-
-        enchantments.put("efficiency", Enchantment.DIG_SPEED);
-        enchantments.put("unbreaking", Enchantment.DURABILITY);
-
-        enchantments.put("fire_aspect", Enchantment.FIRE_ASPECT);
-
+        enchantments.put("protection",            Enchantment.PROTECTION_ENVIRONMENTAL);
+        enchantments.put("fire_protection",       Enchantment.PROTECTION_FIRE);
+        enchantments.put("feather_falling",       Enchantment.PROTECTION_FALL);
+        enchantments.put("blast_protection",      Enchantment.PROTECTION_EXPLOSIONS);
+        enchantments.put("projectile_protection", Enchantment.PROTECTION_PROJECTILE);
+        enchantments.put("respiration",           Enchantment.OXYGEN);
+        enchantments.put("aqua_affinity",         Enchantment.WATER_WORKER);
+        enchantments.put("thorns",                Enchantment.THORNS);
+        enchantments.put("depth_strider",         Enchantment.DEPTH_STRIDER);
         try {
-            enchantments.put("frost_walker", (Enchantment) Enchantment.class.getField("FROST_WALKER").get(null));
-            enchantments.put("mending", (Enchantment) Enchantment.class.getField("MENDING").get(null));
-        } catch (Exception ex) {
-            // No 1.9, prob
+            enchantments.put("frost_walker",      Enchantment.FROST_WALKER);  // 1.9
+            enchantments.put("binding_curse",     Enchantment.BINDING_CURSE); // 1.11
+        } catch (NoSuchFieldError err) {
+            // Nop
+        }
+        enchantments.put("sharpness",             Enchantment.DAMAGE_ALL);
+        enchantments.put("smite",                 Enchantment.DAMAGE_UNDEAD);
+        enchantments.put("bane_of_arthropods",    Enchantment.DAMAGE_ARTHROPODS);
+        enchantments.put("knockback",             Enchantment.KNOCKBACK);
+        enchantments.put("fire_aspect",           Enchantment.FIRE_ASPECT);
+        enchantments.put("looting",               Enchantment.LOOT_BONUS_MOBS);
+        enchantments.put("efficiency",            Enchantment.DIG_SPEED);
+        enchantments.put("silk_touch",            Enchantment.SILK_TOUCH);
+        enchantments.put("unbreaking",            Enchantment.DURABILITY);
+        enchantments.put("fortune",               Enchantment.LOOT_BONUS_BLOCKS);
+        enchantments.put("power",                 Enchantment.ARROW_DAMAGE);
+        enchantments.put("punch",                 Enchantment.ARROW_KNOCKBACK);
+        enchantments.put("flame",                 Enchantment.ARROW_FIRE);
+        enchantments.put("infinity",              Enchantment.ARROW_INFINITE);
+        enchantments.put("luck_of_the_sea",       Enchantment.LUCK);
+        enchantments.put("lure",                  Enchantment.LURE);
+        try {
+            enchantments.put("mending",           Enchantment.MENDING);         // 1.9
+            enchantments.put("vanishing_curse",   Enchantment.VANISHING_CURSE); // 1.11
+        } catch (NoSuchFieldError err) {
+            // Nop
         }
 
-        enchantments.put("knockback", Enchantment.KNOCKBACK);
-
-        enchantments.put("fortune", Enchantment.LOOT_BONUS_BLOCKS);
-        enchantments.put("looting", Enchantment.LOOT_BONUS_MOBS);
-
-        enchantments.put("luck_of_the_sea", Enchantment.LUCK);
-        enchantments.put("lure", Enchantment.LURE);
-
-        enchantments.put("respiration", Enchantment.OXYGEN);
-
-        enchantments.put("protection", Enchantment.PROTECTION_ENVIRONMENTAL);
-        enchantments.put("blast_protection", Enchantment.PROTECTION_EXPLOSIONS);
-        enchantments.put("feather_falling", Enchantment.PROTECTION_FALL);
-        enchantments.put("fire_protection", Enchantment.PROTECTION_FIRE);
-        enchantments.put("projectile_protection", Enchantment.PROTECTION_PROJECTILE);
-
-        enchantments.put("silk_touch", Enchantment.SILK_TOUCH);
-        enchantments.put("thorns", Enchantment.THORNS);
-        enchantments.put("aqua_affinity", Enchantment.WATER_WORKER);
         for (Enchantment ench : Enchantment.values())
             enchantments.put(Integer.toString(ench.getId()), ench);
     }
     
     public static Enchantment getEnchantment(String id) {
-        return enchantments.get(id.toLowerCase(Locale.US).replace("-", "_"));
+        return enchantments.get(id.toLowerCase(Locale.ENGLISH).replace("-", "_"));
     }
 }

@@ -4,7 +4,8 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.MenuRegistry;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
 import me.megamichiel.animatedmenu.command.SoundCommand;
-import me.megamichiel.animatedmenu.menu.item.MenuItem;
+import me.megamichiel.animatedmenu.menu.item.ClickHandler;
+import me.megamichiel.animatedmenu.menu.item.ItemInfo;
 import me.megamichiel.animatedmenu.util.DirectoryListener;
 import me.megamichiel.animatedmenu.util.DirectoryListener.FileAction;
 import me.megamichiel.animatedmenu.util.Flag;
@@ -20,9 +21,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MenuLoader implements DirectoryListener.FileListener {
@@ -115,16 +114,26 @@ public class MenuLoader implements DirectoryListener.FileListener {
 
     private void loadMenu(AnimatedMenu menu, AbstractConfig config) {
         loadSettings(menu.getSettings(), config);
-        AbstractConfig items = config.getSection("items");
-        if (items == null) {
+        Map<String, AbstractConfig> items = new HashMap<>();
+        if (config.isSection("items")) {
+            AbstractConfig cfg = config.getSection("items");
+            cfg.values().forEach((key, value) -> {
+                if (value instanceof AbstractConfig)
+                    items.put(key, (AbstractConfig) value);
+            });
+        } else if (config.isList("items")) {
+            List<AbstractConfig> list = config.getSectionList("items");
+            for (int i = 0; i < list.size(); i++)
+                items.put(Integer.toString(i + 1), list.get(i));
+        }
+        if (items.isEmpty()) {
             plugin.nag("No items specified for " + menu.getName() + "!");
             return;
         }
-        for (String key : items.keys()) {
-            IMenuItem item = createItem(menu, key,
-                    items.getSection(key));
-            if (item != null) menu.getMenuGrid().addItem(item);
-        }
+        items.forEach((key, value) -> {
+            MenuItemInfo item = createItem(menu, key, value);
+            if (item != null) menu.getMenuGrid().addItem(new MenuItem(item));
+        });
         menu.getMenuGrid().sortSlots(); // Put items with non-dynamic slot before those with it
     }
 
@@ -157,11 +166,20 @@ public class MenuLoader implements DirectoryListener.FileListener {
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
     }
 
-    public IMenuItem createItem(AbstractMenu menu, String name, AbstractConfig section) {
+    public MenuItemInfo createItem(AbstractMenu menu, String name, AbstractConfig section) {
         try {
-            return new MenuItem(plugin, menu, name, section);
+            return new ItemInfo(plugin, menu, name, section);
         } catch (IllegalArgumentException ex) {
             plugin.nag(ex.getMessage());
+            return null;
+        }
+    }
+
+    public ClickHandler.Entry parseClickHandler(String path, AbstractConfig section) {
+        try {
+            return new ClickHandler.Entry(plugin, section);
+        } catch (IllegalArgumentException ex) {
+            plugin.nag(ex.getMessage() + " in " + path);
             return null;
         }
     }

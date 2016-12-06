@@ -1,11 +1,11 @@
 package me.megamichiel.animatedmenu.animation;
 
+import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore.Frame;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.Animatable;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
-import me.megamichiel.animationlib.placeholder.PlaceholderContext;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -16,17 +16,19 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Consumer;
 
 public class AnimatedLore extends Animatable<Frame> {
     
     private static final long serialVersionUID = 6241886968360414688L;
 
-    private final Plugin plugin;
+    private File dataFolder;
 
-    public AnimatedLore(Plugin plugin) {
-        this.plugin = plugin;
+    public boolean load(AnimatedMenuPlugin plugin, AbstractConfig section, String key) {
+        dataFolder = plugin.getDataFolder();
+        return super.load(plugin, section, key);
     }
-    
+
     @Override
     protected Frame defaultValue() {
         return new Frame();
@@ -36,10 +38,10 @@ public class AnimatedLore extends Animatable<Frame> {
         Frame frame = new Frame();
         for (String item : list) {
             if (item.toLowerCase(Locale.US).startsWith("file: ")) {
-                File file = new File(plugin.getDataFolder(), "images/" + item.substring(6));
+                File file = new File(dataFolder, "images/" + item.substring(6));
                 if (file.exists() && file.isFile()) {
                     try {
-                        frame.addAll(readImage(file));
+                        readImage(file, s -> frame.add(IPlaceholder.constant(s)));
                     } catch (IOException e) {
                         nagger.nag("Failed to read file " + file.getName() + "!");
                         nagger.nag(e);
@@ -100,10 +102,9 @@ public class AnimatedLore extends Animatable<Frame> {
         }
     }
 
-    private static List<IPlaceholder<String>> readImage(File file) throws IOException {
+    private static void readImage(File file, Consumer<String> action) throws IOException {
         BufferedImage img = ImageIO.read(file);
         int height = img.getHeight(), width = img.getWidth();
-        List<IPlaceholder<String>> lines = new ArrayList<>(height);
         for (int y = 0; y < height; y++) {
             StringBuilder sb = new StringBuilder();
             ChatColor previous = null;
@@ -115,9 +116,8 @@ public class AnimatedLore extends Animatable<Frame> {
                 }
                 sb.append(StringBundle.BOX);
             }
-            lines.set(y, IPlaceholder.constant(sb.toString()));
+            action.accept(sb.toString());
         }
-        return lines;
     }
 
     private static final int[] colors = {

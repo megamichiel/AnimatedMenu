@@ -65,7 +65,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      */
     public void add(AnimatedMenu menu) {
         menus.add(menu);
-        menu.init(plugin);
+        menu.init();
     }
     
     /**
@@ -118,7 +118,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
         List<AnimatedMenu> list = getMenuLoader().loadMenus();
         if (list != null) {
             for (AnimatedMenu menu : list)
-                menu.init(plugin);
+                menu.init();
             menus.addAll(list);
         }
         logger.info(this.menus.size() + " menu" + (this.menus.size() == 1 ? "" : "s") + " loaded");

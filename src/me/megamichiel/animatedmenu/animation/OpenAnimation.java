@@ -37,11 +37,11 @@ public class OpenAnimation {
         public boolean tick() {
             double last = frame;
             frame += speed;
-            int i;
-            for (i = NumberConversions.ceil(last); i <= frame; i++) {
+            int i = NumberConversions.ceil(last);
+            do {
                 if (i == frames.length) return true;
                 action.accept(frames[i]);
-            }
+            } while (++i <= frame);
             return i == frames.length;
         }
     }
@@ -147,12 +147,11 @@ public class OpenAnimation {
             int count = width * height;
             int[][] out = new int[count][];
             int i = 0;
-            for (int x = 0; x < width; x++) {
+            for (int x = 0; x < width; x++)
                 if ((x & 0x1) == 0) for (int y = 0; y < height; y++)
                     out[i++] = new int[] { y * width + x };
                 else for (int y = height; y-- != 0;)
                     out[i++] = new int[] { y * width + x };
-            }
             return out;
         }), SNAKE_LEFT(type -> flip(SNAKE_RIGHT.sorter.apply(type)));
 

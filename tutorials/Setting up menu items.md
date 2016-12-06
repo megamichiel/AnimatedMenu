@@ -10,6 +10,14 @@ An example of how the Items section might look:<br/>
 &nbsp;&nbsp;<b>anotheritem:</b><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<b>key:</b> value
 
+NEW: Since 2.7.3, you can simply use lists to specify items,
+ this way you don't have to insert a new name for each item.<br/>
+ Each dash (-) specifies that a new item should start.<br/>
+<b>Items:</b><br/>
+- <b>key:</b> value<br/>
+&nbsp;&nbsp;<b>anotherkey:</b> anothervalue<br/>
+- <b>key:</b> value
+
 Some keys are marked with [Animatable]. This means that they are optionally animated. For example, a non-animated key and value:<br/>
 <b>Material:</b> stone:1:0<br/>
 An animated value:<br/>
@@ -93,6 +101,10 @@ There are a few keys where you can customize your item with:
   <li id="hideperm">
     <b>Hide-Permission</b><br/>
     If the player doesn't have this permission, the item is hidden
+  </li>
+  <li id="hidescript">
+    <b>Hide-Script [AnimatedMenu Plus feature]</b><br/>
+    Uses a script to determine whether the player can view this item or not
   </li>
   <li id="commands">
     <b>Commands</b><br/>

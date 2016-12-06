@@ -12,6 +12,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static java.util.Locale.ENGLISH;
+
 public class CommandExecutor extends Animatable<List<CommandExecutor.CommandHandler>> {
 
     private final AnimatedMenuPlugin plugin;
@@ -41,15 +43,15 @@ public class CommandExecutor extends Animatable<List<CommandExecutor.CommandHand
         for (Object raw : (List) o) {
             if (isStringOrPrimitive(raw)) {
                 String str = raw.toString();
-                Command cmd = getCommand(str.toLowerCase(Locale.US));
+                Command cmd = getCommand(str.toLowerCase(ENGLISH));
                 if (cmd.prefix != null)
                     str = str.substring(cmd.prefix.length() + 1).trim();
                 result.add(getCommandHandler(cmd, plugin, str));
             } else if (raw instanceof AbstractConfig) {
                 for (Map.Entry<String, Object> entry : ((AbstractConfig) raw).values().entrySet()) {
-                    String name = entry.getKey().toLowerCase(Locale.US);
+                    String name = entry.getKey().toLowerCase(ENGLISH);
                     Command command = plugin.getCommands().stream()
-                            .filter(cmd -> name.equals(cmd.prefix.toLowerCase(Locale.US)))
+                            .filter(cmd -> name.equals(cmd.prefix.toLowerCase(ENGLISH)))
                             .findAny().orElse(null);
                     if (command == null) continue;
                     Object value = entry.getValue();

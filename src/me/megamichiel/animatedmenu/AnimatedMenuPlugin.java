@@ -7,13 +7,12 @@ import me.megamichiel.animatedmenu.command.TellRawCommand;
 import me.megamichiel.animatedmenu.command.TextCommand;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuLoader;
-import me.megamichiel.animatedmenu.util.FormulaPlaceholder;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
-import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
 import me.megamichiel.animationlib.config.type.YamlConfig;
+import me.megamichiel.animationlib.util.LoggerNagger;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
@@ -24,7 +23,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
@@ -33,11 +31,11 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.util.NumberConversions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -51,13 +49,12 @@ import java.util.regex.Pattern;
 
 import static java.util.Locale.ENGLISH;
 
-public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
+public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNagger {
 
     protected final List<Command<?, ?>> commands = new ArrayList<>();
 
     private final MenuRegistry menuRegistry = new MenuRegistry(this);
-    
-    private final Map<String, FormulaPlaceholder> formulaPlaceholders = new HashMap<>();
+
     private final RemoteConnections connections = new RemoteConnections(this);
     private boolean warnOfflineServers = true;
     
@@ -126,7 +123,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         checkForUpdate();
         loadConfig();
 
-        asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
+        if (getConfiguration().getBoolean("run-sync"))
+            getServer().getScheduler().runTaskTimer(this, menuRegistry, 0, 0);
+        else asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
     }
 
     private boolean requirePlugin(String name, String version, String url) {
@@ -134,16 +133,12 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         if (plugin != null) {
             String str = plugin.getDescription().getVersion();
             if (str.equals(version)) return true;
-            String[] current = str.split("\\."), required = version.split("\\.");
-            int length = current.length;
-            for (int x = 0; x < length; x++) {
-                int a = Integer.parseInt(current[x]), b = Integer.parseInt(required[x]);
-                if (a < b) break;
-                if (a > b || x + 1 == length) return true;
-            }
+            if (str.equals(version) || Double.parseDouble("0." + str.replace(".", ""))
+                    >= Double.parseDouble("0." + version.replace(".", "")))
+                return true;
         }
-        getServer().getConsoleSender().sendMessage(new String[]{
-                ChatColor.RED + "I require " + name + " v" + version + " to work!",
+        getServer().getConsoleSender().sendMessage(new String[] {
+                ChatColor.RED + "[AnimatedMenu] I require " + name + " v" + version + " to work!",
                 ChatColor.RED + "Download it at " + url
         });
         getServer().getPluginManager().disablePlugin(this);
@@ -260,7 +255,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                 else plugin.nag("No menu with name " + value + " found!");
                 return true;
             }
-        }, new TellRawCommand(), new SoundCommand());
+        }, new TellRawCommand(this), new SoundCommand());
     }
     
     public boolean warnOfflineServers() {
@@ -269,15 +264,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
     
     protected void loadConfig() {
         AbstractConfig config = getConfiguration();
-        if (config.isSection("formulas")) {
-            AbstractConfig section = config.getSection("formulas");
-            for (String key : section.keys()) {
-                String val = section.getString(key);
-                if (val != null)
-                    formulaPlaceholders.put(key.toLowerCase(ENGLISH),
-                            new FormulaPlaceholder(this, val));
-            }
-        }
         if (config.isSection("connections")) {
             AbstractConfig section = config.getSection("connections");
             for (String key : section.keys()) {
@@ -285,9 +271,13 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                     AbstractConfig sec = section.getSection(key);
                     String ip = sec.getString("ip");
                     if (ip != null) {
-                        int colonIndex = ip.indexOf(':');
-                        int port = colonIndex == -1 ? 25565 : NumberConversions.toInt(ip.substring(colonIndex + 1));
-                        if (colonIndex > -1) ip = ip.substring(0, colonIndex);
+                        int index = ip.indexOf(':');
+                        int port;
+                        if (index == -1) port = 25565;
+                        else {
+                            port = Integer.parseInt(ip.substring(index + 1));
+                            ip = ip.substring(0, index);
+                        }
                         ServerInfo serverInfo = connections.add(key.toLowerCase(ENGLISH), new InetSocketAddress(ip, port));
                         serverInfo.load(sec);
                     }
@@ -302,8 +292,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         menuRegistry.onDisable();
         saveDefaultConfig();
         reloadConfig();
-        
-        formulaPlaceholders.clear();
+
         connections.clear();
         connections.cancel();
         loadConfig();
@@ -335,10 +324,11 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
         if (!p.hasPermission("animatedmenu.open"))
             return;
         if (e.getItem() != null) {
+            MaterialData data = e.getItem().getData();
+            ItemMeta meta = e.getItem().getItemMeta();
             for (AnimatedMenu menu : menuRegistry) {
                 ItemStack item = menu.getSettings().getOpener();
-                if (item != null && item.getData().equals(e.getItem().getData())) {
-                    ItemMeta meta = e.getItem().getItemMeta();
+                if (item != null && item.getData().equals(data)) {
                     ItemMeta meta1 = item.getItemMeta();
                     if (menu.getSettings().hasOpenerName() && notEqual(meta.getDisplayName(), meta1.getDisplayName()))
                         continue;
@@ -393,16 +383,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
                 && (slot < view.getTopInventory().getSize()))
             open.getMenuGrid().click(p, e.getClick(), e.getSlot());
     }
-    
-    @Override
-    public void nag(String message) {
-        getLogger().warning(message);
-    }
-    
-    @Override
-    public void nag(Throwable throwable) {
-        getLogger().warning(throwable.getClass().getName() + ": " + throwable.getMessage());
-    }
 
     public OpenAnimation.Type resolveAnimationType(String name) {
         try {
@@ -418,10 +398,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, Nagger {
 
     public MenuRegistry getMenuRegistry() {
         return menuRegistry;
-    }
-
-    public Map<String, FormulaPlaceholder> getFormulaPlaceholders() {
-        return formulaPlaceholders;
     }
 
     public RemoteConnections getConnections() {
