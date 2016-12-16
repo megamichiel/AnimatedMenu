@@ -22,6 +22,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MenuLoader implements DirectoryListener.FileListener {
@@ -36,9 +37,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
             if (menus.mkdir()) {
                 plugin.saveResource("menus/example.yml", false);
                 plugin.saveResource("menus/shop.yml", false);
-            } else {
-                plugin.nag("Failed to create menus folder!");
-            }
+            } else plugin.nag("Failed to create menus folder!");
         }
         DirectoryListener listener = null;
         if (plugin.getConfiguration().getBoolean("auto-menu-refresh")) {
@@ -84,7 +83,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         }
     }
 
-    protected AnimatedMenu createMenu(AnimatedMenuPlugin plugin, String name,
+    AnimatedMenu createMenu(AnimatedMenuPlugin plugin, String name,
                                       AnimatedText title, int titleUpdateDelay,
                                       MenuType type, StringBundle permission,
                                       StringBundle permissionMessage) {
@@ -126,16 +125,16 @@ public class MenuLoader implements DirectoryListener.FileListener {
             for (int i = 0; i < list.size(); i++)
                 items.put(Integer.toString(i + 1), list.get(i));
         }
-        if (items.isEmpty()) {
+        plusLoad(menu, config);
+        if (items.isEmpty() && !menu.hasEmptyItem()) {
             plugin.nag("No items specified for " + menu.getName() + "!");
             return;
         }
-        items.forEach((key, value) -> {
-            MenuItemInfo item = createItem(menu, key, value);
-            if (item != null) menu.getMenuGrid().addItem(new MenuItem(item));
-        });
+        items.forEach((key, value) -> loadItem(menu, key, value, menu.getMenuGrid()::addItem));
         menu.getMenuGrid().sortSlots(); // Put items with non-dynamic slot before those with it
     }
+
+    protected void plusLoad(AnimatedMenu menu, AbstractConfig config) {}
 
     protected void loadSettings(MenuSettings settings, AbstractConfig section) {
         if (section.isSet("menu-opener")) {
@@ -155,7 +154,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
             settings.setOpener(opener);
             settings.setOpenerJoinSlot(section.getInt("menu-opener-slot", -1));
         }
-        settings.setOpenOnJoin(Flag.parseBoolean(section.getString("open-on-join"), false));
+        settings.setOpenOnJoin(Flag.parseBoolean(section.getString("open-on-join")));
         if (section.isString("open-sound")) {
             SoundCommand.SoundInfo sound = new SoundCommand.SoundInfo(plugin,
                     section.getString("open-sound").toLowerCase(Locale.US).replace('-', '_'),
@@ -166,7 +165,16 @@ public class MenuLoader implements DirectoryListener.FileListener {
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
     }
 
-    public MenuItemInfo createItem(AbstractMenu menu, String name, AbstractConfig section) {
+    public void loadItem(AbstractMenu menu, String name,
+                         AbstractConfig section, Consumer<MenuItemInfo> action) {
+        try {
+            action.accept(new ItemInfo(plugin, menu, name, section));
+        } catch (IllegalArgumentException ex) {
+            plugin.nag(ex.getMessage());
+        }
+    }
+
+    public MenuItemInfo loadItem(AbstractMenu menu, String name, AbstractConfig section) {
         try {
             return new ItemInfo(plugin, menu, name, section);
         } catch (IllegalArgumentException ex) {

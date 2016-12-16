@@ -1,6 +1,6 @@
 <h1>Welcome to the official AnimatedMenu repository!</h1><br>
 
-Current Version: <b>2.8.0</b><br>
+Current Version: <b>2.8.1</b><br>
 Feel free to have a look around or use the code for private use.
 <br>
 <h3>Used Dependencies</h3>

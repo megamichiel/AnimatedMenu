@@ -30,8 +30,8 @@ public enum Flag {
         return this != FALSE;
     }
 
-    public static boolean parseBoolean(String str, boolean def) {
-        Flag flag = parseFlag(str, def ? TRUE : FALSE);
+    public static boolean parseBoolean(String str) {
+        Flag flag = parseFlag(str, FALSE);
         return flag != BOTH && flag.booleanValue();
     }
 

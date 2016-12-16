@@ -96,7 +96,7 @@ public class ClickHandler {
                     closeAction = CloseAction.valueOf(close
                             .toUpperCase(Locale.ENGLISH).replace('-', '_'));
                 } catch (IllegalArgumentException ex) {
-                    if (Flag.parseBoolean(close, false))
+                    if (Flag.parseBoolean(close))
                         closeAction = CloseAction.ON_SUCCESS;
                 }
             }

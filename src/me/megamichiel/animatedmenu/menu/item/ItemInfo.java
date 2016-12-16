@@ -9,7 +9,6 @@ import me.megamichiel.animatedmenu.menu.MenuType;
 import me.megamichiel.animatedmenu.util.BannerPattern;
 import me.megamichiel.animatedmenu.util.MaterialMatcher;
 import me.megamichiel.animatedmenu.util.Skull;
-import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
 import me.megamichiel.animationlib.config.AbstractConfig;
@@ -32,6 +31,7 @@ import java.util.regex.Pattern;
 
 public class ItemInfo implements MenuItemInfo {
 
+    private final AnimatedMenuPlugin plugin;
     private final int slot;
     private final int frameDelay, refreshDelay;
     private final ClickHandler clickListener;
@@ -50,6 +50,8 @@ public class ItemInfo implements MenuItemInfo {
 
     public ItemInfo(AnimatedMenuPlugin plugin, AbstractMenu menu,
                     String name, AbstractConfig section) {
+        this.plugin = plugin;
+
         MenuType type = menu.getMenuType();
         if (section.isInt("x") && section.isInt("y")) {
             int x = clampSlot(type.getWidth(), section.getInt("x")) - 1,
@@ -154,8 +156,8 @@ public class ItemInfo implements MenuItemInfo {
     }
 
     @Override
-    public ItemStack load(Nagger nagger, Player player) {
-        ItemStack item = this.material.get().invoke(nagger, player).clone();
+    public ItemStack load(Player player) {
+        ItemStack item = this.material.get().invoke(plugin, player).clone();
         if (unbreakable) {
             NBTUtil nbt = NBTUtil.getInstance();
             if (item != (item = nbt.asNMS(item))) try {
@@ -167,7 +169,7 @@ public class ItemInfo implements MenuItemInfo {
         ItemMeta meta = item.getItemMeta();
 
         meta.setDisplayName(displayName.get().toString(player));
-        if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(nagger, player));
+        if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(plugin, player));
 
         if (meta instanceof LeatherArmorMeta && leatherArmorColor != null)
             ((LeatherArmorMeta) meta).setColor(leatherArmorColor);
@@ -179,12 +181,14 @@ public class ItemInfo implements MenuItemInfo {
 
         this.enchantments.forEach((ench, lvl) -> meta.addEnchant(ench, lvl, true));
 
+        item.setItemMeta(meta);
+
         return item;
     }
 
     @Override
-    public ItemStack apply(Nagger nagger, Player p, ItemStack item) {
-        ItemStack material = this.material.get().invoke(nagger, p);
+    public ItemStack apply(Player p, ItemStack item) {
+        ItemStack material = this.material.get().invoke(plugin, p);
         item.setType(material.getType());
         item.setAmount(material.getAmount());
         item.setDurability(material.getDurability());
@@ -192,7 +196,7 @@ public class ItemInfo implements MenuItemInfo {
         ItemMeta meta = item.getItemMeta();
 
         meta.setDisplayName(displayName.get().toString(p));
-        if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(nagger, p));
+        if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(plugin, p));
 
         item.setItemMeta(meta);
 
@@ -200,7 +204,7 @@ public class ItemInfo implements MenuItemInfo {
     }
 
     @Override
-    public boolean isHidden(AnimatedMenuPlugin plugin, Player p) {
+    public boolean isHidden(Player p) {
         if (hidePermission != null)
             return p.hasPermission(hidePermission.toString(p)) == negateHidePermission;
         return negateHidePermission;

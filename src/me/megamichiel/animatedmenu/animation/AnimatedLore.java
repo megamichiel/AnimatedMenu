@@ -9,7 +9,6 @@ import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

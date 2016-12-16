@@ -100,7 +100,8 @@ There are a few keys where you can customize your item with:
   </li>
   <li id="hideperm">
     <b>Hide-Permission</b><br/>
-    If the player doesn't have this permission, the item is hidden
+    If the player doesn't have this permission, the item is hidden.<br/>
+    Start it with a dash (-) to negate the effect, so the item will be hidden when the player dóes have the permission.
   </li>
   <li id="hidescript">
     <b>Hide-Script [AnimatedMenu Plus feature]</b><br/>

@@ -24,6 +24,7 @@ public abstract class AbstractMenu {
     private final AnimatedOpenAnimation openAnimation;
 
     private boolean dynamicSlots;
+    private MenuItem emptyItem;
 
     private int slotUpdateDelay, slotUpdateTimer;
 
@@ -47,6 +48,13 @@ public abstract class AbstractMenu {
         double speed = config.getDouble("animation-speed", 1);
         openAnimation.init(plugin, speed <= 0 ? 1 : speed);
         openAnimation.load(plugin, config, "open-animation");
+
+        AbstractConfig section = config.getSection("empty-item");
+        if (section != null) {
+            MenuItemInfo info = plugin.getMenuRegistry()
+                    .getMenuLoader().loadItem(this, "empty-item", section);
+            if (info != null) emptyItem = new MenuItem(info);
+        }
     }
 
     public void init() {
@@ -56,6 +64,10 @@ public abstract class AbstractMenu {
                 dynamicSlots = true;
                 break;
             }
+    }
+
+    boolean hasEmptyItem() {
+        return emptyItem != null;
     }
 
     public String getName() {
@@ -85,10 +97,19 @@ public abstract class AbstractMenu {
         for (int slot = 0, result; slot < menuGrid.getSize(); slot++) {
             MenuItem item = menuGrid.getItems()[slot];
             MenuItemInfo info = item.getInfo();
-            if (!info.isHidden(plugin, who)) {
-                ItemStack stack = info.load(plugin, who);
+            if (!info.isHidden(who)) {
+                ItemStack stack = info.load(who);
                 items[result = slots[slot] = info.getSlot(who, contents, stack)] = item;
                 contents[result] = stack;
+            }
+        }
+        if (emptyItem != null) {
+            MenuItemInfo info = emptyItem.getInfo();
+            for (int slot = 0; slot < items.length; slot++) {
+                if (items[slot] == null) {
+                    items[slot] = emptyItem;
+                    contents[slot] = info.load(who);
+                }
             }
         }
         OpenAnimation anim = openAnimation.next();
@@ -105,12 +126,12 @@ public abstract class AbstractMenu {
         sessions.put(who, new Session(inv, items, slots, opening));
     }
 
-    public MenuItem getItem(Player who, int slot) {
+    MenuItem getItem(Player who, int slot) {
         Session s = sessions.get(who);
         return s == null || s.opening != null ? null : s.items[slot];
     }
 
-    public Set<Player> getViewers() {
+    Set<Player> getViewers() {
         return sessions.keySet();
     }
 
@@ -127,22 +148,33 @@ public abstract class AbstractMenu {
                 for (Session session : sessions.values())
                     Arrays.fill(session.items, null);
                 ItemStack[] contents = new ItemStack[items.length];
-                sessions.forEach((player, session) -> {
+                sessions.forEach((who, session) -> {
                     if (session.opening != null) {
                         if (session.opening.tick()) session.opening = null;
                         else return;
                     }
                     MenuItem[] visible = session.items;
+                    int[] slots = session.slots;
                     MenuItem item;
-                    for (int i = 0; i < size; i++)
-                        if (!(item = items[i]).getInfo().isHidden(plugin, player)) {
-                            ItemStack stack = item.getInfo().load(plugin, player);
+                    for (int i = 0; i < size; i++) {
+                        if (!(item = items[i]).getInfo().isHidden(who)) {
+                            ItemStack stack = item.getInfo().load(who);
                             int slot;
-                            if (updateSlots) slot = item.getInfo().getSlot(player, contents, stack);
-                            else slot = session.slots[i];
+                            if (updateSlots) slot = item.getInfo().getSlot(who, contents, stack);
+                            else slot = slots[i];
                             visible[slot] = item;
                             contents[slot] = stack;
                         }
+                    }
+                    if (emptyItem != null) {
+                        MenuItemInfo info = emptyItem.getInfo();
+                        for (int slot = 0; slot < items.length; slot++) {
+                            if (items[slot] == null) {
+                                items[slot] = emptyItem;
+                                contents[slot] = info.load(who);
+                            }
+                        }
+                    }
                     Inventory inv = session.inventory;
                     for (int i = contents.length; i-- != 0;) {
                         inv.setItem(i, contents[i]);
@@ -170,7 +202,7 @@ public abstract class AbstractMenu {
                             Inventory inv = session.inventory;
                             MenuItem[] visible = session.items;
                             int slot = session.slots[i];
-                            boolean hidden = info.isHidden(plugin, player);
+                            boolean hidden = info.isHidden(player);
                             ItemStack is = inv.getItem(slot);
                             if (hidden) {
                                 if (is != null && visible[slot] == item) {
@@ -178,8 +210,8 @@ public abstract class AbstractMenu {
                                     inv.setItem(slot, null);
                                 }
                             } else {
-                                if (is != null) info.apply(plugin, player, is);
-                                else inv.setItem(slot, info.load(plugin, player));
+                                if (is != null) info.apply(player, is);
+                                else inv.setItem(slot, info.load(player));
                                 visible[slot] = item;
                             }
                         }
