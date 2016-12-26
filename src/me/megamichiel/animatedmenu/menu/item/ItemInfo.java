@@ -15,6 +15,7 @@ import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -158,6 +159,7 @@ public class ItemInfo implements MenuItemInfo {
     @Override
     public ItemStack load(Player player) {
         ItemStack item = this.material.get().invoke(plugin, player).clone();
+        if (item.getType() == Material.AIR) return item;
         if (unbreakable) {
             NBTUtil nbt = NBTUtil.getInstance();
             if (item != (item = nbt.asNMS(item))) try {
@@ -166,7 +168,9 @@ public class ItemInfo implements MenuItemInfo {
                 e.printStackTrace();
             }
         }
+
         ItemMeta meta = item.getItemMeta();
+        if (meta == null) return item; // Safety
 
         meta.setDisplayName(displayName.get().toString(player));
         if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(plugin, player));
@@ -193,7 +197,10 @@ public class ItemInfo implements MenuItemInfo {
         item.setAmount(material.getAmount());
         item.setDurability(material.getDurability());
 
+        if (material.getType() == Material.AIR) return item;
+
         ItemMeta meta = item.getItemMeta();
+        if (meta == null) return item;
 
         meta.setDisplayName(displayName.get().toString(p));
         if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(plugin, p));

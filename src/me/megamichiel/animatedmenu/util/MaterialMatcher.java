@@ -46,10 +46,12 @@ public class MaterialMatcher {
         value = value.toLowerCase(Locale.ENGLISH).replace("-", "_");
         try {
             Object o = ITEM_BY_NAME.invoke(null, value);
-            if (o != null)
+            if (o != null && o != Material.AIR)
                 return (Material) ITEM_TO_MATERIAL.invoke(null, o);
-            if (((o = BLOCK_BY_NAME.invoke(null, value))) != null)
-                return (Material) BLOCK_TO_MATERIAL.invoke(null, o);
+            if (((o = BLOCK_BY_NAME.invoke(null, value))) != null) {
+                Material m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
+                if (m != Material.AIR) return m;
+            }
         } catch (Exception ex) {
             // Failed to load in <clinit>
         }

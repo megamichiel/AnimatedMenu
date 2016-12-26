@@ -9,6 +9,7 @@ import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuLoader;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
+import me.megamichiel.animationlib.bukkit.PapiPlaceholder;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
 import me.megamichiel.animationlib.config.type.YamlConfig;
@@ -69,7 +70,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     
     @Override
     public void onEnable() {
-        if (!requirePlugin("AnimationLib", "1.3.0", "https://www.spigotmc.org/resources/22295/")) {
+        if (!requirePlugin("AnimationLib", "1.4.0", "https://www.spigotmc.org/resources/22295/")) {
             return;
         } else {
             try {
@@ -94,12 +95,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         saveDefaultConfig();
         
         registerDefaultCommandHandlers();
-        try {
-            Class.forName("me.clip.placeholderapi.PlaceholderAPI");
+        if (PapiPlaceholder.apiAvailable)
             AnimatedMenuPlaceholders.register(this);
-        } catch (Exception ex) {
-            // No PlaceholderAPI ;c
-        }
         try {
             Class.forName("net.milkbowl.vault.economy.Economy");
             economy = Bukkit.getServicesManager().getRegistration(Economy.class).getProvider();

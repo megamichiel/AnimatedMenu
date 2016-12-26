@@ -47,7 +47,7 @@ public class AnimatedMaterial extends Animatable<IPlaceholder<ItemStack>> {
         } catch (NumberFormatException ex) {
             nagger.nag("Invalid amount in " + str + "! Defaulting to 1");
         }
-        if(split.length > 2) {
+        if (split.length > 2) {
             try {
                 data = Short.parseShort(split[2]);
                 if (data < 0) data = 0;

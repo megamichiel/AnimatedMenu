@@ -119,7 +119,7 @@ public class ClickHandler {
             if (bypassPermission == null || !player.hasPermission(bypassPermission.toString(player))) {
                 boolean bought = false;
                 if (price > 0 && plugin.isVaultPresent()) {
-                    if (!plugin.economy.has(player, price)) {
+                    if (!plugin.economy.has(player, price)) { // Only check, must wait to see points
                         player.sendMessage(priceMessage.toString(player));
                         return false;
                     }
@@ -131,7 +131,7 @@ public class ClickHandler {
                         return false;
                     }
                     if (bought) plugin.economy.withdrawPlayer(player, price);
-                    bought = true;
+                    else bought = true;
                 } else if (bought) plugin.economy.withdrawPlayer(player, price);
                 if (bought) buyExecutor.execute(player);
                 return true;
