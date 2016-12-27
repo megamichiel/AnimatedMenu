@@ -54,6 +54,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
 
     protected final List<Command<?, ?>> commands = new ArrayList<>();
 
+    private final AnimatedMenuCommand command = new AnimatedMenuCommand(this);
     private final MenuRegistry menuRegistry = new MenuRegistry(this);
 
     private final RemoteConnections connections = new RemoteConnections(this);
@@ -88,7 +89,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         /* Listeners */
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
-        getCommand("animatedmenu").setExecutor(new AnimatedMenuCommand(this));
+        getCommand("animatedmenu").setExecutor(command);
         
         /* Config / API */
         config.file(new File(getDataFolder(), "config.yml"));
@@ -391,6 +392,10 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
 
     public List<Command<?, ?>> getCommands() {
         return commands;
+    }
+
+    public AnimatedMenuCommand getCommand() {
+        return command;
     }
 
     public MenuRegistry getMenuRegistry() {
