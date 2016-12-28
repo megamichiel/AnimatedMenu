@@ -99,10 +99,16 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @param menu the menu to open
      */
     void openMenu(Player who, AnimatedMenu menu) {
-        AnimatedMenu prev = openMenu.remove(who);
-        if (prev != null) prev.handleMenuClose(who);
-        menu.open(who);
-        openMenu.put(who, menu);
+        String s = menu.canOpen(who);
+        if (s != null) {
+            if (!s.isEmpty()) who.sendMessage(s);
+            return;
+        }
+        menu.open(who, () -> {
+            AnimatedMenu prev = openMenu.remove(who);
+            if (prev != null) prev.handleMenuClose(who);
+            openMenu.put(who, menu);
+        });
     }
     
     void loadMenus() {

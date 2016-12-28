@@ -28,6 +28,7 @@ public class AnimatedMenuCommand implements TabExecutor {
     private final Map<String, String> usages = new LinkedHashMap<>();
     
     AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
+        usages.put("help", GREEN + "$command /animatedmenu [help]: " + YELLOW + "See this help menu");
         addHandler("open", "open <menu> [player]", "Open a specific menu", (sender, args) -> {
             if (!sender.hasPermission("animatedmenu.command.open"))
                 return RED + "You don't have permission for that!";
@@ -123,7 +124,7 @@ public class AnimatedMenuCommand implements TabExecutor {
             sender.sendMessage(messages);
             usages.forEach((arg, usage) -> {
                 if (sender.hasPermission("animatedmenu.command." + arg))
-                    sender.sendMessage(usage.replace("$command", label));
+                    sender.sendMessage(usage.replace("$command", '/' + label));
             });
             return true;
         }

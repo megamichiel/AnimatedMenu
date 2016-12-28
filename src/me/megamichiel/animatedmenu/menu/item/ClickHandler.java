@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ClickHandler {
 
@@ -20,21 +21,21 @@ public class ClickHandler {
 
     public ClickHandler(AnimatedMenuPlugin plugin, String menu,
                         String item, AbstractConfig section) {
-        Map<String, Object> values = new HashMap<>();
+        Map<String, Object> values = null;
         Object o = section.get("click-handlers");
         if (o != null) {
             if (o instanceof AbstractConfig) values = ((AbstractConfig) o).values();
             else if (o instanceof Collection) {
                 int i = 0;
+                values = new HashMap<>();
                 for (Object obj : ((Collection) o))
                     values.put(Integer.toString(++i), obj);
             }
-            else values = null;
         } else if ((o = section.get("commands")) != null) {
             if (o instanceof AbstractConfig) values = ((AbstractConfig) o).values();
-            else if (o instanceof List) values.put("(self)", section);
-            else values = null;
-        } else values = null;
+            else if (o instanceof List)
+                (values = new HashMap<>()).put("(self)", section);
+        }
         if (values != null) values.forEach((key, value) -> {
             if (value instanceof AbstractConfig) {
                 String path = key + " of item " + item + " in menu " + menu;
@@ -60,6 +61,11 @@ public class ClickHandler {
         private final StringBundle permission, permissionMessage,
                 bypassPermission, priceMessage, pointsMessage;
         private final CloseAction closeAction;
+
+        private final long clickDelay;
+        private final StringBundle delayMessage;
+        private final Map<Player, AtomicLong> delays;
+        private long clickTimeLeft;
 
         public Entry(AnimatedMenuPlugin plugin, AbstractConfig section) {
             this.plugin = plugin;
@@ -101,11 +107,38 @@ public class ClickHandler {
                 }
             }
             this.closeAction = closeAction;
+
+            clickDelay = section.getInt("click-delay") * 50L;
+            if (clickDelay > 0) {
+                delayMessage = StringBundle.parse(plugin, section.getString("delay-message"));
+                if (delayMessage != null) {
+                    delayMessage.colorAmpersands();
+                    delayMessage.replace("{secondsleft}", (n, p) -> clickTimeLeft / 1000);
+                    delayMessage.replace("{allticksleft}", (n, p) -> clickTimeLeft / 50);
+                    delayMessage.replace("{ticksleft}", (n, p) -> (clickTimeLeft / 50) % 20);
+                }
+                plugin.addPlayerMap(delays = new HashMap<>());
+            } else {
+                delays = null;
+                delayMessage = null;
+            }
         }
 
         void click(Player player, ClickType type) {
             if (!click.matches(type)) return;
             if (canClick(player)) {
+                if (clickDelay > 0) {
+                    long time = System.currentTimeMillis();
+                    AtomicLong al = delays.computeIfAbsent(player, p -> new AtomicLong());
+                    if (time < al.get()) {
+                        if (delayMessage != null) {
+                            clickTimeLeft = al.get() - time;
+                            player.sendMessage(delayMessage.toString(player));
+                        }
+                        return;
+                    }
+                    al.set(time + clickDelay);
+                }
                 clickExecutor.execute(player);
                 if (closeAction.onSuccess) player.closeInventory();
             } else if (closeAction.onFailure) player.closeInventory();

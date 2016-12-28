@@ -14,6 +14,7 @@ import java.util.Map;
 public class MaterialMatcher {
     
     private static final Method ITEM_BY_NAME, ITEM_TO_MATERIAL, BLOCK_BY_NAME, BLOCK_TO_MATERIAL;
+    private static final Map<String, Material> cache = new HashMap<>();
     
     static {
         Method[] methods = new Method[4];
@@ -44,18 +45,22 @@ public class MaterialMatcher {
     
     public static Material parse(String value) {
         value = value.toLowerCase(Locale.ENGLISH).replace("-", "_");
+        Material m = cache.get(value);
+        if (m != null) return m;
         try {
             Object o = ITEM_BY_NAME.invoke(null, value);
             if (o != null && o != Material.AIR)
-                return (Material) ITEM_TO_MATERIAL.invoke(null, o);
-            if (((o = BLOCK_BY_NAME.invoke(null, value))) != null) {
-                Material m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
-                if (m != Material.AIR) return m;
+                m = (Material) ITEM_TO_MATERIAL.invoke(null, o);
+            else if (((o = BLOCK_BY_NAME.invoke(null, value))) != null) {
+                m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
+                if (m == Material.AIR) m = null;
             }
         } catch (Exception ex) {
             // Failed to load in <clinit>
         }
-        return Material.matchMaterial(value);
+        if (m == null) m = Material.matchMaterial(value);
+        if (m != null) cache.put(value, m);
+        return m;
     }
     
     private static final Map<String, Enchantment> enchantments = new HashMap<>();

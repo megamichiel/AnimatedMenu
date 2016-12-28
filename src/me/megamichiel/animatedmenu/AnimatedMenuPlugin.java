@@ -14,6 +14,7 @@ import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
 import me.megamichiel.animationlib.config.type.YamlConfig;
 import me.megamichiel.animationlib.util.LoggerNagger;
+import me.megamichiel.animationlib.util.pipeline.PipelineContext;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
@@ -29,6 +30,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -50,12 +52,14 @@ import java.util.regex.Pattern;
 
 import static java.util.Locale.ENGLISH;
 
-public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNagger {
+public class AnimatedMenuPlugin extends JavaPlugin
+        implements Listener, LoggerNagger, PipelineContext {
 
     protected final List<Command<?, ?>> commands = new ArrayList<>();
 
     private final AnimatedMenuCommand command = new AnimatedMenuCommand(this);
     private final MenuRegistry menuRegistry = new MenuRegistry(this);
+    private final Set<Map<?, ?>> playerMaps = Collections.newSetFromMap(new WeakHashMap<>());
 
     private final RemoteConnections connections = new RemoteConnections(this);
     private boolean warnOfflineServers = true;
@@ -71,19 +75,17 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     
     @Override
     public void onEnable() {
-        if (!requirePlugin("AnimationLib", "1.4.0", "https://www.spigotmc.org/resources/22295/")) {
+        if (!requirePlugin("AnimationLib", "1.5.0", "https://www.spigotmc.org/resources/22295/"))
             return;
-        } else {
-            try {
-                Class.forName("me.megamichiel.animationlib.AnimLib");
-            } catch (ClassNotFoundException ex) {
-                getServer().getConsoleSender().sendMessage(new String[]{
-                        ChatColor.RED + "It appears you have the wrong AnimationLib plugin!",
-                        ChatColor.RED + "Download the correct one at https://www.spigotmc.org/resources/22295/"
-                });
-                getServer().getPluginManager().disablePlugin(this);
-                return;
-            }
+        else try {
+            Class.forName("me.megamichiel.animationlib.AnimLib");
+        } catch (ClassNotFoundException ex) {
+            getServer().getConsoleSender().sendMessage(new String[]{
+                    ChatColor.RED + "It appears you have the wrong AnimationLib plugin!",
+                    ChatColor.RED + "Download the correct one at https://www.spigotmc.org/resources/22295/"
+            });
+            getServer().getPluginManager().disablePlugin(this);
+            return;
         }
 
         /* Listeners */
@@ -304,9 +306,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     @EventHandler(priority = EventPriority.MONITOR)
     public void on(PlayerJoinEvent e) {
         final Player player = e.getPlayer();
-        if (update != null && player.hasPermission("animatedmenu.seeupdate")) {
+        if (update != null && player.hasPermission("animatedmenu.seeupdate"))
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', "&8[&6" + getDescription().getName() + "&8] &aA new version is available! (Current version: " + getDescription().getVersion() + ", new version: " + update + ")"));
-        }
         for (final AnimatedMenu menu : menuRegistry) {
             if (menu.getSettings().getOpener() != null && menu.getSettings().getOpenerJoinSlot() > -1) {
                 player.getInventory().setItem(menu.getSettings().getOpenerJoinSlot(), menu.getSettings().getOpener());
@@ -382,6 +383,16 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             open.getMenuGrid().click(p, e.getClick(), e.getSlot());
     }
 
+    @EventHandler
+    public void on(PlayerQuitEvent e) {
+        Player p = e.getPlayer();
+        playerMaps.forEach(map -> map.remove(p));
+    }
+
+    public void addPlayerMap(Map<?, ?> map) {
+        playerMaps.add(map);
+    }
+
     public OpenAnimation.Type resolveAnimationType(String name) {
         try {
             return OpenAnimation.DefaultType.valueOf(name);
@@ -412,5 +423,14 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
 
     public boolean isPlayerPointsPresent() {
         return playerPointsPresent;
+    }
+
+    @Override
+    public void onClose() {}
+
+    @Override
+    public void post(Runnable task, boolean async) {
+        if (async) getServer().getScheduler().runTaskAsynchronously(this, task);
+        else getServer().getScheduler().runTask(this, task);
     }
 }

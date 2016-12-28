@@ -33,8 +33,8 @@ import java.util.regex.Pattern;
 public class ItemInfo implements MenuItemInfo {
 
     private final AnimatedMenuPlugin plugin;
-    private final int slot;
-    private final int frameDelay, refreshDelay;
+    private final int slot, frameDelay, refreshDelay;
+
     private final ClickHandler clickListener;
     private final StringBundle hidePermission;
     private final boolean negateHidePermission;
@@ -64,6 +64,7 @@ public class ItemInfo implements MenuItemInfo {
 
         frameDelay = section.getInt("frame-delay", 20);
         refreshDelay = section.getInt("refresh-delay", frameDelay);
+
         if (!material.load(plugin, section, "material"))
             plugin.nag("Item " + name + " in menu " + menu.getName() + " doesn't contain Material!");
         if (!displayName.load(plugin, section, "name", new StringBundle(plugin, name)))

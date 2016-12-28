@@ -1,10 +1,10 @@
 package me.megamichiel.animatedmenu.menu;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 public class MenuGrid {
 
@@ -30,8 +30,7 @@ public class MenuGrid {
     }
     
     public void click(Player p, ClickType click, int slot) {
-        MenuItem item = menu.getItem(p, slot);
-        if (item != null) item.getInfo().click(p, click);
+        menu.click(p, slot, click);
     }
     
     public void addItem(MenuItemInfo item) {
@@ -46,6 +45,11 @@ public class MenuGrid {
 
     public MenuItem[] getItems() {
         return items;
+    }
+
+    public void forEachItem(Consumer<? super MenuItem> action) {
+        for (int i = 0; i < size; i++)
+            action.accept(items[i]);
     }
 
     public int getSize() {

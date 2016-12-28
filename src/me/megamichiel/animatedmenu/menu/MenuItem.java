@@ -1,12 +1,12 @@
 package me.megamichiel.animatedmenu.menu;
 
-public class MenuItem {
+class MenuItem {
 
     private final MenuItemInfo info;
     private final int frameDelay, refreshDelay;
     private int frameTick, refreshTick;
 
-    public MenuItem(MenuItemInfo info) {
+    MenuItem(MenuItemInfo info) {
         this.info = info;
         frameDelay = info.getDelay(false);
         refreshDelay = info.getDelay(true);

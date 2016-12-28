@@ -5,6 +5,7 @@ import me.megamichiel.animatedmenu.animation.AnimatedOpenAnimation;
 import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
@@ -59,7 +60,7 @@ public abstract class AbstractMenu {
 
     public void init() {
         dynamicSlots = false;
-        for (int i = 0; i < menuGrid.getSize(); i++)
+        for (int i = 0, size = menuGrid.getSize(); i < size; i++)
             if (menuGrid.getItems()[i].getInfo().hasDynamicSlot()) {
                 dynamicSlots = true;
                 break;
@@ -94,13 +95,13 @@ public abstract class AbstractMenu {
         ItemStack[] contents = new ItemStack[inv.getSize()];
         MenuItem[] items = new MenuItem[contents.length];
         int[] slots = new int[menuType.getSize()];
-        for (int slot = 0, result; slot < menuGrid.getSize(); slot++) {
-            MenuItem item = menuGrid.getItems()[slot];
+        for (int pos = 0, slot; pos < menuGrid.getSize(); pos++) {
+            MenuItem item = menuGrid.getItems()[pos];
             MenuItemInfo info = item.getInfo();
             if (!info.isHidden(who)) {
                 ItemStack stack = info.load(who);
-                items[result = slots[slot] = info.getSlot(who, contents, stack)] = item;
-                contents[result] = stack;
+                items[slot = slots[pos] = info.getSlot(who, contents, stack)] = item;
+                contents[slot] = stack;
             }
         }
         if (emptyItem != null) {
@@ -126,9 +127,12 @@ public abstract class AbstractMenu {
         sessions.put(who, new Session(inv, items, slots, opening));
     }
 
-    MenuItem getItem(Player who, int slot) {
+    void click(Player who, int slot, ClickType type) {
         Session s = sessions.get(who);
-        return s == null || s.opening != null ? null : s.items[slot];
+        if (s != null && s.opening == null) {
+            MenuItem item = s.items[slot];
+            if (item != null) item.getInfo().click(who, type);
+        }
     }
 
     Set<Player> getViewers() {

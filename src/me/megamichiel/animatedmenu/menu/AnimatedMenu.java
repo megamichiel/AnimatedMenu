@@ -2,8 +2,10 @@ package me.megamichiel.animatedmenu.menu;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.animation.AnimatedText;
+import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
+import me.megamichiel.animationlib.util.db.SQLHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -13,6 +15,10 @@ import org.bukkit.inventory.Inventory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 public class AnimatedMenu extends AbstractMenu {
@@ -58,6 +64,7 @@ public class AnimatedMenu extends AbstractMenu {
     private final MenuSettings settings = new MenuSettings();
     private final int titleUpdateDelay;
     private final IPlaceholder<String> permission, permissionMessage;
+    private final List<SQLHandler.Entry> sqlAwaits = new ArrayList<>();
 
     private int titleUpdateTick = 0;
     
@@ -72,6 +79,21 @@ public class AnimatedMenu extends AbstractMenu {
         this.permission = permission == null ? null : permission.tryCache();
         this.permissionMessage = permissionMessage == null ?
                 IPlaceholder.constant(ChatColor.RED + "You are not allowed to open that menu!") : permissionMessage.tryCache();
+    }
+
+    @Override
+    public void dankLoad(AbstractConfig config) {
+        super.dankLoad(config);
+        List<String> list = config.getStringList("sql-await");
+        if (list.isEmpty()) {
+            String s = config.getString("sql-await");
+            if (s != null) Collections.addAll(list, s.split(","));
+        }
+        if (!list.isEmpty()) {
+            SQLHandler placeholders = SQLHandler.getInstance();
+            list.stream().map(String::trim).map(placeholders::getEntry)
+                    .filter(Objects::nonNull).forEach(sqlAwaits::add);
+        }
     }
 
     public MenuSettings getSettings() {
@@ -93,12 +115,27 @@ public class AnimatedMenu extends AbstractMenu {
         setup(who, inv);
         return inv;
     }
-    
-    public void open(Player who) {
+
+    public String canOpen(Player who) {
         if (permission != null && !who.hasPermission(permission.invoke(plugin, who))) {
-            if (permissionMessage != null) who.sendMessage(permissionMessage.invoke(plugin, who));
+            if (permissionMessage != null)
+                return permissionMessage.invoke(plugin, who);
+            return "";
+        }
+        return null;
+    }
+    
+    public void open(Player who, Runnable ready) {
+        if (!sqlAwaits.isEmpty()) {
+            SQLHandler.getInstance().awaitRefresh(who, sqlAwaits, () -> {
+                ready.run();
+                for (Consumer<? super Player> consumer : settings.getOpenListeners())
+                    consumer.accept(who);
+                who.openInventory(createInventory(who));
+            });
             return;
         }
+        ready.run();
         for (Consumer<? super Player> consumer : settings.getOpenListeners())
             consumer.accept(who);
         who.openInventory(createInventory(who));
