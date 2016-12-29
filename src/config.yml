@@ -16,11 +16,6 @@
 #    #If no matching motd was found, you can use the default key
 #    default: '&cNot a default server motd!'
 
-#Here you can combine multiple number placeholders into one!
-#Possible tokens are + (plus) and * (multiply)
-Formulas:
-  example: '%bungeecord_server1% + %bungeecord_server2%'
-
 #Should a message be printed to the console if the plugin was unable to connect to a server?
 Warn-Offline-Servers: false
 

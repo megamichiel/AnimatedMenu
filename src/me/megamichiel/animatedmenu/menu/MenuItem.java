@@ -1,6 +1,6 @@
 package me.megamichiel.animatedmenu.menu;
 
-class MenuItem {
+public class MenuItem {
 
     private final MenuItemInfo info;
     private final int frameDelay, refreshDelay;
@@ -24,7 +24,7 @@ class MenuItem {
         return false;
     }
 
-    MenuItemInfo getInfo() {
+    public MenuItemInfo getInfo() {
         return info;
     }
 }

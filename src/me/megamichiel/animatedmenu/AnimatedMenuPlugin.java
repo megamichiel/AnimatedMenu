@@ -75,7 +75,7 @@ public class AnimatedMenuPlugin extends JavaPlugin
     
     @Override
     public void onEnable() {
-        if (!requirePlugin("AnimationLib", "1.5.0", "https://www.spigotmc.org/resources/22295/"))
+        if (!requirePlugin("AnimationLib", "1.5.1", "https://www.spigotmc.org/resources/22295/"))
             return;
         else try {
             Class.forName("me.megamichiel.animationlib.AnimLib");

@@ -93,26 +93,31 @@ public abstract class AbstractMenu {
 
     protected void setup(Player who, Inventory inv) {
         ItemStack[] contents = new ItemStack[inv.getSize()];
-        MenuItem[] items = new MenuItem[contents.length];
+        int[] slotToPos = new int[contents.length];
         int[] slots = new int[menuType.getSize()];
+        Arrays.fill(slotToPos, -1);
+        Arrays.fill(slots, -1);
+
+        MenuItemInfo.SlotContext ctx = new MenuItemInfo.SlotContext(contents);
+        ctx.setSlots(slots, slotToPos);
         for (int pos = 0, slot; pos < menuGrid.getSize(); pos++) {
             MenuItem item = menuGrid.getItems()[pos];
             MenuItemInfo info = item.getInfo();
             if (!info.isHidden(who)) {
                 ItemStack stack = info.load(who);
-                items[slot = slots[pos] = info.getSlot(who, contents, stack)] = item;
+                ctx.setItem(item, stack);
+                slotToPos[slot = slots[pos] = info.getSlot(who, ctx)] = pos;
                 contents[slot] = stack;
             }
         }
         if (emptyItem != null) {
             MenuItemInfo info = emptyItem.getInfo();
-            for (int slot = 0; slot < items.length; slot++) {
-                if (items[slot] == null) {
-                    items[slot] = emptyItem;
+            for (int slot = 0; slot < slotToPos.length; slot++) {
+                if (slotToPos[slot] == -1)
                     contents[slot] = info.load(who);
-                }
             }
         }
+
         OpenAnimation anim = openAnimation.next();
         OpenAnimation.Animation opening;
 
@@ -124,14 +129,16 @@ public abstract class AbstractMenu {
             inv.setContents(contents);
             opening = null;
         }
-        sessions.put(who, new Session(inv, items, slots, opening));
+
+        sessions.put(who, new Session(inv, slots, slotToPos, opening));
     }
 
     void click(Player who, int slot, ClickType type) {
         Session s = sessions.get(who);
         if (s != null && s.opening == null) {
-            MenuItem item = s.items[slot];
-            if (item != null) item.getInfo().click(who, type);
+            int pos = s.slotToPos[slot];
+            if (pos != -1) menuGrid.getItems()[pos].getInfo().click(who, type);
+            else if (emptyItem != null) emptyItem.getInfo().click(who, type);
         }
     }
 
@@ -140,7 +147,6 @@ public abstract class AbstractMenu {
     }
 
     public void tick() {
-        if (plugin == null) return;
         MenuItem[] items = menuGrid.getItems();
         int size = menuGrid.getSize();
         if (dynamicSlots) {
@@ -149,40 +155,42 @@ public abstract class AbstractMenu {
             boolean changed = updateSlots;
             for (int i = 0; i < size; i++) changed |= items[i].tick();
             if (changed) {
-                for (Session session : sessions.values())
-                    Arrays.fill(session.items, null);
-                ItemStack[] contents = new ItemStack[items.length];
+                int invSize = menuType.getSize();
+                ItemStack[] contents = new ItemStack[invSize];
+                MenuItemInfo.SlotContext ctx = new MenuItemInfo.SlotContext(contents);
+                int[] weights = ctx.getWeights();
                 sessions.forEach((who, session) -> {
                     if (session.opening != null) {
                         if (session.opening.tick()) session.opening = null;
                         else return;
                     }
-                    MenuItem[] visible = session.items;
-                    int[] slots = session.slots;
+                    int[] visible = session.slotToPos,
+                            slots = session.slots;
+                    ctx.setSlots(slots, visible);
                     MenuItem item;
                     for (int i = 0; i < size; i++) {
                         if (!(item = items[i]).getInfo().isHidden(who)) {
                             ItemStack stack = item.getInfo().load(who);
                             int slot;
-                            if (updateSlots) slot = item.getInfo().getSlot(who, contents, stack);
-                            else slot = slots[i];
-                            visible[slot] = item;
+                            if (updateSlots) {
+                                ctx.setItem(item, stack);
+                                slot = slots[i] = item.getInfo().getSlot(who, ctx);
+                            } else slot = slots[i];
+                            visible[slot] = i;
                             contents[slot] = stack;
-                        }
+                        } else visible[i] = -1;
                     }
                     if (emptyItem != null) {
                         MenuItemInfo info = emptyItem.getInfo();
-                        for (int slot = 0; slot < items.length; slot++) {
-                            if (items[slot] == null) {
-                                items[slot] = emptyItem;
+                        for (int slot = 0; slot < items.length; slot++)
+                            if (visible[slot] == -1)
                                 contents[slot] = info.load(who);
-                            }
-                        }
                     }
                     Inventory inv = session.inventory;
-                    for (int i = contents.length; i-- != 0;) {
+                    for (int i = contents.length - 1; i >= 0; --i) {
                         inv.setItem(i, contents[i]);
                         contents[i] = null;
+                        weights[i] = 0;
                     }
                 });
             }
@@ -198,25 +206,24 @@ public abstract class AbstractMenu {
                     else return;
                 }
                 if (changed) {
-                    MenuItem item;
                     MenuItemInfo info;
                     for (int i = 0; i < size; i++)
                         if (update[i]) {
-                            info = (item = items[i]).getInfo();
+                            info = items[i].getInfo();
                             Inventory inv = session.inventory;
-                            MenuItem[] visible = session.items;
+                            int[] visible = session.slotToPos;
                             int slot = session.slots[i];
                             boolean hidden = info.isHidden(player);
                             ItemStack is = inv.getItem(slot);
                             if (hidden) {
-                                if (is != null && visible[slot] == item) {
-                                    visible[slot] = null;
+                                if (is != null && visible[slot] == i) {
+                                    visible[slot] = -1;
                                     inv.setItem(slot, null);
                                 }
                             } else {
                                 if (is != null) info.apply(player, is);
                                 else inv.setItem(slot, info.load(player));
-                                visible[slot] = item;
+                                visible[slot] = i;
                             }
                         }
                 }
@@ -227,16 +234,15 @@ public abstract class AbstractMenu {
     private static class Session {
 
         private final Inventory inventory;
-        private final MenuItem[] items;
-        private final int[] slots;
+        private final int[] slots, slotToPos;
 
         private OpenAnimation.Animation opening;
 
-        private Session(Inventory inventory, MenuItem[] items,
-                        int[] slots, OpenAnimation.Animation opening) {
+        private Session(Inventory inventory, int[] slots,
+                        int[] slotToPos, OpenAnimation.Animation opening) {
             this.inventory = inventory;
-            this.items = items;
             this.slots = slots;
+            this.slotToPos = slotToPos;
             this.opening = opening;
         }
     }

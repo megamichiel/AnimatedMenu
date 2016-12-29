@@ -128,17 +128,17 @@ public class AnimatedMenu extends AbstractMenu {
     public void open(Player who, Runnable ready) {
         if (!sqlAwaits.isEmpty()) {
             SQLHandler.getInstance().awaitRefresh(who, sqlAwaits, () -> {
-                ready.run();
                 for (Consumer<? super Player> consumer : settings.getOpenListeners())
                     consumer.accept(who);
                 who.openInventory(createInventory(who));
+                ready.run();
             });
             return;
         }
-        ready.run();
         for (Consumer<? super Player> consumer : settings.getOpenListeners())
             consumer.accept(who);
         who.openInventory(createInventory(who));
+        ready.run();
     }
 
     @Override

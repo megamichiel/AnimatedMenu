@@ -18,13 +18,12 @@ public class MenuType {
     
     private final InventoryType inventoryType;
     private final String nmsName;
-    private final int width, height;
+    private final int width, height, size;
     
     public MenuType(InventoryType type, String nmsName, int width, int height) {
         inventoryType = type;
         this.nmsName = nmsName;
-        this.width = width;
-        this.height = height;
+        size = (this.width = width) * (this.height = height);
     }
     
     private MenuType(int rows) {
@@ -32,7 +31,7 @@ public class MenuType {
     }
 
     public int getSize() {
-        return width * height;
+        return size;
     }
     
     AnimatedMenu newMenu(AnimatedMenuPlugin plugin, String name,

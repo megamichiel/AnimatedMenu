@@ -55,12 +55,21 @@ public class ItemInfo implements MenuItemInfo {
 
         MenuType type = menu.getMenuType();
         if (section.isInt("x") && section.isInt("y")) {
-            int x = clampSlot(type.getWidth(), section.getInt("x")) - 1,
+            int x = clampSlot(type.getWidth(),  section.getInt("x")) - 1,
                 y = clampSlot(type.getHeight(), section.getInt("y")) - 1;
-            slot = clampSlot(type.getSize(), (y * type.getWidth()) + x);
+            slot = y * type.getWidth() + x;
         } else if (section.isInt("slot"))
             slot = clampSlot(type.getSize(), section.getInt("slot")) - 1;
-        else throw new IllegalArgumentException("No slot specified for item " + name + " in menu " + menu.getName() + "!");
+        else if (section.isString("slot")) {
+            String[] split = section.getString("slot").split(",");
+            if (split.length == 2) try {
+                int x = clampSlot(type.getWidth(), Integer.parseInt(split[0].trim())) - 1,
+                    y = clampSlot(type.getHeight(), Integer.parseInt(split[1].trim())) - 1;
+                slot = y * type.getWidth() + x;
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Unknown slot for item " + name + " in menu " + menu.getName() + ": " + section.getString("slot") + "!");
+            } else throw new IllegalArgumentException("Unknown slot for item " + name + " in menu " + menu.getName() + ": " + section.getString("slot") + "!");
+        } else throw new IllegalArgumentException("No slot specified for item " + name + " in menu " + menu.getName() + "!");
 
         frameDelay = section.getInt("frame-delay", 20);
         refreshDelay = section.getInt("refresh-delay", frameDelay);
@@ -153,7 +162,7 @@ public class ItemInfo implements MenuItemInfo {
     }
 
     @Override
-    public int getSlot(Player p, ItemStack[] contents, ItemStack stack) {
+    public int getSlot(Player p, SlotContext ctx) {
         return slot;
     }
 
