@@ -7,6 +7,7 @@ import me.megamichiel.animatedmenu.command.TellRawCommand;
 import me.megamichiel.animatedmenu.command.TextCommand;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuLoader;
+import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
 import me.megamichiel.animationlib.bukkit.PapiPlaceholder;
@@ -59,7 +60,7 @@ public class AnimatedMenuPlugin extends JavaPlugin
 
     private final AnimatedMenuCommand command = new AnimatedMenuCommand(this);
     private final MenuRegistry menuRegistry = new MenuRegistry(this);
-    private final Set<Map<?, ?>> playerMaps = Collections.newSetFromMap(new WeakHashMap<>());
+    private final Set<Delay<Player>> delays = Collections.newSetFromMap(new WeakHashMap<>());
 
     private final RemoteConnections connections = new RemoteConnections(this);
     private boolean warnOfflineServers = true;
@@ -309,9 +310,8 @@ public class AnimatedMenuPlugin extends JavaPlugin
         if (update != null && player.hasPermission("animatedmenu.seeupdate"))
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', "&8[&6" + getDescription().getName() + "&8] &aA new version is available! (Current version: " + getDescription().getVersion() + ", new version: " + update + ")"));
         for (final AnimatedMenu menu : menuRegistry) {
-            if (menu.getSettings().getOpener() != null && menu.getSettings().getOpenerJoinSlot() > -1) {
+            if (menu.getSettings().getOpener() != null && menu.getSettings().getOpenerJoinSlot() > -1)
                 player.getInventory().setItem(menu.getSettings().getOpenerJoinSlot(), menu.getSettings().getOpener());
-            }
             if (menu.getSettings().shouldOpenOnJoin())
                 getServer().getScheduler().runTask(this, () -> menuRegistry.openMenu(player, menu));
         }
@@ -386,11 +386,13 @@ public class AnimatedMenuPlugin extends JavaPlugin
     @EventHandler
     public void on(PlayerQuitEvent e) {
         Player p = e.getPlayer();
-        playerMaps.forEach(map -> map.remove(p));
+
     }
 
-    public void addPlayerMap(Map<?, ?> map) {
-        playerMaps.add(map);
+    public Delay<Player> addPlayerDelay(long time) {
+        Delay<Player> delay = new Delay<>(time);
+        delays.add(delay);
+        return delay;
     }
 
     public OpenAnimation.Type resolveAnimationType(String name) {

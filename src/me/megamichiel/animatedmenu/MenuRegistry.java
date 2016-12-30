@@ -98,7 +98,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @param who the player who should open the menu
      * @param menu the menu to open
      */
-    void openMenu(Player who, AnimatedMenu menu) {
+    public void openMenu(Player who, AnimatedMenu menu) {
         String s = menu.canOpen(who);
         if (s != null) {
             if (!s.isEmpty()) who.sendMessage(s);

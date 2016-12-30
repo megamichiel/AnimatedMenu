@@ -14,6 +14,7 @@ import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
 import me.megamichiel.animationlib.config.type.YamlConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
 
 public class MenuLoader implements DirectoryListener.FileListener {
 
-    private final DirectoryListener listener;
+    private DirectoryListener listener;
     protected final AnimatedMenuPlugin plugin;
 
     public MenuLoader(AnimatedMenuPlugin plugin) {
@@ -39,16 +40,6 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 plugin.saveResource("menus/shop.yml", false);
             } else plugin.nag("Failed to create menus folder!");
         }
-        DirectoryListener listener = null;
-        if (plugin.getConfiguration().getBoolean("auto-menu-refresh")) {
-            try {
-                listener = new DirectoryListener(plugin.getLogger(), new File(plugin.getDataFolder(), "menus"), this);
-            } catch (IOException ex) {
-                plugin.nag("Unable to set up directory update listener!");
-                plugin.nag(ex);
-            }
-        }
-        this.listener = listener;
     }
 
     public void onDisable() {
@@ -62,6 +53,20 @@ public class MenuLoader implements DirectoryListener.FileListener {
 
         loadMenus(list, menus);
 
+        if (listener != null) {
+            listener.stop();
+            listener = null;
+        }
+
+        if (plugin.getConfiguration().getBoolean("auto-menu-refresh")) {
+            try {
+                listener = new DirectoryListener(plugin.getLogger(), menus, this);
+            } catch (IOException ex) {
+                plugin.nag("Unable to set up directory update listener!");
+                plugin.nag(ex);
+            }
+        }
+
         return list;
     }
 
@@ -73,9 +78,12 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 loadMenus(menus, file);
                 continue;
             }
-            String name = file.getName(), extension = name.substring(name.lastIndexOf('.') + 1);
+            String name = file.getName(), extension;
+            int index = name.lastIndexOf('.');
+            if (index == -1) continue;
+            extension = name.substring(index + 1);
             if (extension.equalsIgnoreCase("yml")) {
-                name = name.substring(0, name.lastIndexOf('.')).replace(' ', '-');
+                name = name.substring(0, index).replace(' ', '-');
                 YamlConfig config = ConfigManager.quickLoad(YamlConfig::new, file);
                 AnimatedMenu menu = loadMenu(name, config);
                 menus.add(menu);
@@ -91,7 +99,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 titleUpdateDelay, type, permission, permissionMessage);
     }
 
-    protected AnimatedMenu loadMenu(String name, AbstractConfig config) {
+    public AnimatedMenu loadMenu(String name, AbstractConfig config) {
         AnimatedText title = new AnimatedText();
         title.load(plugin, config, "menu-name", new StringBundle(plugin, name));
         MenuType type;
@@ -207,9 +215,11 @@ public class MenuLoader implements DirectoryListener.FileListener {
                         AnimatedMenu menu = registry.getMenu(name);
                         if (menu != null) {
                             plugin.getLogger().warning("A new menu file was created," +
-                                    " but a menu already existed with it's name!");
+                                    " but a menu already existed with its name!");
 
-                            menu.getViewers().forEach(Player::closeInventory);
+                            // Create copy, but not an entire collection
+                            for (Object p : menu.getViewers().toArray())
+                                ((Player) p).closeInventory();
                             registry.remove(menu);
                         }
                         YamlConfig config = ConfigManager.quickLoad(YamlConfig::new, file);
@@ -218,18 +228,20 @@ public class MenuLoader implements DirectoryListener.FileListener {
                         registry.add(menu);
                         break;
                     case MODIFY:
-                        menu = registry.getMenu(name);
-                        if (menu == null) {
-                            plugin.getLogger().warning("Failed to update " + name + ": No menu by that name found!");
-                            return;
-                        }
                         if (file.length() == 0) return;
-                        menu.getViewers().forEach(Player::closeInventory);
+                        menu = registry.getMenu(name);
+                        Object[] viewers;
+                        if (menu != null) {
+                            viewers = menu.getViewers().toArray();
+                            for (Object viewer : viewers)
+                                ((Player) viewer).closeInventory();
+                            registry.remove(menu);
+                        } else viewers = null;
                         config = ConfigManager.quickLoad(YamlConfig::new, file);
-                        registry.remove(menu);
                         menu = loadMenu(name, config);
                         registry.add(menu);
-                        menu.getViewers().forEach(Player::closeInventory);
+                        if (viewers != null) for (Object p : viewers)
+                            registry.openMenu((Player) p, menu);
                         plugin.getLogger().info("Updated " + file.getName());
                         break;
                     case DELETE:
@@ -238,7 +250,9 @@ public class MenuLoader implements DirectoryListener.FileListener {
                             plugin.getLogger().warning("Failed to remove " + name + ": No menu by that name found!");
                             return;
                         }
-                        menu.getViewers().forEach(Player::closeInventory);
+                        // Create copy, but not an entire collection
+                        for (Object p : menu.getViewers().toArray())
+                            ((Player) p).closeInventory();
                         registry.remove(menu);
                         plugin.getLogger().info("Removed " + file.getName());
                         break;

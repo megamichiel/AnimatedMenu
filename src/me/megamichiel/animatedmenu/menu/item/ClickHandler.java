@@ -2,6 +2,7 @@ package me.megamichiel.animatedmenu.menu.item;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.command.CommandExecutor;
+import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animatedmenu.util.Flag;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
@@ -9,7 +10,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class ClickHandler {
 
@@ -62,9 +62,8 @@ public class ClickHandler {
                 bypassPermission, priceMessage, pointsMessage;
         private final CloseAction closeAction;
 
-        private final long clickDelay;
         private final StringBundle delayMessage;
-        private final Map<Player, AtomicLong> delays;
+        private final Delay<Player> delay;
         private long clickTimeLeft;
 
         public Entry(AnimatedMenuPlugin plugin, AbstractConfig section) {
@@ -108,18 +107,20 @@ public class ClickHandler {
             }
             this.closeAction = closeAction;
 
-            clickDelay = section.getInt("click-delay") * 50L;
+            long clickDelay = section.getInt("click-delay") * 50L;
             if (clickDelay > 0) {
                 delayMessage = StringBundle.parse(plugin, section.getString("delay-message"));
                 if (delayMessage != null) {
                     delayMessage.colorAmpersands();
+                    delayMessage.replace("{hoursleft}", (n, p) -> clickTimeLeft / 3600000);
+                    delayMessage.replace("{minutesleft}", (n, p) -> clickTimeLeft / 60000);
                     delayMessage.replace("{secondsleft}", (n, p) -> clickTimeLeft / 1000);
-                    delayMessage.replace("{allticksleft}", (n, p) -> clickTimeLeft / 50);
                     delayMessage.replace("{ticksleft}", (n, p) -> (clickTimeLeft / 50) % 20);
                 }
-                plugin.addPlayerMap(delays = new HashMap<>());
+
+                delay = plugin.addPlayerDelay(clickDelay);
             } else {
-                delays = null;
+                delay = null;
                 delayMessage = null;
             }
         }
@@ -127,17 +128,10 @@ public class ClickHandler {
         void click(Player player, ClickType type) {
             if (!click.matches(type)) return;
             if (canClick(player)) {
-                if (clickDelay > 0) {
-                    long time = System.currentTimeMillis();
-                    AtomicLong al = delays.computeIfAbsent(player, p -> new AtomicLong());
-                    if (time < al.get()) {
-                        if (delayMessage != null) {
-                            clickTimeLeft = al.get() - time;
-                            player.sendMessage(delayMessage.toString(player));
-                        }
-                        return;
-                    }
-                    al.set(time + clickDelay);
+                if (delay != null && (clickTimeLeft = delay.timeLeft(player)) != 0) {
+                    if (delayMessage != null)
+                        player.sendMessage(delayMessage.toString(player));
+                    return;
                 }
                 clickExecutor.execute(player);
                 if (closeAction.onSuccess) player.closeInventory();

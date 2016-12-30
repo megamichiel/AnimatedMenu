@@ -65,6 +65,7 @@ public class AnimatedMenu extends AbstractMenu {
     private final int titleUpdateDelay;
     private final IPlaceholder<String> permission, permissionMessage;
     private final List<SQLHandler.Entry> sqlAwaits = new ArrayList<>();
+    private IPlaceholder<String> waitMessage;
 
     private int titleUpdateTick = 0;
     
@@ -93,6 +94,8 @@ public class AnimatedMenu extends AbstractMenu {
             SQLHandler placeholders = SQLHandler.getInstance();
             list.stream().map(String::trim).map(placeholders::getEntry)
                     .filter(Objects::nonNull).forEach(sqlAwaits::add);
+            StringBundle sb = StringBundle.parse(plugin, config.getString("wait-message"));
+            waitMessage = sb == null ? null : sb.colorAmpersands().tryCache();
         }
     }
 
@@ -127,6 +130,8 @@ public class AnimatedMenu extends AbstractMenu {
     
     public void open(Player who, Runnable ready) {
         if (!sqlAwaits.isEmpty()) {
+            if (waitMessage != null)
+                who.sendMessage(waitMessage.invoke(plugin, who));
             SQLHandler.getInstance().awaitRefresh(who, sqlAwaits, () -> {
                 for (Consumer<? super Player> consumer : settings.getOpenListeners())
                     consumer.accept(who);

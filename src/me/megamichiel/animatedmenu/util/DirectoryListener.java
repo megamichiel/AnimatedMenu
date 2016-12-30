@@ -1,17 +1,22 @@
 package me.megamichiel.animatedmenu.util;
 
-import static java.nio.file.StandardWatchEventKinds.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
+
+import static java.nio.file.StandardWatchEventKinds.*;
 
 public class DirectoryListener implements Runnable {
 
     private final Logger log;
     private final WatchService service;
     private final Path dir;
+
+    private final Map<WatchEvent.Kind<?>, FileAction> actions = new HashMap<>();
     private final FileListener listener;
 
     private final Thread thread;
@@ -22,6 +27,9 @@ public class DirectoryListener implements Runnable {
         service = FileSystems.getDefault().newWatchService();
         dir = directory.toPath();
         dir.register(service, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE);
+        actions.put(ENTRY_CREATE, FileAction.CREATE);
+        actions.put(ENTRY_MODIFY, FileAction.MODIFY);
+        actions.put(ENTRY_DELETE, FileAction.DELETE);
         this.listener = listener;
         (thread = new Thread(this)).start();
     }
@@ -38,19 +46,15 @@ public class DirectoryListener implements Runnable {
             try {
                 WatchKey key = service.take();
 
-                for (WatchEvent<?> event : key.pollEvents()) {
+                List<WatchEvent<?>> watchEvents = key.pollEvents();
+
+                for (WatchEvent<?> event : watchEvents) {
                     WatchEvent.Kind<?> kind = event.kind();
                     if (kind == OVERFLOW) continue;
-                    WatchEvent<Path> ev = (WatchEvent<Path>) event;
 
-                    Path path = ev.context();
+                    File file = dir.resolve((Path) event.context()).toFile();
 
-                    Path child = dir.resolve(path);
-                    File file = child.toFile();
-
-                    FileAction action = kind == ENTRY_CREATE ? FileAction.CREATE : kind == ENTRY_MODIFY ? FileAction.MODIFY : FileAction.DELETE;
-
-                    listener.fileChanged(file, action);
+                    listener.fileChanged(file, actions.get(kind));
                 }
 
                 boolean valid = key.reset();

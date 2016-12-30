@@ -128,7 +128,7 @@ public class Skull {
             });
             thread.setDaemon(true);
             thread.start();
-		} else { // gson?
+		} else { // json?
 			try {
                 JsonObject obj = new JsonParser().parse(name).getAsJsonObject();
                 UUID uuid = UUID.fromString(obj.get("Id").getAsString());

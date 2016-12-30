@@ -61,14 +61,14 @@ public class AnimatedMenuCommand implements TabExecutor {
             return list;
         });
         addHandler("item", "item <menu> [player]", "Get a menu's menu opener", (sender, args) -> {
-            if (!sender.hasPermission("animatedmenu.command.open"))
+            if (!sender.hasPermission("animatedmenu.command.item"))
                 return RED + "You don't have permission for that!";
             if (args.length < 2) return RED + "You must specify a menu!";
             AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
             if (menu == null) return RED + "Couldn't find a menu by that name!";
             Player target;
             if (args.length > 2) {
-                if (!sender.hasPermission("animatedmenu.command.open.other"))
+                if (!sender.hasPermission("animatedmenu.command.item.other"))
                     return RED + "You are not permitted to do that for other players!";
                 target = null;
                 for (Player player : Bukkit.getOnlinePlayers())
@@ -78,9 +78,9 @@ public class AnimatedMenuCommand implements TabExecutor {
                     }
                 if (target == null) return RED + "Couldn't find a player by that name!";
             } else if (sender instanceof Player) target = (Player) sender;
-            else return RED + "$command open <menu> <player>";
-            plugin.getMenuRegistry().openMenu(target, menu);
-            return target.equals(sender) ? null : (GREEN + "Opened menu for " + target.getName() + "!");
+            else return RED + "$command item <menu> <player>";
+            target.getInventory().addItem(menu.getSettings().getOpener());
+            return target.equals(sender) ? null : (GREEN + "Gave " + target.getName() + " the menu item!");
         }, (sender, args) -> {
             List<String> list = new ArrayList<>();
             String query = args[1].toLowerCase(ENGLISH);
