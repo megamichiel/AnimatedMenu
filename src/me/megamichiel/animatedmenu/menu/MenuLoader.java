@@ -14,7 +14,6 @@ import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
 import me.megamichiel.animationlib.config.type.YamlConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -25,6 +24,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MenuLoader implements DirectoryListener.FileListener {
 
@@ -91,7 +91,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         }
     }
 
-    AnimatedMenu createMenu(AnimatedMenuPlugin plugin, String name,
+    protected AnimatedMenu createMenu(AnimatedMenuPlugin plugin, String name,
                                       AnimatedText title, int titleUpdateDelay,
                                       MenuType type, StringBundle permission,
                                       StringBundle permissionMessage) {
@@ -113,8 +113,8 @@ public class MenuLoader implements DirectoryListener.FileListener {
         StringBundle permission = StringBundle.parse(plugin, config.getString("permission")),
                 permissionMessage = StringBundle.parse(plugin, config.getString("permission-message"));
         if (permissionMessage != null) permissionMessage.colorAmpersands();
-        AnimatedMenu menu = type.newMenu(plugin, name, this, title,
-                config.getInt("title-update-delay", 20), permission, permissionMessage);
+        AnimatedMenu menu = createMenu(plugin, name, title, config.getInt(
+                "title-update-delay", 20), type, permission, permissionMessage);
         loadMenu(menu, config);
         return menu;
     }
@@ -159,18 +159,40 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 }
                 opener.setItemMeta(meta);
             }
-            settings.setOpener(opener);
-            settings.setOpenerJoinSlot(section.getInt("menu-opener-slot", -1));
+            settings.setOpener(opener, section.getInt("menu-opener-slot", -1));
         }
         settings.setOpenOnJoin(Flag.parseBoolean(section.getString("open-on-join")));
         if (section.isString("open-sound")) {
             SoundCommand.SoundInfo sound = new SoundCommand.SoundInfo(plugin,
                     section.getString("open-sound").toLowerCase(Locale.US).replace('-', '_'),
                     1F, (float) section.getDouble("open-sound-pitch", 1F));
-            settings.addOpenListener(sound::play);
+            settings.addListener(sound::play, false);
         }
-        settings.setOpenCommands(section.isString("command") ? section.getString("command").toLowerCase(Locale.US).split("; ") : null);
         settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
+
+        Object command = section.get("command");
+        if (command != null) {
+            AnimatedMenu menu = settings.getMenu();
+            String name, usage = menu.getDefaultUsage(), description = "Opens menu " + menu.getName();
+            if (command instanceof AbstractConfig) {
+                AbstractConfig sec = (AbstractConfig) command;
+                name = sec.getString("name");
+                usage = sec.getString("usage", usage);
+                description = sec.getString("description", description);
+            } else if (command instanceof String || AbstractConfig.isPrimitiveWrapper(command))
+                name = command.toString();
+            else name = null;
+
+            if (name != null) {
+                String[] split = name.split(";");
+                name = split[0].trim().toLowerCase(Locale.ENGLISH);
+                String[] aliases = new String[split.length - 1];
+                for (int i = 0; i < aliases.length; i++)
+                    aliases[i] = split[i + 1].trim().toLowerCase(Locale.ENGLISH);
+
+                settings.setOpenCommand(name, usage, description, aliases);
+            }
+        }
     }
 
     public void loadItem(AbstractMenu menu, String name,

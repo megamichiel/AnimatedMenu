@@ -30,11 +30,10 @@ public class AnimatedMenuCommand implements TabExecutor {
     AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
         usages.put("help", GREEN + "$command /animatedmenu [help]: " + YELLOW + "See this help menu");
         addHandler("open", "open <menu> [player]", "Open a specific menu", (sender, args) -> {
-            if (!sender.hasPermission("animatedmenu.command.open"))
-                return RED + "You don't have permission for that!";
             if (args.length < 2) return RED + "You must specify a menu!";
             AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
-            if (menu == null) return RED + "Couldn't find a menu by that name!";
+            if (menu == null || menu.getSettings().isHiddenFromCommand())
+                return RED + "Couldn't find a menu by that name!";
             Player target;
             if (args.length > 2) {
                 if (!sender.hasPermission("animatedmenu.command.open.other"))
@@ -61,8 +60,6 @@ public class AnimatedMenuCommand implements TabExecutor {
             return list;
         });
         addHandler("item", "item <menu> [player]", "Get a menu's menu opener", (sender, args) -> {
-            if (!sender.hasPermission("animatedmenu.command.item"))
-                return RED + "You don't have permission for that!";
             if (args.length < 2) return RED + "You must specify a menu!";
             AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
             if (menu == null) return RED + "Couldn't find a menu by that name!";
@@ -79,7 +76,7 @@ public class AnimatedMenuCommand implements TabExecutor {
                 if (target == null) return RED + "Couldn't find a player by that name!";
             } else if (sender instanceof Player) target = (Player) sender;
             else return RED + "$command item <menu> <player>";
-            target.getInventory().addItem(menu.getSettings().getOpener());
+            menu.getSettings().giveOpener(target.getInventory(), true);
             return target.equals(sender) ? null : (GREEN + "Gave " + target.getName() + " the menu item!");
         }, (sender, args) -> {
             List<String> list = new ArrayList<>();
@@ -92,8 +89,6 @@ public class AnimatedMenuCommand implements TabExecutor {
             return list;
         });
         addHandler("reload", "reload", "Reload the plugin", (sender, args) -> {
-            if (!sender.hasPermission("animatedmenu.command.reload"))
-                return RED + "You don't have permission for that!";
             plugin.reload();
             return DARK_GRAY + "[" + GOLD + plugin.getDescription().getName() + DARK_GRAY + "] "
                     + ChatColor.GREEN + "Plugin reloaded! "
@@ -133,6 +128,8 @@ public class AnimatedMenuCommand implements TabExecutor {
             return onCommand(sender, command, label, new String[0]);
         BiFunction<CommandSender, String[], Object> exec = executors.get(type);
         if (exec != null) {
+            if (!sender.hasPermission("animatedmenu.command." + type))
+                return invalid(sender, "You don't have permission for that!");
             Object result = exec.apply(sender, args);
             if (result instanceof String)
                 sender.sendMessage(((String) result).replace("$command", '/' + label));

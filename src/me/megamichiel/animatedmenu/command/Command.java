@@ -8,17 +8,17 @@ import java.util.Locale;
 
 public abstract class Command<T, C> {
 
-	final String prefix;
+    final String prefix;
 
-	protected Command(String prefix) {
-		this.prefix = prefix;
-	}
+    protected Command(String prefix) {
+        this.prefix = prefix;
+    }
 
-	protected abstract T parse(Nagger nagger, String command);
+    protected abstract T parse(Nagger nagger, String command);
 
-	protected abstract boolean execute(AnimatedMenuPlugin plugin, Player p, T value);
+    protected abstract boolean execute(AnimatedMenuPlugin plugin, Player p, T value);
 
-	protected abstract C tryCacheValue(AnimatedMenuPlugin plugin, T value);
+    protected abstract C tryCacheValue(AnimatedMenuPlugin plugin, T value);
 
-	protected abstract boolean executeCached(AnimatedMenuPlugin plugin, Player p, C value);
+    protected abstract boolean executeCached(AnimatedMenuPlugin plugin, Player p, C value);
 }

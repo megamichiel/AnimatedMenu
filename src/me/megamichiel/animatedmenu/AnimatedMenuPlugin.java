@@ -9,7 +9,6 @@ import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuLoader;
 import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
-import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
 import me.megamichiel.animationlib.bukkit.PapiPlaceholder;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
@@ -28,12 +27,11 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.InventoryView;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.Plugin;
@@ -53,8 +51,7 @@ import java.util.regex.Pattern;
 
 import static java.util.Locale.ENGLISH;
 
-public class AnimatedMenuPlugin extends JavaPlugin
-        implements Listener, LoggerNagger, PipelineContext {
+public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNagger, PipelineContext {
 
     protected final List<Command<?, ?>> commands = new ArrayList<>();
 
@@ -76,8 +73,7 @@ public class AnimatedMenuPlugin extends JavaPlugin
     
     @Override
     public void onEnable() {
-        if (!requirePlugin("AnimationLib", "1.5.1", "https://www.spigotmc.org/resources/22295/"))
-            return;
+        if (!checkAnimationLib()) return;
         else try {
             Class.forName("me.megamichiel.animationlib.AnimLib");
         } catch (ClassNotFoundException ex) {
@@ -102,23 +98,17 @@ public class AnimatedMenuPlugin extends JavaPlugin
         if (PapiPlaceholder.apiAvailable)
             AnimatedMenuPlaceholders.register(this);
         try {
-            Class.forName("net.milkbowl.vault.economy.Economy");
             economy = Bukkit.getServicesManager().getRegistration(Economy.class).getProvider();
             vaultPresent = true;
-        } catch (Exception ex) {
-            //No Vault
+        } catch (NoClassDefFoundError err) {
+            // No Vault
         }
         Plugin pp = Bukkit.getPluginManager().getPlugin("PlayerPoints");
         if (pp != null && pp instanceof PlayerPoints) {
             playerPointsAPI = ((PlayerPoints) pp).getAPI();
             playerPointsPresent = true;
         }
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                menuRegistry.loadMenus();
-            }
-        }.runTask(this);
+        post(menuRegistry::loadMenus, false);
         
         /* Other Stuff */
         checkForUpdate();
@@ -129,18 +119,19 @@ public class AnimatedMenuPlugin extends JavaPlugin
         else asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
     }
 
-    private boolean requirePlugin(String name, String version, String url) {
-        Plugin plugin = getServer().getPluginManager().getPlugin(name);
+    private static final String ANIMLIB_VERSION = "1.5.1";
+
+    private boolean checkAnimationLib() {
+        Plugin plugin = getServer().getPluginManager().getPlugin("AnimationLib");
         if (plugin != null) {
             String str = plugin.getDescription().getVersion();
-            if (str.equals(version)) return true;
-            if (str.equals(version) || Double.parseDouble("0." + str.replace(".", ""))
-                    >= Double.parseDouble("0." + version.replace(".", "")))
+            if (str.equals(ANIMLIB_VERSION) || Double.parseDouble("0." + str.replace(".", ""))
+                    >= Double.parseDouble("0." + ANIMLIB_VERSION.replace(".", "")))
                 return true;
         }
         getServer().getConsoleSender().sendMessage(new String[] {
-                ChatColor.RED + "[AnimatedMenu] I require " + name + " v" + version + " to work!",
-                ChatColor.RED + "Download it at " + url
+                ChatColor.RED + "[AnimatedMenu] I require AnimationLib v" + ANIMLIB_VERSION + " to work!",
+                ChatColor.RED + "Download it at \"https://www.spigotmc.org/resources/22295/\""
         });
         getServer().getPluginManager().disablePlugin(this);
         return false;
@@ -279,8 +270,8 @@ public class AnimatedMenuPlugin extends JavaPlugin
                             port = Integer.parseInt(ip.substring(index + 1));
                             ip = ip.substring(0, index);
                         }
-                        ServerInfo serverInfo = connections.add(key.toLowerCase(ENGLISH), new InetSocketAddress(ip, port));
-                        serverInfo.load(sec);
+                        connections.add(key.toLowerCase(ENGLISH),
+                                new InetSocketAddress(ip, port)).load(sec);
                     }
                 }
             }
@@ -306,14 +297,14 @@ public class AnimatedMenuPlugin extends JavaPlugin
     
     @EventHandler(priority = EventPriority.MONITOR)
     public void on(PlayerJoinEvent e) {
-        final Player player = e.getPlayer();
+        Player player = e.getPlayer();
         if (update != null && player.hasPermission("animatedmenu.seeupdate"))
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', "&8[&6" + getDescription().getName() + "&8] &aA new version is available! (Current version: " + getDescription().getVersion() + ", new version: " + update + ")"));
-        for (final AnimatedMenu menu : menuRegistry) {
-            if (menu.getSettings().getOpener() != null && menu.getSettings().getOpenerJoinSlot() > -1)
-                player.getInventory().setItem(menu.getSettings().getOpenerJoinSlot(), menu.getSettings().getOpener());
+        PlayerInventory inv = player.getInventory();
+        for (AnimatedMenu menu : menuRegistry) {
+            menu.getSettings().giveOpener(inv, false);
             if (menu.getSettings().shouldOpenOnJoin())
-                getServer().getScheduler().runTask(this, () -> menuRegistry.openMenu(player, menu));
+                post(() -> menuRegistry.openMenu(player, menu), false);
         }
     }
     
@@ -324,36 +315,10 @@ public class AnimatedMenuPlugin extends JavaPlugin
             return;
         if (e.getItem() != null) {
             MaterialData data = e.getItem().getData();
+            int amount = e.getItem().getAmount();
             ItemMeta meta = e.getItem().getItemMeta();
             for (AnimatedMenu menu : menuRegistry) {
-                ItemStack item = menu.getSettings().getOpener();
-                if (item != null && item.getData().equals(data)) {
-                    ItemMeta meta1 = item.getItemMeta();
-                    if (menu.getSettings().hasOpenerName() && notEqual(meta.getDisplayName(), meta1.getDisplayName()))
-                        continue;
-                    if (menu.getSettings().hasOpenerLore() && notEqual(meta.getLore(), meta1.getLore()))
-                        continue;
-                    menuRegistry.openMenu(p, menu);
-                    e.setCancelled(true);
-                    return;
-                }
-            }
-        }
-    }
-    
-    private boolean notEqual(Object o1, Object o2) {
-        return o1 == null ? o2 != null : !o1.equals(o2);
-    }
-    
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void on(PlayerCommandPreprocessEvent e) {
-        Player p = e.getPlayer();
-        String cmd = e.getMessage().substring(1).split(" ")[0].toLowerCase(ENGLISH);
-        for (AnimatedMenu menu : menuRegistry) {
-            String[] commands = menu.getSettings().getOpenCommands();
-            if (commands == null) continue;
-            for (String command : commands) {
-                if (cmd.equals(command)) {
+                if (menu.getSettings().canOpenWith(data, amount, meta)) {
                     menuRegistry.openMenu(p, menu);
                     e.setCancelled(true);
                     return;
@@ -365,8 +330,7 @@ public class AnimatedMenuPlugin extends JavaPlugin
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void on(InventoryCloseEvent e) {
         if (!(e.getPlayer() instanceof Player)) return;
-        AnimatedMenu menu = menuRegistry.getOpenMenu().remove(e.getPlayer());
-        if (menu != null) menu.handleMenuClose((Player) e.getPlayer());
+        menuRegistry.closeMenu((Player) e.getPlayer());
     }
     
     @EventHandler
@@ -386,7 +350,8 @@ public class AnimatedMenuPlugin extends JavaPlugin
     @EventHandler
     public void on(PlayerQuitEvent e) {
         Player p = e.getPlayer();
-
+        for (Delay<Player> delay : delays)
+            delay.remove(p);
     }
 
     public Delay<Player> addPlayerDelay(long time) {
@@ -415,7 +380,7 @@ public class AnimatedMenuPlugin extends JavaPlugin
         return menuRegistry;
     }
 
-    public RemoteConnections getConnections() {
+    RemoteConnections getConnections() {
         return connections;
     }
 

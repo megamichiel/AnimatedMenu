@@ -79,36 +79,32 @@ public class Skull {
         final GameProfile profile = new GameProfile(null, name);
         cachedProfiles.put(savedName, profile);
         try {
-            if (fillProfile.getParameterTypes().length == 2) { // Spigot
-                fillProfile.invoke(null, profile, new Predicate<GameProfile>() {
-                    @Override
-                    public boolean apply(GameProfile profile) {
-                        if (profile != null)
-                            cachedProfiles.put(savedName, profile);
-                        return false;
-                    }
+            if (fillProfile.getParameterTypes().length == 2) // Spigot
+                fillProfile.invoke(null, profile, (Predicate<GameProfile>) profile1 -> {
+                    if (profile1 != null)
+                        cachedProfiles.put(savedName, profile1);
+                    return false;
                 });
-            } else if (fillProfile.getParameterTypes().length == 1) {// Bukkit
+            else if (fillProfile.getParameterTypes().length == 1) // Bukkit
                 cachedProfiles.put(savedName, (GameProfile) fillProfile.invoke(null, profile));
-            }
         } catch (Exception ex) {}
     }
     
     public static void loadProfile(final String name) {
-		int length = name.length();
-		if (length <= 36) { // uuid/name
-			final GameProfile profile;
-			if (length <= 16) { // name :O
+        int length = name.length();
+        if (length <= 36) { // uuid/name
+            final GameProfile profile;
+            if (length <= 16) { // name :O
                 load(name, name);
                 return;
-			} else if (length == 32) { // non-hyphen uuid
-				profile = new GameProfile(UUID.fromString(name.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5")), null);
-			} else if (length == 36) { // hyphen uuid
-				profile = new GameProfile(UUID.fromString(name), null);
-			} else { // idk D:
+            } else if (length == 32) { // non-hyphen uuid
+                profile = new GameProfile(UUID.fromString(name.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5")), null);
+            } else if (length == 36) { // hyphen uuid
+                profile = new GameProfile(UUID.fromString(name), null);
+            } else { // idk D:
                 cachedProfiles.put(name, new GameProfile(null, name));
                 return;
-			}
+            }
             cachedProfiles.put(name, profile);
             // Load skin from UUID asynchronous:
             Thread thread = new Thread(() -> {
@@ -128,8 +124,8 @@ public class Skull {
             });
             thread.setDaemon(true);
             thread.start();
-		} else { // json?
-			try {
+        } else { // json?
+            try {
                 JsonObject obj = new JsonParser().parse(name).getAsJsonObject();
                 UUID uuid = UUID.fromString(obj.get("Id").getAsString());
                 GameProfile profile = new GameProfile(uuid, name);
@@ -138,9 +134,9 @@ public class Skull {
                         new Property("textures", textures.getAsJsonArray("textures")
                                 .get(0).getAsJsonObject().get("Value").getAsString()));
                 cachedProfiles.put(name, profile);
-			} catch (Exception ex) {
+            } catch (Exception ex) {
                 cachedProfiles.put(name, new GameProfile(null, name));
-			}
-		}
+            }
+        }
     }
 }

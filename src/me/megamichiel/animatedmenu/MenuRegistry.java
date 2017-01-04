@@ -2,16 +2,26 @@ package me.megamichiel.animatedmenu;
 
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuLoader;
+import me.megamichiel.animationlib.bukkit.BukkitCommandAPI;
+import me.megamichiel.animationlib.command.CommandInfo;
+import me.megamichiel.animationlib.command.CommandSubscription;
+import me.megamichiel.animationlib.util.Subscription;
+import org.bukkit.ChatColor;
+import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
     private MenuLoader menuLoader;
+
     private final List<AnimatedMenu> menus = new ArrayList<>();
+    private final Map<AnimatedMenu, CommandSubscription<Command>> commandSubscriptions = new HashMap<>();
+
     private final AnimatedMenuPlugin plugin;
     private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
 
@@ -28,6 +38,10 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     }
 
     void onDisable() {
+        for (Object player : openMenu.keySet().toArray()) {
+            ((Player) player).sendMessage(ChatColor.RED + "Menu closing due to plugin disabling/reloading");
+            ((Player) player).closeInventory();
+        }
         if (menuLoader != null) menuLoader.onDisable();
     }
     
@@ -66,6 +80,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     public void add(AnimatedMenu menu) {
         menus.add(menu);
         menu.init();
+        addMenuCommand(menu);
     }
     
     /**
@@ -74,6 +89,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      */
     public void remove(AnimatedMenu menu) {
         menus.remove(menu);
+        Optional.ofNullable(commandSubscriptions.remove(menu)).ifPresent(Subscription::unsubscribe);
     }
     
     /**
@@ -92,6 +108,25 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     public Iterator<AnimatedMenu> iterator() {
         return menus.iterator();
     }
+
+    @Override
+    public void forEach(Consumer<? super AnimatedMenu> action) {
+        menus.forEach(action);
+    }
+
+    @Override
+    public Spliterator<AnimatedMenu> spliterator() {
+        return menus.spliterator();
+    }
+
+    private boolean isRedirecting = false;
+
+    public void closeMenu(Player who) {
+        if (!isRedirecting) {
+            AnimatedMenu menu = openMenu.remove(who);
+            if (menu != null) menu.handleMenuClose(who, null);
+        }
+    }
     
     /**
      * Make a player open a menu
@@ -104,9 +139,12 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             if (!s.isEmpty()) who.sendMessage(s);
             return;
         }
-        menu.open(who, () -> {
+        menu.open(who, inventory -> {
+            isRedirecting = true;
+            who.openInventory(inventory);
+            isRedirecting = false;
             AnimatedMenu prev = openMenu.remove(who);
-            if (prev != null) prev.handleMenuClose(who);
+            if (prev != null) prev.handleMenuClose(who, menu);
             openMenu.put(who, menu);
         });
     }
@@ -123,11 +161,19 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
         List<AnimatedMenu> list = getMenuLoader().loadMenus();
         if (list != null) {
-            for (AnimatedMenu menu : list)
+            for (AnimatedMenu menu : list) {
                 menu.init();
+                addMenuCommand(menu);
+            }
             menus.addAll(list);
         }
         logger.info(this.menus.size() + " menu" + (this.menus.size() == 1 ? "" : "s") + " loaded");
+    }
+
+    private void addMenuCommand(AnimatedMenu menu) {
+        CommandInfo openCommand = menu.getSettings().getOpenCommand();
+        if (openCommand != null) commandSubscriptions.put(menu,
+                BukkitCommandAPI.getInstance().registerCommand(plugin, openCommand));
     }
 
     public MenuLoader getMenuLoader() {

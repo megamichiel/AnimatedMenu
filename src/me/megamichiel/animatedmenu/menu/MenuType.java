@@ -34,13 +34,6 @@ public class MenuType {
         return size;
     }
     
-    AnimatedMenu newMenu(AnimatedMenuPlugin plugin, String name,
-                                MenuLoader loader,
-                                AnimatedText title, int titleUpdateDelay,
-                                StringBundle permission, StringBundle permissionMessage) {
-        return loader.createMenu(plugin, name, title, titleUpdateDelay, this, permission, permissionMessage);
-    }
-    
     public static MenuType chest(int rows) {
         MenuType type = CHEST[rows - 1];
         if (type == null) return CHEST[rows - 1] = new MenuType(rows);

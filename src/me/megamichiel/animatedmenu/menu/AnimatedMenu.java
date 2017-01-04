@@ -2,12 +2,15 @@ package me.megamichiel.animatedmenu.menu;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.animation.AnimatedText;
+import me.megamichiel.animationlib.command.exec.CommandContext;
+import me.megamichiel.animationlib.command.exec.CommandExecutor;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import me.megamichiel.animationlib.util.db.SQLHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
@@ -21,7 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-public class AnimatedMenu extends AbstractMenu {
+public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
     
     private static final Method GET_HANDLE, SEND_PACKET, UPDATE_INVENTORY;
     private static final Field PLAYER_CONNECTION, ACTIVE_CONTAINER, WINDOW_ID;
@@ -61,7 +64,7 @@ public class AnimatedMenu extends AbstractMenu {
     }
 
     private final AnimatedText menuTitle;
-    private final MenuSettings settings = new MenuSettings();
+    private final MenuSettings settings = new MenuSettings(this);
     private final int titleUpdateDelay;
     private final IPlaceholder<String> permission, permissionMessage;
     private final List<SQLHandler.Entry> sqlAwaits = new ArrayList<>();
@@ -103,9 +106,8 @@ public class AnimatedMenu extends AbstractMenu {
         return settings;
     }
 
-    public void handleMenuClose(Player who) {
-        if (removeViewer(who))
-            settings.getCloseListeners().forEach(c -> c.accept(who));
+    public void handleMenuClose(Player who, AnimatedMenu newMenu) {
+        if (removeViewer(who)) settings.callListeners(who, true);
     }
 
     private Inventory createInventory(Player who) {
@@ -128,22 +130,18 @@ public class AnimatedMenu extends AbstractMenu {
         return null;
     }
     
-    public void open(Player who, Runnable ready) {
+    public void open(Player who, Consumer<Inventory> ready) {
         if (!sqlAwaits.isEmpty()) {
             if (waitMessage != null)
                 who.sendMessage(waitMessage.invoke(plugin, who));
             SQLHandler.getInstance().awaitRefresh(who, sqlAwaits, () -> {
-                for (Consumer<? super Player> consumer : settings.getOpenListeners())
-                    consumer.accept(who);
-                who.openInventory(createInventory(who));
-                ready.run();
+                settings.callListeners(who, false);
+                ready.accept(createInventory(who));
             });
             return;
         }
-        for (Consumer<? super Player> consumer : settings.getOpenListeners())
-            consumer.accept(who);
-        who.openInventory(createInventory(who));
-        ready.run();
+        settings.callListeners(who, false);
+        ready.accept(createInventory(who));
     }
 
     @Override
@@ -169,5 +167,19 @@ public class AnimatedMenu extends AbstractMenu {
             }
         }
         super.tick();
+    }
+
+    @Override
+    public void onCommand(CommandContext ctx) {
+        CommandSender sender = (CommandSender) ctx.getSender();
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(ChatColor.RED + "You must be a player for that!");
+            return;
+        }
+        plugin.getMenuRegistry().openMenu((Player) sender, this);
+    }
+
+    protected String getDefaultUsage() {
+        return "/<command>";
     }
 }

@@ -180,24 +180,23 @@ public class RemoteConnections implements Runnable {
     public class ServerInfo {
         
         private final InetSocketAddress address;
-        private final Map<IPlaceholder<String>, IPlaceholder<String>> values = new HashMap<>();
+        private final Map<String, IPlaceholder<String>> cached = new HashMap<>();
+        private final Map<StringBundle, IPlaceholder<String>> values = new HashMap<>();
         private boolean online = false;
         private String motd = ChatColor.RED + "Offline";
         private int onlinePlayers = 0, maxPlayers = 0;
 
-        public ServerInfo(InetSocketAddress address) {
+        private ServerInfo(InetSocketAddress address) {
             this.address = address;
         }
 
         public IPlaceholder<String> get(String key, Player who) {
-            for (Entry<IPlaceholder<String>, IPlaceholder<String>> entry : values.entrySet())
-                if (entry.getKey().invoke(plugin, who).equals(key))
+            IPlaceholder<String> val = cached.get(key);
+            if (val != null) return val;
+            for (Entry<StringBundle, IPlaceholder<String>> entry : values.entrySet())
+                if (entry.getKey().toString(who).equals(key))
                     return entry.getValue();
             return null;
-        }
-
-        public Map<IPlaceholder<String>, IPlaceholder<String>> getValues() {
-            return values;
         }
 
         public boolean isOnline() {
@@ -219,10 +218,12 @@ public class RemoteConnections implements Runnable {
         public void load(AbstractConfig section) {
             for (String key : section.keys()) if (!key.equals("ip")) {
                 String val = section.getString(key);
-                if (val != null) values.put(
-                        StringBundle.parse(plugin, key).colorAmpersands().tryCache(),
-                        StringBundle.parse(plugin, val).colorAmpersands().tryCache()
-                );
+                if (val == null) continue;
+                StringBundle keySB = StringBundle.parse(plugin, key).colorAmpersands(),
+                             valSB = StringBundle.parse(plugin, val).colorAmpersands();
+                if (keySB.containsPlaceholders())
+                    values.put(keySB, valSB.tryCache());
+                else cached.put(keySB.toString(null), valSB.tryCache());
             }
         }
     }
