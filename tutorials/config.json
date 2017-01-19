@@ -1,0 +1,108 @@
+{
+  "title": "Plugin Configuration",
+  "description": [
+    "This plugin does more than just show some menus",
+    "There's a bunch of features you can customize in config.yml"
+  ],
+  "options": {
+    "@": "Animatable",
+    "+": "Animatable with Plus version",
+    "%": "Supports placeholders",
+    "{": "Supports special placeholders",
+    "/": "Formula",
+    "<": "Script"
+  },
+  "config": [
+    {
+      "title": "Standard Features",
+      "values": [
+        {
+          "name": "Auto-Menu-Refresh",
+          "description": [
+            "When this is set to 'true', menu config files will automatically be updated:",
+            [
+              "Newly created files will be loaded into a menu",
+              "Modified files will get their menu reloaded",
+              "Deleted files will get their menu removed"
+            ]
+          ]
+        }, {
+          "name": "Connections",
+          "options": ":",
+          "description": [
+            "Specifies external server connections to be made, to check their motd, whether they're online etc.",
+            "For each section, you need to specify \"*IP*\", which defines the target IP (+ port)",
+            "Then, you can add values depending on the @{placeholders.md|Placeholders} using it"
+          ]
+        }, {
+          "name": "Connection-Refresh-Delay",
+          "default": "200 (= 10 seconds)",
+          "description": "The delay in ticks between connection refreshes"
+        }, {
+          "name": "Warn-Offline-Servers",
+          "description": "Sets whether a warning should be printed when a #Connections server cannot be reached"
+        }
+      ]
+    }, {
+      "title": "Plus features",
+      "values": [
+        {
+          "name": "Templates",
+          "options": ":",
+          "description": [
+            "A section containing template items to use in menus",
+            "This has the same format as menu items, so see @{items.md|Items} for info",
+            "Once you've set this up, you can use it at an item's @{items.md#template|Template}"
+          ]
+        }, {
+          "name": "PlayerInventory",
+          "options": ":",
+          "description": [
+            "Takes over a player's inventory by using their hotbar as menu",
+            "It has the same format as a normal menu, with it having a total of 9 slots",
+            "You also get some new config values:",
+            [
+              "*Enable* specifies whether this should actually be enabled",
+              "*Bypass-Permission* specifies a permission that allows someone to bypass the player inventory",
+              "*Enabled-Worlds* or *Disabled-Worlds* specify the worlds in which this is enabled/disabled"
+            ]
+          ]
+        }, {
+          "name": "Sql-Statements",
+          "options": ":",
+          "description": [
+            "A section to be used with a click handler's @{click_handlers.md#commands|Commands}",
+            "Each section contains a few keys:",
+            [
+              "*Database* specifies the Database to be used, as specified in the AnimationLib config",
+              "*Query* specifies the query to execute, supports placeholders. Note: these placeholders musn't be inside of quotes",
+              "*Complete-Commands* specifies the @{click_handlers.md#commands|Commands} to execute when the query was completed."
+            ]
+          ]
+        }, {
+          "name": "Open-Animations",
+          "options": ":",
+          "description": [
+            "Specifies custom open animations to be used in menus, using JavaScript code",
+            "You can use menuType.width and menuType.height to obtain the menu's width and height",
+            "It should return an array which contains multiple arrays all containing the slots to load"
+          ]
+        }, {
+          "name": "Enable-Polls",
+          "description": [
+            "When set to 'true', the /poll command is added",
+            "In a nutshell; it's allows for creating polls to ask players for their opinion",
+            "The rest you can find out yourself :3"
+          ]
+        }, {
+          "name": "Max-Player-Polls",
+          "default": "-1",
+          "description": [
+            "The max number of polls a player can create. When set to -1 a player can create an unlimited amount",
+            "You can give a player permission 'animatedmenu.polls.max.<amount>' to specify their max amount"
+          ]
+        }
+      ]
+    }
+  ]
+}

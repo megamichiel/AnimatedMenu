@@ -8,20 +8,24 @@ public class MenuItem {
 
     MenuItem(MenuItemInfo info) {
         this.info = info;
-        frameDelay = info.getDelay(false);
-        refreshDelay = info.getDelay(true);
+        frameDelay = frameTick = info.getDelay(false);
+        refreshDelay = refreshTick = info.getDelay(true);
     }
 
     boolean tick() {
-        if (frameTick++ == frameDelay) {
-            frameTick = 0;
+        if (frameTick-- == 0) {
+            frameTick = frameDelay;
             info.nextFrame();
         }
-        if (refreshTick++ == refreshDelay) {
-            refreshTick = 0;
+        if (refreshTick-- == 0) {
+            refreshTick = refreshDelay;
             return true;
         }
         return false;
+    }
+
+    public void requestRefresh() {
+        refreshTick = 0;
     }
 
     public MenuItemInfo getInfo() {

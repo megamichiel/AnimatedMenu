@@ -33,10 +33,26 @@ public class MenuGrid {
         menu.click(p, slot, click);
     }
     
-    public void addItem(MenuItemInfo item) {
+    public MenuItem addItem(MenuItemInfo item) {
         if (size == items.length)
             items = Arrays.copyOf(items, size + 9);
-        items[size++] = new MenuItem(item);
+        return items[size++] = new MenuItem(item);
+    }
+
+    public void removeItem(MenuItem item) {
+        removeItem(item.getInfo());
+    }
+
+    public void removeItem(MenuItemInfo item) {
+        for (int i = 0; i < items.length; i++) {
+            if (items[i] != null && items[i].getInfo() == item) {
+                --size;
+                while (i < size)
+                    items[i] = items[++i];
+                items[i] = null;
+                break;
+            }
+        }
     }
 
     public void clear() {

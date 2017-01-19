@@ -1,0 +1,57 @@
+{
+  "title": "Placeholders",
+  "description": [
+    "When you install AnimatedMenu on your server, you will get a few extra placeholders to use",
+    "For each of the below placeholders, use %animatedmenu_<id>% where <id> is the text in bold"
+  ],
+  "options": {
+    "@": "Animatable",
+    "+": "Animatable with Plus version",
+    "%": "Supports placeholders",
+    "{": "Supports special placeholders",
+    "/": "Formula",
+    "<": "Script"
+  },
+  "config": [
+    {
+      "title": "Standard features",
+      "values": [
+        {
+          "name": "motd_<id>",
+          "description": "Returns the motd of a server specified in @{config.md#connections|Connections}"
+        },
+        {
+          "name": "onlineplayers_<id>",
+          "description": "Returns the online players of a server specified in @{config.md#connections|Connections}"
+        },
+        {
+          "name": "maxplayers_<id>",
+          "description": "Returns the max players of a server specified in @{config.md#connections|Connections}"
+        },
+        {
+          "name": "status_<id>",
+          "description": [
+            "Checks the online status of a server specified in @{config.md#connections|Connections}",
+            "In the connection's section, use 'online' for an online server, and 'offline' for an offline server"
+          ]
+        },
+        {
+          "name": "motdcheck_<id>",
+          "description": [
+            "Returns different values depending on the motd of a @{config.md#connections|Connections} server",
+            "You can use keys in the section to specify the server motd, and values as the result",
+            "Use 'default' for when no matching motd is found, and 'offline' for when the server is offline"
+          ]
+        },
+        {
+          "name": "worldplayers_<world>",
+          "description": "Returns the amount of players in <world>"
+        },
+        {
+          "name": "shownplayers_<world>",
+          "description": "Returns the amount of players in <world> that are not vanished using essentials"
+        }
+      ]
+    }
+  ]
+}

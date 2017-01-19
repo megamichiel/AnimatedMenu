@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public abstract class AbstractMenu {
 
@@ -42,9 +43,7 @@ public abstract class AbstractMenu {
     }
 
     public void dankLoad(AbstractConfig config) {
-        int delay = config.getInt("slot-update-delay", 20);
-        if (delay < 0) delay = 0;
-        slotUpdateDelay = delay;
+        setSlotUpdateDelay(Math.max(config.getInt("slot-update-delay", 20), 0));
 
         double speed = config.getDouble("animation-speed", 1);
         openAnimation.init(plugin, speed <= 0 ? 1 : speed);
@@ -59,12 +58,17 @@ public abstract class AbstractMenu {
     }
 
     public void init() {
+        menuGrid.sortSlots(); // Put items with non-dynamic slot before those with it
         dynamicSlots = false;
         for (int i = 0, size = menuGrid.getSize(); i < size; i++)
             if (menuGrid.getItems()[i].getInfo().hasDynamicSlot()) {
                 dynamicSlots = true;
                 break;
             }
+    }
+
+    public void setSlotUpdateDelay(int slotUpdateDelay) {
+        this.slotUpdateDelay = slotUpdateDelay;
     }
 
     boolean hasEmptyItem() {
@@ -94,7 +98,7 @@ public abstract class AbstractMenu {
     protected void setup(Player who, Inventory inv) {
         ItemStack[] contents = new ItemStack[inv.getSize()];
         int[] slotToPos = new int[contents.length];
-        int[] slots = new int[menuType.getSize()];
+        int[] slots = new int[menuGrid.getSize()];
         Arrays.fill(slotToPos, -1);
         Arrays.fill(slots, -1);
 
@@ -142,8 +146,24 @@ public abstract class AbstractMenu {
         }
     }
 
-    Set<Player> getViewers() {
+    public Set<Player> getViewers() {
         return sessions.keySet();
+    }
+
+    private static final Player[] EMPTY_PLAYER_ARRAY = new Player[0];
+
+    public void forEachViewer(Consumer<? super Player> action) {
+        for (Player player : getViewers().toArray(EMPTY_PLAYER_ARRAY))
+            action.accept(player);
+    }
+
+    public void closeAll() {
+        for (Player player : getViewers().toArray(EMPTY_PLAYER_ARRAY))
+            player.closeInventory();
+    }
+
+    public void requestSlotUpdate() {
+        slotUpdateTimer = 0;
     }
 
     public void tick() {
@@ -164,26 +184,27 @@ public abstract class AbstractMenu {
                         if (session.opening.tick()) session.opening = null;
                         else return;
                     }
-                    int[] visible = session.slotToPos,
-                            slots = session.slots;
-                    ctx.setSlots(slots, visible);
+                    int[] slotToPos = session.slotToPos,
+                              slots = session.slots;
+                    ctx.setSlots(slots, slotToPos);
                     MenuItem item;
                     for (int i = 0; i < size; i++) {
                         if (!(item = items[i]).getInfo().isHidden(who)) {
                             ItemStack stack = item.getInfo().load(who);
-                            int slot;
+                            int slot = slots[i];
                             if (updateSlots) {
+                                slotToPos[slot] = -1;
                                 ctx.setItem(item, stack);
                                 slot = slots[i] = item.getInfo().getSlot(who, ctx);
-                            } else slot = slots[i];
-                            visible[slot] = i;
+                            }
+                            slotToPos[slot] = i;
                             contents[slot] = stack;
-                        } else visible[i] = -1;
+                        } else slotToPos[i] = -1;
                     }
                     if (emptyItem != null) {
                         MenuItemInfo info = emptyItem.getInfo();
                         for (int slot = 0; slot < items.length; slot++)
-                            if (visible[slot] == -1)
+                            if (slotToPos[slot] == -1)
                                 contents[slot] = info.load(who);
                     }
                     Inventory inv = session.inventory;
@@ -207,7 +228,7 @@ public abstract class AbstractMenu {
                 }
                 if (changed) {
                     MenuItemInfo info;
-                    for (int i = 0; i < size; i++)
+                    for (int i = 0; i < size; i++) {
                         if (update[i]) {
                             info = items[i].getInfo();
                             Inventory inv = session.inventory;
@@ -226,6 +247,7 @@ public abstract class AbstractMenu {
                                 visible[slot] = i;
                             }
                         }
+                    }
                 }
             });
         }

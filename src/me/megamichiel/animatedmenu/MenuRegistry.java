@@ -20,7 +20,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     private MenuLoader menuLoader;
 
     private final List<AnimatedMenu> menus = new ArrayList<>();
-    private final Map<AnimatedMenu, CommandSubscription<Command>> commandSubscriptions = new HashMap<>();
+    private final Map<AnimatedMenu, Runnable> commandSubscriptions = new HashMap<>();
 
     private final AnimatedMenuPlugin plugin;
     private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
@@ -53,6 +53,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             } catch (Exception ex) {
                 plugin.nag("An error occured on ticking " + menu.getName() + ":");
                 plugin.nag(ex);
+                ex.printStackTrace();
             }
         }
     }
@@ -71,6 +72,8 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      */
     private void clear() {
         menus.clear();
+        commandSubscriptions.values().forEach(Runnable::run);
+        commandSubscriptions.clear();
     }
     
     /**
@@ -89,7 +92,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      */
     public void remove(AnimatedMenu menu) {
         menus.remove(menu);
-        Optional.ofNullable(commandSubscriptions.remove(menu)).ifPresent(Subscription::unsubscribe);
+        Optional.ofNullable(commandSubscriptions.remove(menu)).ifPresent(Runnable::run);
     }
     
     /**
@@ -121,7 +124,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
     private boolean isRedirecting = false;
 
-    public void closeMenu(Player who) {
+    void closeMenu(Player who) {
         if (!isRedirecting) {
             AnimatedMenu menu = openMenu.remove(who);
             if (menu != null) menu.handleMenuClose(who, null);
@@ -172,8 +175,26 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
     private void addMenuCommand(AnimatedMenu menu) {
         CommandInfo openCommand = menu.getSettings().getOpenCommand();
-        if (openCommand != null) commandSubscriptions.put(menu,
-                BukkitCommandAPI.getInstance().registerCommand(plugin, openCommand));
+        if (openCommand != null) {
+            BukkitCommandAPI api = BukkitCommandAPI.getInstance();
+            List<CommandSubscription<Command>> list = new ArrayList<>();
+            deleteOld(api, openCommand.name(), list);
+            for (String alias : openCommand.aliases())
+                deleteOld(api, alias, list);
+            // Make sure me command is removed first on disable:
+            list.add(0, api.registerCommand(plugin, openCommand));
+            commandSubscriptions.put(menu, createSubscription(list));
+        }
+    }
+
+    private void deleteOld(BukkitCommandAPI api, String label, List<CommandSubscription<Command>> list) {
+        Command command = api.getCommand(label);
+        if (command != null)
+            list.addAll(api.deleteCommands((lbl, cmd) -> cmd == command && lbl.equals(label)));
+    }
+
+    private Runnable createSubscription(List<CommandSubscription<Command>> list) {
+        return () -> list.forEach(Subscription::unsubscribe);
     }
 
     public MenuLoader getMenuLoader() {

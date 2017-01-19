@@ -5,7 +5,7 @@ import me.megamichiel.animatedmenu.MenuRegistry;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
 import me.megamichiel.animatedmenu.command.SoundCommand;
 import me.megamichiel.animatedmenu.menu.item.ClickHandler;
-import me.megamichiel.animatedmenu.menu.item.ItemInfo;
+import me.megamichiel.animatedmenu.menu.item.ConfigItemInfo;
 import me.megamichiel.animatedmenu.util.DirectoryListener;
 import me.megamichiel.animatedmenu.util.DirectoryListener.FileAction;
 import me.megamichiel.animatedmenu.util.Flag;
@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class MenuLoader implements DirectoryListener.FileListener {
 
@@ -139,7 +138,6 @@ public class MenuLoader implements DirectoryListener.FileListener {
             return;
         }
         items.forEach((key, value) -> loadItem(menu, key, value, menu.getMenuGrid()::addItem));
-        menu.getMenuGrid().sortSlots(); // Put items with non-dynamic slot before those with it
     }
 
     protected void plusLoad(AnimatedMenu menu, AbstractConfig config) {}
@@ -198,7 +196,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
     public void loadItem(AbstractMenu menu, String name,
                          AbstractConfig section, Consumer<MenuItemInfo> action) {
         try {
-            action.accept(new ItemInfo(plugin, menu, name, section));
+            action.accept(new ConfigItemInfo(plugin, menu, name, section));
         } catch (IllegalArgumentException ex) {
             plugin.nag(ex.getMessage());
         }
@@ -206,7 +204,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
 
     public MenuItemInfo loadItem(AbstractMenu menu, String name, AbstractConfig section) {
         try {
-            return new ItemInfo(plugin, menu, name, section);
+            return new ConfigItemInfo(plugin, menu, name, section);
         } catch (IllegalArgumentException ex) {
             plugin.nag(ex.getMessage());
             return null;

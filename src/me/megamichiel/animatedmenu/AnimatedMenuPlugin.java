@@ -35,6 +35,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -42,6 +43,7 @@ import org.bukkit.scheduler.BukkitTask;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URLConnection;
@@ -98,8 +100,11 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         if (PapiPlaceholder.apiAvailable)
             AnimatedMenuPlaceholders.register(this);
         try {
-            economy = Bukkit.getServicesManager().getRegistration(Economy.class).getProvider();
-            vaultPresent = true;
+            RegisteredServiceProvider<Economy> reg = Bukkit.getServicesManager().getRegistration(Economy.class);
+            if (reg != null) {
+                economy = reg.getProvider();
+                vaultPresent = true;
+            }
         } catch (NoClassDefFoundError err) {
             // No Vault
         }
@@ -119,7 +124,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         else asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
     }
 
-    private static final String ANIMLIB_VERSION = "1.5.1";
+    private static final String ANIMLIB_VERSION = "1.5.5";
 
     private boolean checkAnimationLib() {
         Plugin plugin = getServer().getPluginManager().getPlugin("AnimationLib");
@@ -183,7 +188,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                     String version = matcher.group(2);
                     update = current.equals(version) ? null : version;
                     scanner.close();
-                } catch (Exception ex) {
+                } catch (IOException ex) {
                     nag("Failed to check for updates:");
                     nag(ex);
                 }

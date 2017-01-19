@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ItemInfo implements MenuItemInfo {
+public class ConfigItemInfo implements MenuItemInfo {
 
     private final AnimatedMenuPlugin plugin;
     private final int slot, frameDelay, refreshDelay;
@@ -49,8 +49,8 @@ public class ItemInfo implements MenuItemInfo {
     private final ItemFlag[] itemFlags;
     private final boolean unbreakable;
 
-    public ItemInfo(AnimatedMenuPlugin plugin, AbstractMenu menu,
-                    String name, AbstractConfig section) {
+    public ConfigItemInfo(AnimatedMenuPlugin plugin, AbstractMenu menu,
+                          String name, AbstractConfig section) {
         this.plugin = plugin;
 
         MenuType type = menu.getMenuType();
@@ -222,9 +222,7 @@ public class ItemInfo implements MenuItemInfo {
 
     @Override
     public boolean isHidden(Player p) {
-        if (hidePermission != null)
-            return p.hasPermission(hidePermission.toString(p)) == negateHidePermission;
-        return negateHidePermission;
+        return (hidePermission == null || p.hasPermission(hidePermission.toString(p))) == negateHidePermission;
     }
 
     @Override

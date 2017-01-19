@@ -69,7 +69,7 @@ public class TellRawCommand extends Command<StringBundle, Object> {
     @Override
     public boolean executeCached(AnimatedMenuPlugin plugin, Player p, Object value) {
         try {
-            sendMessage.invoke(getHandle.invoke(p), deserialize.invoke(null, value));
+            sendMessage.invoke(getHandle.invoke(p), value);
         } catch (Exception ex) {
             plugin.nag("Failed to send raw message '" + value + "'!");
             plugin.nag(ex);
