@@ -109,7 +109,7 @@
           ]
         }, {
           "name": "Click-Delay",
-          "description": "The delay (in ticks) that a player needs must wait before clicking the item again"
+          "description": "The delay (in ticks) that a player must wait before clicking the item again"
         }, {
           "name": "Delay-Message",
           "options": "{",

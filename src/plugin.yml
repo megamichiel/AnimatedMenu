@@ -8,32 +8,3 @@ commands:
   animatedmenu:
     description: Plugin command
     usage: /<command>
-
-permissions:
-  animatedmenu.*:
-    description: Gives access to all animatedmenu actions
-    children:
-      animatedmenu.command.help: true
-      animatedmenu.command.reload: true
-      animatedmenu.command.open: true
-      animatedmenu.open: true
-      animatedmenu.command.item: true
-      animatedmenu.seeupdate: true
-  animatedmenu.command.help:
-    description: Have permission to view the help menu
-    default: true
-  animatedmenu.command.reload:
-    description: Have permission to reload the plugin
-    default: op
-  animatedmenu.command.open:
-    description: Be able to open a menu through command
-    default: true
-  animatedmenu.open:
-    description: Be able to open a menu by clicking an item
-    default: true
-  animatedmenu.command.item:
-    description: Be able to spawn in menu openers
-    defalt: op
-  animatedmenu.seeupdate:
-    description: Receive an update message on join if available
-    defalt: op

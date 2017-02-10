@@ -80,7 +80,7 @@
           "description": "Prevent this menu from being openable through /animatedmenu open"
         }, {
           "name": "Click-Delay",
-          "description": "The delay (in ticks) that a player needs must wait before clicking an item again"
+          "description": "The delay (in ticks) that a player must wait before clicking an item again"
         }, {
           "name": "Delay-Message",
           "options": "{",
