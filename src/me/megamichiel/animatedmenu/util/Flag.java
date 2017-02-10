@@ -31,8 +31,11 @@ public enum Flag {
     }
 
     public static boolean parseBoolean(String str) {
-        Flag flag = parseFlag(str, FALSE);
-        return flag != BOTH && flag.booleanValue();
+        return parseFlag(str, FALSE) == TRUE;
+    }
+
+    public static boolean parseBoolean(String str, boolean def) {
+        return parseFlag(str, def ? TRUE : FALSE) == TRUE;
     }
 
     private static final Map<String, Flag> flags = new ImmutableMap.Builder<String, Flag>()
@@ -40,8 +43,6 @@ public enum Flag {
             .put("both", BOTH).put("all", BOTH).build();
 
     public static Flag parseFlag(String str, Flag def) {
-        if (str == null) return def;
-        Flag flag = flags.get(str.toLowerCase(Locale.US));
-        return flag == null ? FALSE : flag;
+        return str == null ? def : flags.getOrDefault(str.toLowerCase(Locale.ENGLISH), FALSE);
     }
 }

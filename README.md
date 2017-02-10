@@ -1,15 +1,15 @@
-<h1>Welcome to the official AnimatedMenu repository!</h1><br>
+# Welcome to the official AnimatedMenu repository! #
 
-Current Version: <b>2.9.4</b><br>
+<!-- Format used by old versions to check for update, will be markdownified as well sometime -->
+Current Version: <b>2.10.0</b>  
 Feel free to have a look around or use the code for private use.
-<br>
-<h3>Used Dependencies</h3>
+
+### Used Dependencies ###
 AnimatedMenu utilises a few plugins for stuff like commands. These are the ones included in the project:
-<ul>
-	<li>(Craft)Bukkit (1.11)</li>
-	<li>AnimationLib</li>
-	<li>Essentials</li>
-	<li>Vault</li>
-	<li>PlayerPoints</li>
-	<li>PlaceholderAPI</li>
-</ul>
+
+- (Craft)Bukkit (1.11)
+- AnimationLib
+- Essentials
+- Vault
+- PlayerPoints
+- PlaceholderAPI

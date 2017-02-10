@@ -190,12 +190,12 @@ public class RemoteConnections implements Runnable {
             this.address = address;
         }
 
-        public IPlaceholder<String> get(String key, Player who) {
+        public String get(String key, Player player) {
             IPlaceholder<String> val = cached.get(key);
-            if (val != null) return val;
+            if (val != null) return val.invoke(plugin, player);
             for (Entry<StringBundle, IPlaceholder<String>> entry : values.entrySet())
-                if (entry.getKey().toString(who).equals(key))
-                    return entry.getValue();
+                if (entry.getKey().toString(player).equals(key))
+                    return entry.getValue().invoke(plugin, player);
             return null;
         }
 
@@ -216,14 +216,16 @@ public class RemoteConnections implements Runnable {
         }
 
         public void load(AbstractConfig section) {
-            for (String key : section.keys()) if (!key.equals("ip")) {
-                String val = section.getString(key);
-                if (val == null) continue;
-                StringBundle keySB = StringBundle.parse(plugin, key).colorAmpersands(),
-                             valSB = StringBundle.parse(plugin, val).colorAmpersands();
-                if (keySB.containsPlaceholders())
-                    values.put(keySB, valSB.tryCache());
-                else cached.put(keySB.toString(null), valSB.tryCache());
+            for (String key : section.keys()) {
+                if (!key.equals("ip")) {
+                    String val = section.getString(key);
+                    if (val == null) continue;
+                    StringBundle keySB = StringBundle.parse(plugin, key).colorAmpersands(),
+                            valSB = StringBundle.parse(plugin, val).colorAmpersands();
+                    if (keySB.containsPlaceholders())
+                        values.put(keySB, valSB.tryCache());
+                    else cached.put(keySB.toString(null), valSB.tryCache());
+                }
             }
         }
     }

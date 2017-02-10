@@ -5,8 +5,8 @@ import org.bukkit.entity.Player;
 
 public class DefaultCommand extends TextCommand {
 
-    public DefaultCommand() {
-        super(null);
+    DefaultCommand() {
+        super(null, false);
     }
 
     @Override

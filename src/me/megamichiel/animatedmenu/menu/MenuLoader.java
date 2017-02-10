@@ -29,10 +29,11 @@ public class MenuLoader implements DirectoryListener.FileListener {
 
     private DirectoryListener listener;
     protected final AnimatedMenuPlugin plugin;
+    private final File directory;
 
     public MenuLoader(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
-        File menus = new File(plugin.getDataFolder(), "menus");
+        File menus = directory = new File(plugin.getDataFolder(), "menus");
         if (!menus.exists()) {
             if (menus.mkdir()) {
                 plugin.saveResource("menus/example.yml", false);
@@ -46,20 +47,18 @@ public class MenuLoader implements DirectoryListener.FileListener {
     }
 
     public List<AnimatedMenu> loadMenus() {
-        File menus = new File(plugin.getDataFolder(), "menus");
-
         List<AnimatedMenu> list = new ArrayList<>();
 
-        loadMenus(list, menus);
+        loadMenus(list, directory);
 
         if (listener != null) {
             listener.stop();
             listener = null;
         }
 
-        if (plugin.getConfiguration().getBoolean("auto-menu-refresh")) {
+        if (Flag.parseBoolean(plugin.getConfiguration().getString("auto-menu-refresh"))) {
             try {
-                listener = new DirectoryListener(plugin.getLogger(), menus, this);
+                listener = new DirectoryListener(plugin.getLogger(), directory, this);
             } catch (IOException ex) {
                 plugin.nag("Unable to set up directory update listener!");
                 plugin.nag(ex);
@@ -82,10 +81,8 @@ public class MenuLoader implements DirectoryListener.FileListener {
             if (index == -1) continue;
             extension = name.substring(index + 1);
             if (extension.equalsIgnoreCase("yml")) {
-                name = name.substring(0, index).replace(' ', '-');
-                YamlConfig config = ConfigManager.quickLoad(YamlConfig::new, file);
-                AnimatedMenu menu = loadMenu(name, config);
-                menus.add(menu);
+                menus.add(loadMenu(name.substring(0, index).replace(' ', '-'),
+                        ConfigManager.quickLoad(YamlConfig::new, file)));
             }
         }
     }
@@ -118,8 +115,9 @@ public class MenuLoader implements DirectoryListener.FileListener {
         return menu;
     }
 
-    private void loadMenu(AnimatedMenu menu, AbstractConfig config) {
+    protected void loadMenu(AnimatedMenu menu, AbstractConfig config) {
         loadSettings(menu.getSettings(), config);
+        menu.setClickDelay(config.getString("delay-message"), config.getLong("click-delay") * 50L);
         Map<String, AbstractConfig> items = new HashMap<>();
         if (config.isSection("items")) {
             AbstractConfig cfg = config.getSection("items");
@@ -132,15 +130,12 @@ public class MenuLoader implements DirectoryListener.FileListener {
             for (int i = 0; i < list.size(); i++)
                 items.put(Integer.toString(i + 1), list.get(i));
         }
-        plusLoad(menu, config);
         if (items.isEmpty() && !menu.hasEmptyItem()) {
             plugin.nag("No items specified for " + menu.getName() + "!");
             return;
         }
-        items.forEach((key, value) -> loadItem(menu, key, value, menu.getMenuGrid()::addItem));
+        items.forEach((key, value) -> loadItem(menu, key, value, true, menu.getMenuGrid()::add));
     }
-
-    protected void plusLoad(AnimatedMenu menu, AbstractConfig config) {}
 
     protected void loadSettings(MenuSettings settings, AbstractConfig section) {
         if (section.isSet("menu-opener")) {
@@ -166,7 +161,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                     1F, (float) section.getDouble("open-sound-pitch", 1F));
             settings.addListener(sound::play, false);
         }
-        settings.setHiddenFromCommand(section.getBoolean("hide-from-command"));
+        settings.setHiddenFromCommand(Flag.parseBoolean(section.getString("hide-from-command")));
 
         Object command = section.get("command");
         if (command != null) {
@@ -193,21 +188,12 @@ public class MenuLoader implements DirectoryListener.FileListener {
         }
     }
 
-    public void loadItem(AbstractMenu menu, String name,
-                         AbstractConfig section, Consumer<MenuItemInfo> action) {
+    public void loadItem(AbstractMenu menu, String name, AbstractConfig section,
+                         boolean withSlot, Consumer<ItemInfo> action) {
         try {
             action.accept(new ConfigItemInfo(plugin, menu, name, section));
         } catch (IllegalArgumentException ex) {
             plugin.nag(ex.getMessage());
-        }
-    }
-
-    public MenuItemInfo loadItem(AbstractMenu menu, String name, AbstractConfig section) {
-        try {
-            return new ConfigItemInfo(plugin, menu, name, section);
-        } catch (IllegalArgumentException ex) {
-            plugin.nag(ex.getMessage());
-            return null;
         }
     }
 
@@ -225,7 +211,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         if (file.isFile() || action == FileAction.DELETE) {
             int index = file.getName().lastIndexOf('.');
             if (index == -1) return;
-            if (!file.toPath().startsWith(new File(plugin.getDataFolder(), "menus").toPath())) return;
+            if (!file.toPath().startsWith(directory.toPath())) return;
             String extension = file.getName().substring(index + 1);
             if (extension.equals("yml")) {
                 String name = file.getName().substring(0, index).replace(" ", "_");
@@ -237,9 +223,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                             plugin.getLogger().warning("A new menu file was created," +
                                     " but a menu already existed with its name!");
 
-                            // Create copy, but not an entire collection
-                            for (Object p : menu.getViewers().toArray())
-                                ((Player) p).closeInventory();
+                            menu.closeAll();
                             registry.remove(menu);
                         }
                         YamlConfig config = ConfigManager.quickLoad(YamlConfig::new, file);
@@ -250,18 +234,18 @@ public class MenuLoader implements DirectoryListener.FileListener {
                     case MODIFY:
                         if (file.length() == 0) return;
                         menu = registry.getMenu(name);
-                        Object[] viewers;
+                        Set<Player> viewers;
                         if (menu != null) {
-                            viewers = menu.getViewers().toArray();
+                            viewers = menu.getViewers();
                             for (Object viewer : viewers)
                                 ((Player) viewer).closeInventory();
                             registry.remove(menu);
-                        } else viewers = null;
+                        } else viewers = Collections.emptySet();
                         config = ConfigManager.quickLoad(YamlConfig::new, file);
                         menu = loadMenu(name, config);
                         registry.add(menu);
-                        if (viewers != null) for (Object p : viewers)
-                            registry.openMenu((Player) p, menu);
+                        for (Player p : viewers)
+                            registry.openMenu(p, menu);
                         plugin.getLogger().info("Updated " + file.getName());
                         break;
                     case DELETE:
@@ -270,9 +254,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                             plugin.getLogger().warning("Failed to remove " + name + ": No menu by that name found!");
                             return;
                         }
-                        // Create copy, but not an entire collection
-                        for (Object p : menu.getViewers().toArray())
-                            ((Player) p).closeInventory();
+                        menu.closeAll();
                         registry.remove(menu);
                         plugin.getLogger().info("Removed " + file.getName());
                         break;

@@ -1,0 +1,17 @@
+{
+  "title": "Welcome to the AnimatedMenu tutorial page!",
+  "description": [
+    "There are tons of things you can do with the plugin, especially if you have the plus version!",
+    "Here is a quick list of files you can use to get started:",
+    [
+      "@{config.md|Config}: All about config.yml",
+      "@{permissions.md|Permissions}: View a list of permissions in the plugin",
+      "@{placeholders.md|Placeholders}: See all placeholders AnimatedMenu adds for use",
+      "@{menus.md|Menus}: The fundamentals of a menu; see everything you can do there",
+      "@{items.md|Items}: What is a menu without items? See what you can do with them!",
+      "@{click_handlers.md|Click Handlers}: Why not an interactive menu? View all you need to know about click handlers here!"
+      "@{scripts.md|Scripts}: See how powerful AnimatedMenu Plus can be using JavaScript!"
+    ]
+  ],
+  "config": []
+}

@@ -4,9 +4,10 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
 import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
 import me.megamichiel.animatedmenu.menu.AbstractMenu;
-import me.megamichiel.animatedmenu.menu.MenuItemInfo;
+import me.megamichiel.animatedmenu.menu.ItemInfo;
 import me.megamichiel.animatedmenu.menu.MenuType;
 import me.megamichiel.animatedmenu.util.BannerPattern;
+import me.megamichiel.animatedmenu.util.Flag;
 import me.megamichiel.animatedmenu.util.MaterialMatcher;
 import me.megamichiel.animatedmenu.util.Skull;
 import me.megamichiel.animationlib.animation.AnimatedText;
@@ -30,7 +31,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ConfigItemInfo implements MenuItemInfo {
+public class ConfigItemInfo implements ItemInfo {
 
     private final AnimatedMenuPlugin plugin;
     private final int slot, frameDelay, refreshDelay;
@@ -141,7 +142,7 @@ public class ConfigItemInfo implements MenuItemInfo {
             hidePermission = StringBundle.parse(plugin, perm);
             negateHidePermission = false;
         }
-        unbreakable = section.getBoolean("unbreakable");
+        unbreakable = Flag.parseBoolean(section.getString("unbreakable"));
     }
 
     @Override
@@ -162,14 +163,19 @@ public class ConfigItemInfo implements MenuItemInfo {
     }
 
     @Override
-    public int getSlot(Player p, SlotContext ctx) {
+    public int getSlot(Player player, SlotContext ctx) {
         return slot;
+    }
+
+    private boolean isHidden(Player player) {
+        return (hidePermission == null || player.hasPermission(hidePermission.toString(player))) == negateHidePermission;
     }
 
     @Override
     public ItemStack load(Player player) {
+        if (isHidden(player)) return null;
         ItemStack item = this.material.get().invoke(plugin, player).clone();
-        if (item.getType() == Material.AIR) return item;
+        if (item.getType() == Material.AIR) return null;
         if (unbreakable) {
             NBTUtil nbt = NBTUtil.getInstance();
             if (item != (item = nbt.asNMS(item))) try {
@@ -180,7 +186,7 @@ public class ConfigItemInfo implements MenuItemInfo {
         }
 
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return item; // Safety
+        if (meta == null) return item; // Safety, for air
 
         meta.setDisplayName(displayName.get().toString(player));
         if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(plugin, player));
@@ -189,7 +195,7 @@ public class ConfigItemInfo implements MenuItemInfo {
             ((LeatherArmorMeta) meta).setColor(leatherArmorColor);
         else if (meta instanceof SkullMeta && skull != null)
             skull.apply(player, (SkullMeta) meta);
-        else if (meta instanceof BannerMeta && bannerPattern != null)
+        else if (meta instanceof BannerMeta)
             bannerPattern.apply((BannerMeta) meta);
         meta.addItemFlags(itemFlags);
 
@@ -201,28 +207,26 @@ public class ConfigItemInfo implements MenuItemInfo {
     }
 
     @Override
-    public ItemStack apply(Player p, ItemStack item) {
-        ItemStack material = this.material.get().invoke(plugin, p);
-        item.setType(material.getType());
-        item.setAmount(material.getAmount());
-        item.setDurability(material.getDurability());
-
-        if (material.getType() == Material.AIR) return item;
+    public ItemStack apply(Player player, ItemStack item) {
+        if (isHidden(player)) return null;
+        else {
+            ItemStack material = this.material.get().invoke(plugin, player);
+            if (material.getType() == Material.AIR) return null;
+            item.setType(material.getType());
+            item.setAmount(material.getAmount());
+            item.setDurability(material.getDurability());
+        }
 
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return item;
 
-        meta.setDisplayName(displayName.get().toString(p));
-        if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(plugin, p));
+        meta.setDisplayName(displayName.get().toString(player));
+        if (!lore.isEmpty()) meta.setLore(lore.get().toStringList(plugin, player));
+        if (meta instanceof SkullMeta && skull != null)
+            skull.apply(player, (SkullMeta) meta);
 
         item.setItemMeta(meta);
 
         return item;
-    }
-
-    @Override
-    public boolean isHidden(Player p) {
-        return (hidePermission == null || p.hasPermission(hidePermission.toString(p))) == negateHidePermission;
     }
 
     @Override
@@ -237,14 +241,19 @@ public class ConfigItemInfo implements MenuItemInfo {
     private static final Pattern COLOR_PATTERN = Pattern.compile("([0-9]+),\\s*([0-9]+),\\s*([0-9]+)");
 
     private static Color getColor(String val) {
-        if(val == null) return Bukkit.getItemFactory().getDefaultLeatherColor();
+        if(val == null) return null;
         Matcher matcher = COLOR_PATTERN.matcher(val);
-        if (matcher.matches()) return Color.fromRGB(Integer.parseInt(matcher.group(1)),
-                Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3)));
-        else try {
-                return Color.fromRGB(Integer.parseInt(val, 16));
+        Color color;
+        if (matcher.matches()) {
+            color = Color.fromRGB(Integer.parseInt(matcher.group(1)),
+                    Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3)));
+        } else try {
+            color = Color.fromRGB(Integer.parseInt(val, 16));
         } catch (NumberFormatException ex) {
-            return Bukkit.getItemFactory().getDefaultLeatherColor();
+            return null;
         }
+        if (color.equals(Bukkit.getItemFactory().getDefaultLeatherColor()))
+            return null;
+        return color;
     }
 }

@@ -9,7 +9,8 @@
     "%": "Supports placeholders",
     "{": "Supports special placeholders",
     "/": "Formula",
-    "<": "Script"
+    "<": "Script",
+    ";": "Section of Key-Section pairs"
   },
   "config": [
     {
@@ -61,7 +62,7 @@
           "default": "stone",
           "description": [
             "The material of this item, in format <type>:<amount>:<data>",
-            "Note: Numerical IDs are still supported (and might be for a while), but names are recommended",
+            "Note: Numerical IDs are still supported (and might be for a while), but I recommended using names",
             "<amount> and <data> are optional",
             "A nice list of item ids can be found on @{http://minecraft-ids.grahamedgecombe.com/|this page}"
           ]
@@ -99,7 +100,8 @@
             [
               "A player's username",
               "A player's UUID (with or without hyphens)",
-              "A json object containing profile information"
+              "A json object containing profile information",
+              "Base64 encoded profile texture"
             ]
           ]
         }, {
@@ -141,7 +143,7 @@
           ]
         }, {
           "name": "Click-Handlers",
-          "options": ":",
+          "options": ";",
           "description": [
             "(This used to be called Commands, but I changed it because it makes more sense)",
             "The click handlers of this item, that specify what commands to perform at which clicks",
@@ -184,6 +186,35 @@
           "description": [
             "In AnimationLib 1.5.2 I added an option to animate values that are sections themselves",
             "Specifies whether NBT should be animated"
+          ]
+        }, {
+          "name": "State",
+          "options": "%",
+          "description": [
+            "Specifies a certain text to evaluate to determine what item this should be",
+            "You can use #States to set config options per result",
+            "When this is set, options are loaded as followed:",
+            [
+              "#Slot, #Frame-Delay and #Refresh-Delay should be specified here",
+              "All the other config options are only loaded under each #States value",
+              "You can even use nested states! Go nuts!"
+            ]
+          ]
+        }, {
+          "name": "State-Template",
+          "options": ":",
+          "description": [
+            "Specifies a template to use in each section of #States.",
+            "You could also use #Template in each state value, but it can be prettier to use this instead of specifying a config.yml template",
+            "You could also combine this with #Template, in which case this will override the values of the config template"
+          ]
+        }, {
+          "name": "States",
+          "options": ";",
+          "description": [
+            "Specifies mappings from values retrieved in #State to item info",
+            "The key is the value to accept. You can separate it by a semicolon (;) to accept multiple results",
+            "You can use every standard item config option here, except for the ones mentioned in #State"
           ]
         }
       ]

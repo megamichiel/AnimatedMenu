@@ -17,24 +17,25 @@ import java.util.logging.Logger;
 
 public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
-    private MenuLoader menuLoader;
+    private final MenuLoader menuLoader;
 
-    private final List<AnimatedMenu> menus = new ArrayList<>();
+    private final Map<String, AnimatedMenu> menus = new HashMap<>();
     private final Map<AnimatedMenu, Runnable> commandSubscriptions = new HashMap<>();
 
     private final AnimatedMenuPlugin plugin;
-    private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
+    protected final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
 
-    MenuRegistry(AnimatedMenuPlugin plugin) {
+    protected MenuRegistry(AnimatedMenuPlugin plugin, MenuLoader loader) {
         this.plugin = plugin;
+        menuLoader = loader;
     }
 
     Map<Player, AnimatedMenu> getOpenMenu() {
         return openMenu;
     }
 
-    List<AnimatedMenu> getMenus() {
-        return menus;
+    Collection<AnimatedMenu> getMenus() {
+        return Collections.unmodifiableCollection(menus.values());
     }
 
     void onDisable() {
@@ -47,13 +48,12 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     
     @Override
     public void run() {
-        for (AnimatedMenu menu : menus) {
+        for (AnimatedMenu menu : menus.values()) {
             try {
                 menu.tick();
             } catch (Exception ex) {
                 plugin.nag("An error occured on ticking " + menu.getName() + ":");
                 plugin.nag(ex);
-                ex.printStackTrace();
             }
         }
     }
@@ -70,10 +70,19 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     /**
      * Clears all menus
      */
-    private void clear() {
+    protected void clear() {
         menus.clear();
         commandSubscriptions.values().forEach(Runnable::run);
         commandSubscriptions.clear();
+    }
+
+    /**
+     * Checks whether a menu is registered in this registry
+     * @param menu the menu to check
+     * @return true if the menu is registered, false otherwise
+     */
+    public boolean contains(AnimatedMenu menu) {
+        return menus.get(menu.getName()) == menu;
     }
     
     /**
@@ -81,8 +90,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @param menu the menu to add
      */
     public void add(AnimatedMenu menu) {
-        menus.add(menu);
-        menu.init();
+        menus.put(menu.getName(), menu);
         addMenuCommand(menu);
     }
     
@@ -91,7 +99,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @param menu the menu to remove
      */
     public void remove(AnimatedMenu menu) {
-        menus.remove(menu);
+        menus.remove(menu.getName());
         Optional.ofNullable(commandSubscriptions.remove(menu)).ifPresent(Runnable::run);
     }
     
@@ -101,7 +109,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @return the menu by name, or null if none was found
      */
     public AnimatedMenu getMenu(String name) {
-        return menus.stream().filter(m -> m.getName().equalsIgnoreCase(name)).findAny().orElse(null);
+        return menus.get(name);
     }
     
     /**
@@ -109,26 +117,22 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      */
     @Override
     public Iterator<AnimatedMenu> iterator() {
-        return menus.iterator();
+        return menus.values().iterator();
     }
 
     @Override
     public void forEach(Consumer<? super AnimatedMenu> action) {
-        menus.forEach(action);
+        menus.values().forEach(action);
     }
 
     @Override
     public Spliterator<AnimatedMenu> spliterator() {
-        return menus.spliterator();
+        return menus.values().spliterator();
     }
 
-    private boolean isRedirecting = false;
-
-    void closeMenu(Player who) {
-        if (!isRedirecting) {
-            AnimatedMenu menu = openMenu.remove(who);
-            if (menu != null) menu.handleMenuClose(who, null);
-        }
+    protected void closeMenu(Player who) {
+        AnimatedMenu menu = openMenu.remove(who);
+        if (menu != null) menu.handleMenuClose(who, null);
     }
     
     /**
@@ -143,11 +147,9 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             return;
         }
         menu.open(who, inventory -> {
-            isRedirecting = true;
+            AnimatedMenu old = openMenu.remove(who);
+            if (old != null) old.handleMenuClose(who, menu);
             who.openInventory(inventory);
-            isRedirecting = false;
-            AnimatedMenu prev = openMenu.remove(who);
-            if (prev != null) prev.handleMenuClose(who, menu);
             openMenu.put(who, menu);
         });
     }
@@ -164,11 +166,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
         List<AnimatedMenu> list = getMenuLoader().loadMenus();
         if (list != null) {
-            for (AnimatedMenu menu : list) {
-                menu.init();
-                addMenuCommand(menu);
-            }
-            menus.addAll(list);
+            list.forEach(this::add);
         }
         logger.info(this.menus.size() + " menu" + (this.menus.size() == 1 ? "" : "s") + " loaded");
     }
@@ -189,8 +187,9 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
     private void deleteOld(BukkitCommandAPI api, String label, List<CommandSubscription<Command>> list) {
         Command command = api.getCommand(label);
-        if (command != null)
+        if (command != null) {
             list.addAll(api.deleteCommands((lbl, cmd) -> cmd == command && lbl.equals(label)));
+        }
     }
 
     private Runnable createSubscription(List<CommandSubscription<Command>> list) {
@@ -198,8 +197,6 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     }
 
     public MenuLoader getMenuLoader() {
-        if (menuLoader == null)
-            return menuLoader = plugin.getDefaultMenuLoader();
         return menuLoader;
     }
 }

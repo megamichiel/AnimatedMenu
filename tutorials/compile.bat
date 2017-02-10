@@ -1,1 +1,1 @@
-java -jar MDCreator.jar config menus items click_handlers placeholders
+java -jar MDCreator.jar AnimatedMenu

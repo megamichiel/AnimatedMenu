@@ -7,13 +7,17 @@ import org.bukkit.entity.Player;
 
 public abstract class TextCommand extends Command<StringBundle, String> {
 
-    public TextCommand(String prefix) {
+    private final boolean color;
+
+    protected TextCommand(String prefix, boolean color) {
         super(prefix);
+        this.color = color;
     }
 
     @Override
     public StringBundle parse(Nagger nagger, String command) {
-        return StringBundle.parse(nagger, command).colorAmpersands();
+        StringBundle sb = StringBundle.parse(nagger, command);
+        return color ? sb.colorAmpersands() : sb;
     }
 
     @Override

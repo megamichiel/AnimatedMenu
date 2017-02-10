@@ -30,8 +30,8 @@ public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlu
     }
     
     private boolean isStringOrPrimitive(Object input) {
-        return input instanceof String || input instanceof Boolean
-                || input instanceof Character || input instanceof Number;
+        return input instanceof String    || input instanceof Boolean ||
+               input instanceof Character || input instanceof Number;
     }
 
     @Override
@@ -70,7 +70,7 @@ public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlu
 
     private Command getCommand(String name) {
         return plugin.getCommands().stream()
-                .filter(cmd -> name.startsWith(cmd.prefix.toLowerCase(Locale.US) + ':'))
+                .filter(cmd -> name.startsWith(cmd.prefix.toLowerCase(Locale.ENGLISH) + ':'))
                 .findAny().orElseGet(DefaultCommand::new);
     }
 

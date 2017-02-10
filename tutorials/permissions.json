@@ -1,0 +1,65 @@
+{
+  "title": "Permissions",
+  "description": [
+    "This plugin comes with a few permissions",
+    "Some of which are always applicable, but others only come with AnimatedMenu Plus",
+    "There are also custom permissions you can set in click handlers for example. These are not discussed here however"
+  ],
+  "config": [
+    {
+      "title": "Standard Permissions",
+      "values": [
+        {
+          "name": "animatedmenu.command.<arg>",
+          "description": [
+            "Use /animatedmenu <arg>",
+            "<arg> can be one of:",
+            [
+              "help, open, item, reload"
+            ],
+            "Tab complete will also only show the subcommands you have permission to see"
+          ]
+        }, {
+          "name": "animatedmenu.command.open.other",
+          "description": "Use /animatedmenu open <menu> [player]"
+        }, {
+          "name": "animatedmenu.command.item.other",
+          "description": "Use /animatedmenu item <menu> [player]"
+        }, {
+          "name": "animatedmenu.openWithItem",
+          "description": "Be able to open menus using an item"
+        }, {
+          "name": "animatedmenu.seeUpdate",
+          "description": "Receive a message when you join and there is an update available"
+        }
+      ]
+    }, {
+      "title": "Plus Permissions",
+      "values": [
+        {
+          "name": "animatedmenu.command.togglepi",
+          "description": "Use /animatedmenu togglepi"
+        }, {
+          "name": "animatedmenu.command.rlbungee",
+          "description": "Use /animatedmenu rlbungee"
+        }, {
+          "name": "animatedmenu.polls.max.<amount>",
+          "description": [
+            "Specifies the max amount of polls a player can create",
+            "You can use @<i>default@</i> to use the default value as specified in config.yml",
+            "A value of -1 indicates that there is no limit (so 0 means no polls)"
+          ]
+        }, {
+          "name": "animatedmenu.polls.closeOther",
+          "description": [
+            "Be able to close a poll that was created by another player",
+            "Closed polls can not be voted at anymore, but you can still view the results"
+          ]
+        }, {
+          "name": "animatedmenu.polls.removeOther",
+          "description": "Be able to remove a poll that was created by another player"
+        }
+      ]
+    }
+  ]
+}

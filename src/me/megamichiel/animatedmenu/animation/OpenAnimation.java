@@ -35,9 +35,8 @@ public class OpenAnimation {
         }
 
         public boolean tick() {
-            double last = frame;
+            int i = NumberConversions.ceil(frame);
             frame += speed;
-            int i = NumberConversions.ceil(last);
             do {
                 if (i == frames.length) return true;
                 action.accept(frames[i]);

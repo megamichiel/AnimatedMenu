@@ -8,7 +8,10 @@ import me.megamichiel.animatedmenu.command.TextCommand;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuLoader;
 import me.megamichiel.animatedmenu.util.Delay;
+import me.megamichiel.animatedmenu.util.Flag;
+import me.megamichiel.animatedmenu.util.PluginPermission;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
+import me.megamichiel.animationlib.AnimLib;
 import me.megamichiel.animationlib.bukkit.PapiPlaceholder;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
@@ -19,7 +22,6 @@ import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -35,6 +37,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -48,18 +51,20 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.util.Locale.ENGLISH;
+import static org.bukkit.ChatColor.*;
 
 public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNagger, PipelineContext {
 
     protected final List<Command<?, ?>> commands = new ArrayList<>();
 
     private final AnimatedMenuCommand command = new AnimatedMenuCommand(this);
-    private final MenuRegistry menuRegistry = new MenuRegistry(this);
-    private final Set<Delay<Player>> delays = Collections.newSetFromMap(new WeakHashMap<>());
+    private final MenuRegistry menuRegistry;
+    private final Set<Delay> delays = Collections.newSetFromMap(new WeakHashMap<>());
 
     private final RemoteConnections connections = new RemoteConnections(this);
     private boolean warnOfflineServers = true;
@@ -72,6 +77,14 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     public PlayerPointsAPI playerPointsAPI;
 
     private final ConfigManager<YamlConfig> config = ConfigManager.of(YamlConfig::new);
+
+    public AnimatedMenuPlugin() {
+        menuRegistry = new MenuRegistry(this, new MenuLoader(this));
+    }
+
+    protected AnimatedMenuPlugin(Function<AnimatedMenuPlugin, MenuRegistry> registry) {
+        menuRegistry = registry.apply(this);
+    }
     
     @Override
     public void onEnable() {
@@ -80,12 +93,14 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             Class.forName("me.megamichiel.animationlib.AnimLib");
         } catch (ClassNotFoundException ex) {
             getServer().getConsoleSender().sendMessage(new String[]{
-                    ChatColor.RED + "It appears you have the wrong AnimationLib plugin!",
-                    ChatColor.RED + "Download the correct one at https://www.spigotmc.org/resources/22295/"
+                    RED + "It appears you have the wrong AnimationLib plugin!",
+                    RED + "Download the correct one at https://www.spigotmc.org/resources/22295/"
             });
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
+
+        registerPermissions();
 
         /* Listeners */
         getServer().getPluginManager().registerEvents(this, this);
@@ -119,12 +134,12 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         checkForUpdate();
         loadConfig();
 
-        if (getConfiguration().getBoolean("run-sync"))
+        if (Flag.parseBoolean(getConfiguration().getString("run-sync")))
             getServer().getScheduler().runTaskTimer(this, menuRegistry, 0, 0);
         else asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
     }
 
-    private static final String ANIMLIB_VERSION = "1.5.5";
+    private static final String ANIMLIB_VERSION = "1.5.6";
 
     private boolean checkAnimationLib() {
         Plugin plugin = getServer().getPluginManager().getPlugin("AnimationLib");
@@ -135,8 +150,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 return true;
         }
         getServer().getConsoleSender().sendMessage(new String[] {
-                ChatColor.RED + "[AnimatedMenu] I require AnimationLib v" + ANIMLIB_VERSION + " to work!",
-                ChatColor.RED + "Download it at \"https://www.spigotmc.org/resources/22295/\""
+                RED + "[AnimatedMenu] I require AnimationLib v" + ANIMLIB_VERSION + " to work!",
+                RED + "Download it at \"https://www.spigotmc.org/resources/22295/\""
         });
         getServer().getPluginManager().disablePlugin(this);
         return false;
@@ -150,6 +165,10 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         asyncTasks.clear();
         connections.cancel();
         menuRegistry.onDisable();
+
+        PluginManager pm = getServer().getPluginManager();
+        for (PluginPermission perm : PluginPermission.values())
+            perm.unregister(pm);
     }
 
     @Override
@@ -166,8 +185,17 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         config.saveDefaultConfig(() -> getResource("config.yml"));
     }
 
-    protected MenuLoader getDefaultMenuLoader() {
-        return new MenuLoader(this);
+    protected void registerPermissions() {
+        PluginManager pm = getServer().getPluginManager();
+        for (PluginPermission perm : PluginPermission.values()) {
+            if (!perm.isPremium()) {
+                try {
+                    perm.register(pm);
+                } catch (IllegalArgumentException e) {
+                    nag("Failed to register permission " + perm + " because it already exists");
+                }
+            }
+        }
     }
     
     private void checkForUpdate() {
@@ -176,58 +204,54 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             public void run() {
                 String current = getDescription().getVersion();
                 try {
-                    URLConnection connection = new URL("https://github.com/megamichiel/AnimatedMenu").openConnection();
-                    Scanner scanner = new Scanner(connection.getInputStream());
-                    scanner.useDelimiter("\\Z");
-                    String content = scanner.next();
-                    Matcher matcher = Pattern.compile("Current\\sVersion:\\s(<b>)?([0-9]\\.[0-9]\\.[0-9])(</b>)?").matcher(content);
-                    if (!matcher.find()) {
-                        nag("Failed to check for updates: Unknown page format!");
-                        return;
-                    }
-                    String version = matcher.group(2);
+                    String version = AnimLib.getVersion(4690);
                     update = current.equals(version) ? null : version;
-                    scanner.close();
+                    if (update != null) {
+                        getLogger().info("A new version is available! (Current version: " + current + ", new version: " + update + ")");
+                        update = String.format(
+                                "%s[%s%s%1$s] %sA new version is available! (Current version: %s, new version: %s)",
+                                DARK_GRAY, GOLD, getDescription().getName(), GREEN, getDescription().getVersion(), update);
+                    }
                 } catch (IOException ex) {
                     nag("Failed to check for updates:");
                     nag(ex);
                 }
-                if (update != null)
-                    getLogger().info("A new version is available! (Current version: " + current + ", new version: " + update + ")");
             }
         }.runTaskAsynchronously(this);
     }
     
     protected void registerDefaultCommandHandlers() {
         commands.clear();
-        Collections.addAll(commands, new TextCommand("console") {
+        Collections.addAll(commands, new TextCommand("console", false) {
             @Override
             public boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), value);
                 return true;
             }
-        }, new TextCommand("message") {
+        }, new TextCommand("message", true) {
             @Override
             public boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
                 p.sendMessage(value);
                 return true;
             }
-        }, new TextCommand("op") {
+        }, new TextCommand("op", false) {
             @Override
             public boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
-                boolean op = p.isOp();
-                p.setOp(true);
-                p.performCommand(value);
-                p.setOp(op);
+                if (p.isOp()) p.performCommand(value);
+                else {
+                    p.setOp(true);
+                    p.performCommand(value);
+                    p.setOp(false);
+                }
                 return true;
             }
-        }, new TextCommand("broadcast") {
+        }, new TextCommand("broadcast", true) {
             @Override
             public boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
                 Bukkit.broadcastMessage(value);
                 return true;
             }
-        }, new TextCommand("server") {
+        }, new TextCommand("server", false) {
             @Override
             public boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -243,7 +267,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 p.sendPluginMessage(plugin, "BungeeCord", out.toByteArray());
                 return true;
             }
-        }, new TextCommand("menu") {
+        }, new TextCommand("menu", false) {
             @Override
             public boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
                 MenuRegistry registry = plugin.getMenuRegistry();
@@ -281,7 +305,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 }
             }
         }
-        warnOfflineServers = config.getBoolean("warn-offline-servers");
+        warnOfflineServers = Flag.parseBoolean(config.getString("warn-offline-servers"));
         connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L));
     }
     
@@ -303,8 +327,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     @EventHandler(priority = EventPriority.MONITOR)
     public void on(PlayerJoinEvent e) {
         Player player = e.getPlayer();
-        if (update != null && player.hasPermission("animatedmenu.seeupdate"))
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&', "&8[&6" + getDescription().getName() + "&8] &aA new version is available! (Current version: " + getDescription().getVersion() + ", new version: " + update + ")"));
+        if (update != null && PluginPermission.SEE_UPDATE.test(player))
+            player.sendMessage(update);
         PlayerInventory inv = player.getInventory();
         for (AnimatedMenu menu : menuRegistry) {
             menu.getSettings().giveOpener(inv, false);
@@ -316,7 +340,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     @EventHandler
     public void on(PlayerInteractEvent e) {
         Player p = e.getPlayer();
-        if (!p.hasPermission("animatedmenu.open"))
+        if (!PluginPermission.OPEN_WITH_ITEM.test(p))
             return;
         if (e.getItem() != null) {
             MaterialData data = e.getItem().getData();
@@ -349,18 +373,18 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         InventoryView view = e.getView();
         if ((view.getTopInventory() != null) && slot >= 0
                 && (slot < view.getTopInventory().getSize()))
-            open.getMenuGrid().click(p, e.getClick(), e.getSlot());
+            open.click(p, e.getSlot(), e.getClick());
     }
 
     @EventHandler
     public void on(PlayerQuitEvent e) {
         Player p = e.getPlayer();
-        for (Delay<Player> delay : delays)
+        for (Delay delay : delays)
             delay.remove(p);
     }
 
-    public Delay<Player> addPlayerDelay(long time) {
-        Delay<Player> delay = new Delay<>(time);
+    public Delay addPlayerDelay(String delayMessage, long time) {
+        Delay delay = new Delay(this, delayMessage, time);
         delays.add(delay);
         return delay;
     }

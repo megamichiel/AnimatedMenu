@@ -146,7 +146,6 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
 
     @Override
     public void tick() {
-        if (plugin == null) return;
         if (menuTitle.size() > 1 && titleUpdateTick++ == titleUpdateDelay) {
             titleUpdateTick = 0;
             menuTitle.next();

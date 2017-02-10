@@ -1,11 +1,11 @@
 package me.megamichiel.animatedmenu.menu.item;
 
-import me.megamichiel.animatedmenu.menu.MenuItemInfo;
+import me.megamichiel.animatedmenu.menu.ItemInfo;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 
-public class SimpleItemInfo implements MenuItemInfo {
+public class SimpleItemInfo implements ItemInfo {
 
     private final int slot;
     private final ItemStack stack;
@@ -31,7 +31,7 @@ public class SimpleItemInfo implements MenuItemInfo {
     }
 
     @Override
-    public int getSlot(Player p, SlotContext ctx) {
+    public int getSlot(Player player, SlotContext ctx) {
         return slot;
     }
 
@@ -43,11 +43,6 @@ public class SimpleItemInfo implements MenuItemInfo {
     @Override
     public ItemStack apply(Player player, ItemStack item) {
         return item;
-    }
-
-    @Override
-    public boolean isHidden(Player player) {
-        return false;
     }
 
     @Override

@@ -8,27 +8,27 @@
       "In the item's section itself, so where you put Slot, Name, Material etc. This limits you to 1 click handler",
       "In separate sections, under 'Click-Handlers' at the item, e.g.:",
       [
-        "===PLAIN===",
-        "*Click-Handlers:*",
-        ">1>*example:*",
-        ">2>*Click-Type:* left",
-        ">2>*Commands:*",
-        ">2>- 'message: &6Hello there!'",
-        ">1>*anything:*",
-        ">2>*Click-Type:* right",
-        ">2>*Commands:*",
-        ">2>- 'message: &aI am green!'"
+        "===CODE YAML===",
+        "Click-Handlers:",
+        "  example:",
+        "    Click-Type: left",
+        "    Commands:",
+        "    - 'message: &6Hello there!'",
+        "  anything:",
+        "    Click-Type: right",
+        "    Commands:",
+        "    - 'message: &aI am green!'"
       ],
       "Using a list of sections, e.g.:",
       [
-        "===PLAIN===",
-        "*Click-Handlers:*",
-        ">1>- *Click-Type:* left",
-        ">2>*Commands:*",
-        ">2>- 'message: &6Hello there!'",
-        ">1>- *Click-Type:* right",
-        ">2>*Commands:*",
-        ">2>- 'message: &aI am green!'"
+        "===CODE YAML===",
+        "Click-Handlers:",
+        "- Click-Type: left",
+        "  Commands:",
+        "  - 'message: &6Hello there!'",
+        "- Click-Type: right",
+        "  Commands:",
+        "  - 'message: &aI am green!'"
       ]
     ]
   ],
@@ -117,12 +117,12 @@
             "The message to send when #Click-Delay is not over yet",
             "You can use these special placeholders to customize the message:",
             [
-              "===NUMBERED===",
               "*{hoursleft}* to retrieve the amount of hours left",
-              "*{minutesleft}* to retrieve the amount of minutes left",
-              "*{secondsleft}* to retrieve the amount of seconds left",
-              "*{ticksleft}* to retrieve the amount of ticks left"
-            ]
+              "*{minutesleft}* to retrieve the amount of minutes left in the hour",
+              "*{secondsleft}* to retrieve the amount of seconds left in the minute",
+              "*{ticksleft}* to retrieve the amount of ticks left in the second"
+            ],
+            "You can use formulas (e.g. \\(20{secondsleft} + {ticksleft})) to get a total of something"
           ]
         }, {
           "name": "Commands",

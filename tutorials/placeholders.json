@@ -14,7 +14,6 @@
   },
   "config": [
     {
-      "title": "Standard features",
       "values": [
         {
           "name": "motd_<id>",
@@ -49,7 +48,7 @@
         },
         {
           "name": "shownplayers_<world>",
-          "description": "Returns the amount of players in <world> that are not vanished using essentials"
+          "description": "Returns the amount of players in <world> that are not vanished using Essentials"
         }
       ]
     }

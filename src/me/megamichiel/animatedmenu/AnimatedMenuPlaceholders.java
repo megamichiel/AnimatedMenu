@@ -40,14 +40,14 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
     }
     
     @Override
-    public String onPlaceholderRequest(Player who, String arg) {
+    public String onPlaceholderRequest(Player player, String arg) {
         if (arg.startsWith("motd_")) {
             ServerInfo info = plugin.getConnections().get(arg.substring(5));
             if (info == null) return "<invalid>";
-            return info.isOnline() ? info.getMotd() : "";
+            return info.isOnline() ? info.getMotd() : info.get("offline", player);
         }
         if (arg.startsWith("onlineplayers_")) {
-            ServerInfo info = plugin.getConnections().get(arg.substring(14));
+            ServerInfo info = plugin.getConnections().get(arg.substring(15));
             if (info == null) return "<invalid>";
             return info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";
         }
@@ -57,18 +57,17 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             return info.isOnline() ? Integer.toString(info.getMaxPlayers()) : "0";
         }
         if (arg.startsWith("status_")) {
-            ServerInfo info = plugin.getConnections().get(arg.substring(7).toLowerCase(ENGLISH));
+            ServerInfo info = plugin.getConnections().get(arg.substring(7));
             if (info == null) return "<invalid>";
-            IPlaceholder<String> bundle = info.get(info.isOnline() ? "online" : "offline", who);
-            return bundle == null ? "<unknown>" : bundle.invoke(plugin, who);
+            String value = info.get(info.isOnline() ? "online" : "offline", player);
+            return value == null ? "<unknown>" : value;
         }
         if (arg.startsWith("motdcheck_")) {
             ServerInfo info = plugin.getConnections().get(arg.substring(10));
             if (info == null) return "<invalid>";
-            IPlaceholder<String> value = info.get(
-                    info.isOnline() ? info.getMotd().toLowerCase(ENGLISH) : "offline", who);
-            if (value == null) value = info.get("default", who);
-            return value == null ? "<unknown>" : value.invoke(plugin, who);
+            String value = info.get(info.isOnline() ? info.getMotd().toLowerCase(ENGLISH) : "offline", player);
+            if (value == null) value = info.get("default", player);
+            return value == null ? "<unknown>" : value;
         }
         if (arg.startsWith("worldplayers_")) {
             String worldName = arg.substring(13);
@@ -82,8 +81,8 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             String worldName = arg.substring(13);
             boolean showHidden = true;
             User user;
-            if (who != null) {
-                user = ess.getUser(who);
+            if (player != null) {
+                user = ess.getUser(player);
                 showHidden = user.isAuthorized("essentials.list.hidden") || user.canInteractVanished();
             } else user = null;
             int count = 0;

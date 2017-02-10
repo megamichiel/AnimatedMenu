@@ -1,15 +1,18 @@
 package me.megamichiel.animatedmenu.menu;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedOpenAnimation;
 import me.megamichiel.animatedmenu.animation.OpenAnimation;
+import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animationlib.config.AbstractConfig;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,12 +28,13 @@ public abstract class AbstractMenu {
 
     private final AnimatedOpenAnimation openAnimation;
 
-    private boolean dynamicSlots;
     private MenuItem emptyItem;
 
     private int slotUpdateDelay, slotUpdateTimer;
+    private Delay clickDelay;
 
     private final Map<Player, Session> sessions = new ConcurrentHashMap<>();
+    private final ItemInfo.SlotContext slotContext;
 
     protected AbstractMenu(AnimatedMenuPlugin plugin, String name,
                            MenuType menuType, MenuLoader loader) {
@@ -38,8 +42,9 @@ public abstract class AbstractMenu {
         this.name = name;
         this.menuType = menuType;
         this.loader = loader;
-        menuGrid = new MenuGrid(this, menuType.getSize());
+        menuGrid = new MenuGrid(this);
         openAnimation = new AnimatedOpenAnimation(menuType);
+        slotContext = new ItemInfo.SlotContext(plugin, new ItemStack[menuType.getSize()]);
     }
 
     public void dankLoad(AbstractConfig config) {
@@ -51,23 +56,15 @@ public abstract class AbstractMenu {
 
         AbstractConfig section = config.getSection("empty-item");
         if (section != null) {
-            MenuItemInfo info = plugin.getMenuRegistry()
-                    .getMenuLoader().loadItem(this, "empty-item", section);
-            if (info != null) emptyItem = new MenuItem(info);
+            plugin.getMenuRegistry().getMenuLoader().loadItem(this, "empty-item", section, false, info -> emptyItem = new MenuItem(info, 0));
         }
     }
 
-    public void init() {
-        menuGrid.sortSlots(); // Put items with non-dynamic slot before those with it
-        dynamicSlots = false;
-        for (int i = 0, size = menuGrid.getSize(); i < size; i++)
-            if (menuGrid.getItems()[i].getInfo().hasDynamicSlot()) {
-                dynamicSlots = true;
-                break;
-            }
+    public void setClickDelay(String delayMessage, long delay) {
+        clickDelay = delay <= 0 ? null : plugin.addPlayerDelay(delayMessage, delay);
     }
 
-    public void setSlotUpdateDelay(int slotUpdateDelay) {
+    protected void setSlotUpdateDelay(int slotUpdateDelay) {
         this.slotUpdateDelay = slotUpdateDelay;
     }
 
@@ -92,74 +89,91 @@ public abstract class AbstractMenu {
     }
 
     protected boolean removeViewer(Player player) {
-        return sessions.remove(player) != null;
+        if (sessions.remove(player) != null) {
+            menuGrid.forEach(item -> item.getInfo().menuClosed(player));
+            return true;
+        }
+        return false;
     }
 
     protected void setup(Player who, Inventory inv) {
         ItemStack[] contents = new ItemStack[inv.getSize()];
-        int[] slotToPos = new int[contents.length];
-        int[] slots = new int[menuGrid.getSize()];
-        Arrays.fill(slotToPos, -1);
-        Arrays.fill(slots, -1);
+        BiMap<MenuItem, Integer> items = HashBiMap.create();
 
-        MenuItemInfo.SlotContext ctx = new MenuItemInfo.SlotContext(contents);
-        ctx.setSlots(slots, slotToPos);
-        for (int pos = 0, slot; pos < menuGrid.getSize(); pos++) {
-            MenuItem item = menuGrid.getItems()[pos];
-            MenuItemInfo info = item.getInfo();
-            if (!info.isHidden(who)) {
-                ItemStack stack = info.load(who);
-                ctx.setItem(item, stack);
-                slotToPos[slot = slots[pos] = info.getSlot(who, ctx)] = pos;
-                contents[slot] = stack;
-            }
+        ItemInfo.SlotContext ctx = new ItemInfo.SlotContext(plugin, contents);
+        ctx.setItems(items);
+
+        int slot;
+        for (MenuItem item : menuGrid) {
+            ItemInfo info = item.getInfo();
+            ItemStack stack = info.load(who);
+            if (stack == null) continue; // Hidden or whatever
+            items.forcePut(item, slot = ctx.getSlot(who, info, stack));
+            contents[slot] = stack;
         }
         if (emptyItem != null) {
-            MenuItemInfo info = emptyItem.getInfo();
-            for (int slot = 0; slot < slotToPos.length; slot++) {
-                if (slotToPos[slot] == -1)
-                    contents[slot] = info.load(who);
-            }
+            ItemInfo info = emptyItem.getInfo();
+            for (int i = 0; i < contents.length; i++)
+                if (contents[i] == null) contents[i] = info.load(who);
         }
 
         OpenAnimation anim = openAnimation.next();
         OpenAnimation.Animation opening;
 
-        if (anim != null) opening = anim.newAnimation(update -> {
-            for (int slot : update) if (slot != -1 && contents[slot] != null)
-                inv.setItem(slot, contents[slot]);
-        });
-        else {
+        if (anim != null) {
+            opening = anim.newAnimation(update -> {
+                for (int i : update)
+                    if (i >= 0 && contents[i] != null)
+                        inv.setItem(i, contents[i]);
+            });
+        } else {
             inv.setContents(contents);
             opening = null;
         }
 
-        sessions.put(who, new Session(inv, slots, slotToPos, opening));
+        sessions.put(who, new Session(inv, items, opening));
     }
 
-    void click(Player who, int slot, ClickType type) {
-        Session s = sessions.get(who);
+    public void click(Player player, int slot, ClickType type) {
+        Session s = sessions.get(player);
         if (s != null && s.opening == null) {
-            int pos = s.slotToPos[slot];
-            if (pos != -1) menuGrid.getItems()[pos].getInfo().click(who, type);
-            else if (emptyItem != null) emptyItem.getInfo().click(who, type);
+            MenuItem item = s.items.inverse().get(slot);
+            if (item == null) {
+                if ((item = emptyItem) == null) return;
+            } else if (item.isRemoved()) {
+                s.items.inverse().remove(slot);
+                return;
+            }
+            Delay delay = clickDelay;
+            if (delay == null || delay.test(player)) {
+                item.getInfo().click(player, type);
+            }
         }
+    }
+
+    void itemRemoved(MenuItem item) {
+        sessions.forEach((player, session) -> {
+            Integer slot = session.items.remove(item);
+            if (slot != null) {
+                session.inventory.setItem(slot, emptyItem != null ? emptyItem.getInfo().load(player) : null);
+            }
+        });
     }
 
     public Set<Player> getViewers() {
         return sessions.keySet();
     }
 
-    private static final Player[] EMPTY_PLAYER_ARRAY = new Player[0];
+    public boolean isViewing(Player player) {
+        return sessions.containsKey(player);
+    }
 
     public void forEachViewer(Consumer<? super Player> action) {
-        for (Player player : getViewers().toArray(EMPTY_PLAYER_ARRAY))
-            action.accept(player);
+        sessions.keySet().forEach(action);
     }
 
     public void closeAll() {
-        for (Player player : getViewers().toArray(EMPTY_PLAYER_ARRAY))
-            player.closeInventory();
+        sessions.keySet().forEach(Player::closeInventory);
     }
 
     public void requestSlotUpdate() {
@@ -167,104 +181,82 @@ public abstract class AbstractMenu {
     }
 
     public void tick() {
-        MenuItem[] items = menuGrid.getItems();
-        int size = menuGrid.getSize();
-        if (dynamicSlots) {
-            boolean updateSlots = slotUpdateTimer-- == 0;
-            if (updateSlots) slotUpdateTimer = slotUpdateDelay;
-            boolean changed = updateSlots;
-            for (int i = 0; i < size; i++) changed |= items[i].tick();
-            if (changed) {
-                int invSize = menuType.getSize();
-                ItemStack[] contents = new ItemStack[invSize];
-                MenuItemInfo.SlotContext ctx = new MenuItemInfo.SlotContext(contents);
-                int[] weights = ctx.getWeights();
-                sessions.forEach((who, session) -> {
-                    if (session.opening != null) {
-                        if (session.opening.tick()) session.opening = null;
-                        else return;
-                    }
-                    int[] slotToPos = session.slotToPos,
-                              slots = session.slots;
-                    ctx.setSlots(slots, slotToPos);
-                    MenuItem item;
-                    for (int i = 0; i < size; i++) {
-                        if (!(item = items[i]).getInfo().isHidden(who)) {
-                            ItemStack stack = item.getInfo().load(who);
-                            int slot = slots[i];
-                            if (updateSlots) {
-                                slotToPos[slot] = -1;
-                                ctx.setItem(item, stack);
-                                slot = slots[i] = item.getInfo().getSlot(who, ctx);
-                            }
-                            slotToPos[slot] = i;
-                            contents[slot] = stack;
-                        } else slotToPos[i] = -1;
-                    }
-                    if (emptyItem != null) {
-                        MenuItemInfo info = emptyItem.getInfo();
-                        for (int slot = 0; slot < items.length; slot++)
-                            if (slotToPos[slot] == -1)
-                                contents[slot] = info.load(who);
-                    }
-                    Inventory inv = session.inventory;
-                    for (int i = contents.length - 1; i >= 0; --i) {
-                        inv.setItem(i, contents[i]);
-                        contents[i] = null;
-                        weights[i] = 0;
-                    }
-                });
-            }
-        } else {
-            boolean[] update = new boolean[size];
-            boolean b = false;
-            for (int i = 0; i < size; i++)
-                b |= update[i] = items[i].tick();
-            final boolean changed = b;
-            sessions.forEach((player, session) -> {
-                if (session.opening != null) {
-                    if (session.opening.tick()) session.opening = null;
-                    else return;
-                }
-                if (changed) {
-                    MenuItemInfo info;
-                    for (int i = 0; i < size; i++) {
-                        if (update[i]) {
-                            info = items[i].getInfo();
-                            Inventory inv = session.inventory;
-                            int[] visible = session.slotToPos;
-                            int slot = session.slots[i];
-                            boolean hidden = info.isHidden(player);
-                            ItemStack is = inv.getItem(slot);
-                            if (hidden) {
-                                if (is != null && visible[slot] == i) {
-                                    visible[slot] = -1;
-                                    inv.setItem(slot, null);
-                                }
-                            } else {
-                                if (is != null) info.apply(player, is);
-                                else inv.setItem(slot, info.load(player));
-                                visible[slot] = i;
-                            }
-                        }
-                    }
-                }
-            });
+        MenuItem emptyItem = this.emptyItem;
+
+        boolean emptyChanged = emptyItem != null && emptyItem.tick(),
+                changed = emptyChanged;
+        for (MenuItem item : menuGrid)
+            changed |= item.tick();
+        boolean updateSlots = menuGrid.hasDynamicSlots() && slotUpdateTimer-- == 0;
+        if (updateSlots) slotUpdateTimer = slotUpdateDelay;
+        else if (!changed) { // Nothing's changed, only update open animations
+            for (Session session : sessions.values())
+                if (session.opening != null && session.opening.tick())
+                    session.opening = null;
+            return;
         }
+
+        int invSize = menuType.getSize();
+        ItemStack[] contents = new ItemStack[invSize];
+        ItemInfo.SlotContext ctx = slotContext;
+        double[] weights = ctx.getWeights();
+        sessions.forEach((player, session) -> {
+            if (session.opening != null) {
+                if (session.opening.tick()) session.opening = null;
+                else return;
+            }
+            BiMap<MenuItem, Integer> itemToSlot = session.items;
+            ctx.setItems(itemToSlot);
+            Inventory inv = session.inventory;
+            ItemInfo info;
+            ItemStack stack;
+            int slot;
+            for (MenuItem item : menuGrid) {
+                info = item.getInfo();
+                Integer old = itemToSlot.get(item);
+                if (old == null) {
+                    if ((stack = info.load(player)) != null) {
+                        itemToSlot.forcePut(item, slot = ctx.getSlot(player, info, stack));
+                        contents[slot] = stack;
+                    }
+                } else { // old != null && stack != null
+                    stack = inv.getItem(slot = old);
+                    if (updateSlots && slot != (slot = ctx.getSlot(player, info, stack))) {
+                        itemToSlot.forcePut(item, slot);
+                        contents[slot] = info.apply(player, stack);
+                        inv.setItem(slot = old, null);
+                        contents[slot] = null;
+                    } else contents[slot] = info.apply(player, stack);
+                }
+            }
+            info = emptyItem != null ? emptyItem.getInfo() : null;
+            for (int i = contents.length; i-- > 0;) {
+                if ((stack = contents[i]) != null) {
+                    inv.setItem(i, stack);
+                    contents[i] = null;
+                    weights[i] = 0D;
+                } else if (info != null) {
+                    if ((stack = inv.getItem(i)) != null) {
+                        if (emptyChanged && stack != info.apply(player, stack))
+                            inv.setItem(i, stack);
+                    } else inv.setItem(i, info.load(player));
+                }
+            }
+        });
+        menuGrid.forEach(MenuItem::postTick);
+        if (emptyItem != null) emptyItem.postTick();
     }
 
     private static class Session {
 
         private final Inventory inventory;
-        private final int[] slots, slotToPos;
+        private final BiMap<MenuItem, Integer> items;
 
         private OpenAnimation.Animation opening;
 
-        private Session(Inventory inventory, int[] slots,
-                        int[] slotToPos, OpenAnimation.Animation opening) {
+        private Session(Inventory inventory, BiMap<MenuItem, Integer> items, OpenAnimation.Animation opening) {
             this.inventory = inventory;
-            this.slots = slots;
-            this.slotToPos = slotToPos;
+            this.items = items;
             this.opening = opening;
         }
     }

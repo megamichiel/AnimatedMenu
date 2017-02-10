@@ -9,7 +9,8 @@
     "%": "Supports placeholders",
     "{": "Supports special placeholders",
     "/": "Formula",
-    "<": "Script"
+    "<": "Script",
+    ";": "Section of Key-Section pairs"
   },
   "config": [
     {
@@ -78,8 +79,25 @@
           "name": "Hide-From-Command",
           "description": "Prevent this menu from being openable through /animatedmenu open"
         }, {
+          "name": "Click-Delay",
+          "description": "The delay (in ticks) that a player needs must wait before clicking an item again"
+        }, {
+          "name": "Delay-Message",
+          "options": "{",
+          "description": [
+            "The message to send when #Click-Delay is not over yet",
+            "You can use these special placeholders to customize the message:",
+            [
+              "*{hoursleft}* to retrieve the amount of hours left",
+              "*{minutesleft}* to retrieve the amount of minutes left in the hour",
+              "*{secondsleft}* to retrieve the amount of seconds left in the minute",
+              "*{ticksleft}* to retrieve the amount of ticks left in the second"
+            ],
+            "You can use formulas (e.g. \\(20{secondsleft} + {ticksleft})) to get a total of something"
+          ]
+        }, {
           "name": "Items",
-          "options": ":",
+          "options": ";",
           "description": [
             "The items to put in this menu",
             "See the @{items.md|Items} page for info on how to set this up"
@@ -148,6 +166,13 @@
           "description": [
             "When #Admin is enabled, this specifies whether another player needs to be specified",
             "If this is set to 'false', the effects of #Admin no longer apply and the menuadmin placeholder uses the player itself"
+          ]
+        }, {
+          "name": "Save-Navigation",
+          "description": [
+            "When set to 'true', any navigation to other menus will be saved",
+            "This will make a player open the last opened menu when opening this menu",
+            "If you have some sort of paged shop, this can be quite useful"
           ]
         }
       ]

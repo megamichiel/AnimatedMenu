@@ -54,7 +54,7 @@ public class ClickHandler {
     public static class Entry {
 
         private final AnimatedMenuPlugin plugin;
-        private final Click click;
+        private final ClickPredicate click;
 
         private final CommandExecutor clickExecutor, buyExecutor;
         private final int price, points;
@@ -62,30 +62,11 @@ public class ClickHandler {
                 bypassPermission, priceMessage, pointsMessage;
         private final CloseAction closeAction;
 
-        private final StringBundle delayMessage;
-        private final Delay<Player> delay;
-        private long clickTimeLeft;
+        private final Delay delay;
 
         public Entry(AnimatedMenuPlugin plugin, AbstractConfig section) {
             this.plugin = plugin;
-            boolean right, left, middle;
-            String click = section.getString("click-type", "both").toLowerCase(Locale.ENGLISH);
-            switch (click) {
-                case "all": right = left = middle = true; break;
-                case "both": middle = !(right = left = true); break;
-                default:
-                    right = left = middle = false;
-                    for (String s : click.split(","))
-                        switch (s.trim()) {
-                            case "right": right = true; break;
-                            case "left": left = true; break;
-                            case "middle": middle = true; break;
-                        }
-                    break;
-            }
-            if (!right && !left && !middle)
-                throw new IllegalArgumentException("No click types enabled!");
-            this.click = new Click(right, left, middle, Flag.parseFlag(section.getString("shift-click"), Flag.BOTH));
+            click = new ClickPredicate(section);
             (clickExecutor = new CommandExecutor(plugin)).load(plugin, section, "commands");
             (buyExecutor = new CommandExecutor(plugin)).load(plugin, section, "buy-commands");
             price = section.getInt("price"); points = section.getInt("points");
@@ -98,8 +79,7 @@ public class ClickHandler {
             if (section.isString("close")) {
                 String close = section.getString("close");
                 try {
-                    closeAction = CloseAction.valueOf(close
-                            .toUpperCase(Locale.ENGLISH).replace('-', '_'));
+                    closeAction = CloseAction.valueOf(close.toUpperCase(Locale.ENGLISH).replace('-', '_'));
                 } catch (IllegalArgumentException ex) {
                     if (Flag.parseBoolean(close))
                         closeAction = CloseAction.ON_SUCCESS;
@@ -109,30 +89,14 @@ public class ClickHandler {
 
             long clickDelay = section.getInt("click-delay") * 50L;
             if (clickDelay > 0) {
-                delayMessage = StringBundle.parse(plugin, section.getString("delay-message"));
-                if (delayMessage != null) {
-                    delayMessage.colorAmpersands();
-                    delayMessage.replace("{hoursleft}", (n, p) -> clickTimeLeft / 3600000);
-                    delayMessage.replace("{minutesleft}", (n, p) -> clickTimeLeft / 60000);
-                    delayMessage.replace("{secondsleft}", (n, p) -> clickTimeLeft / 1000);
-                    delayMessage.replace("{ticksleft}", (n, p) -> (clickTimeLeft / 50) % 20);
-                }
-
-                delay = plugin.addPlayerDelay(clickDelay);
-            } else {
-                delay = null;
-                delayMessage = null;
-            }
+                delay = plugin.addPlayerDelay(section.getString("delay-message"), clickDelay);
+            } else delay = null;
         }
 
         void click(Player player, ClickType type) {
-            if (!click.matches(type)) return;
+            if (!click.test(type)) return;
             if (canClick(player)) {
-                if (delay != null && (clickTimeLeft = delay.timeLeft(player)) != 0) {
-                    if (delayMessage != null)
-                        player.sendMessage(delayMessage.toString(player));
-                    return;
-                }
+                if (delay != null && !delay.test(player)) return;
                 clickExecutor.execute(player);
                 if (closeAction.onSuccess) player.closeInventory();
             } else if (closeAction.onFailure) player.closeInventory();
@@ -167,19 +131,36 @@ public class ClickHandler {
         }
     }
 
-    private static class Click {
+    private static class ClickPredicate {
 
         private final boolean right, left, middle;
         private final Flag shift;
 
-        private Click(boolean right, boolean left, boolean middle, Flag shift) {
+        private ClickPredicate(AbstractConfig section) {
+            boolean right, left, middle;
+            String click = section.getString("click-type", "both").toLowerCase(Locale.ENGLISH);
+            switch (click) {
+                case "all": right = left = middle = true; break;
+                case "both": middle = !(right = left = true); break;
+                default:
+                    right = left = middle = false;
+                    for (String s : click.split(","))
+                        switch (s.trim()) {
+                            case "right": right = true; break;
+                            case "left": left = true; break;
+                            case "middle": middle = true; break;
+                        }
+                    break;
+            }
+            if (!right && !left && !middle)
+                throw new IllegalArgumentException("No click types enabled!");
             this.right = right;
             this.left = left;
             this.middle = middle;
-            this.shift = shift;
+            this.shift = Flag.parseFlag(section.getString("shift-click"), Flag.BOTH);
         }
 
-        boolean matches(ClickType type) {
+        boolean test(ClickType type) {
             return shift.matches(type.isShiftClick()) && (type.isRightClick() && right
                     || type.isLeftClick() && left || type == ClickType.MIDDLE && middle);
         }

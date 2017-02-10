@@ -1,15 +1,19 @@
 package me.megamichiel.animatedmenu.menu;
 
-public class MenuItem {
+public final class MenuItem {
 
-    private final MenuItemInfo info;
-    private final int frameDelay, refreshDelay;
+    private final ItemInfo info;
+    private final int id, frameDelay, refreshDelay;
     private int frameTick, refreshTick;
 
-    MenuItem(MenuItemInfo info) {
+    MenuItem next, previous;
+    boolean removed;
+
+    MenuItem(ItemInfo info, int id) {
         this.info = info;
-        frameDelay = frameTick = info.getDelay(false);
-        refreshDelay = refreshTick = info.getDelay(true);
+        this.id = id;
+        frameDelay = frameTick = Math.abs(info.getDelay(false));
+        refreshDelay = refreshTick = Math.abs(info.getDelay(true));
     }
 
     boolean tick() {
@@ -17,18 +21,37 @@ public class MenuItem {
             frameTick = frameDelay;
             info.nextFrame();
         }
-        if (refreshTick-- == 0) {
+        return refreshTick-- == 0;
+    }
+
+    void postTick() {
+        if (refreshTick == -1)
             refreshTick = refreshDelay;
-            return true;
-        }
-        return false;
+    }
+
+    boolean canRefresh() {
+        return refreshTick == -1;
     }
 
     public void requestRefresh() {
         refreshTick = 0;
     }
 
-    public MenuItemInfo getInfo() {
+    public ItemInfo getInfo() {
         return info;
+    }
+
+    public boolean isRemoved() {
+        return removed;
+    }
+
+    @Override
+    public int hashCode() {
+        return id;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj == this || (obj instanceof MenuItem && ((MenuItem) obj).info == info);
     }
 }

@@ -10,7 +10,8 @@
     "%": "Supports placeholders",
     "{": "Supports special placeholders",
     "/": "Formula",
-    "<": "Script"
+    "<": "Script",
+    ";": "Section of Key-Section pairs"
   },
   "config": [
     {
@@ -28,11 +29,26 @@
           ]
         }, {
           "name": "Connections",
-          "options": ":",
+          "options": ";",
           "description": [
             "Specifies external server connections to be made, to check their motd, whether they're online etc.",
             "For each section, you need to specify \"*IP*\", which defines the target IP (+ port)",
-            "Then, you can add values depending on the @{placeholders.md|Placeholders} using it"
+            "Then, you can add values depending on the @{placeholders.md|Placeholders} using it",
+            "An example configuration:",
+            [
+              "===CODE YAML===",
+              "Connections:",
+              "  example:",
+              "    IP: localhost:12345",
+              "    #For %animatedmenu_status_<id>%",
+              "    Online: '&aThis server is online!'",
+              "    #For %animatedmenu_status_<id>%, motd and motdcheck when the server isn't online",
+              "    Offline: '&cThis server is offline!'",
+              "    #For use in %animatedmenu_motdcheck_<id>%",
+              "    'A Minecraft Server': '&bThis server has the standard MOTD!'",
+              "    #For use in %animatedmenu_motdcheck_<id>%, when no key with the server's MOTD can be found",
+              "    Default: '&cThis server has an unknown MOTD!'"
+            ]
           ]
         }, {
           "name": "Connection-Refresh-Delay",
@@ -69,7 +85,7 @@
           ]
         }, {
           "name": "Sql-Statements",
-          "options": ":",
+          "options": ";",
           "description": [
             "A section to be used with a click handler's @{click_handlers.md#commands|Commands}",
             "Each section contains a few keys:",
@@ -77,6 +93,16 @@
               "*Database* specifies the Database to be used, as specified in the AnimationLib config",
               "*Query* specifies the query to execute, supports placeholders. Note: these placeholders musn't be inside of quotes",
               "*Complete-Commands* specifies the @{click_handlers.md#commands|Commands} to execute when the query was completed."
+            ],
+            "For example:",
+            [
+              "===CODE YAML===",
+              "Sql-Statements:",
+              "  example:",
+              "    Database: somedbfromanimlib",
+              "    Query: 'UPDATE `Players` SET `Coins`=`Coins`+1 WHERE `UUID`=%player_uuid%'",
+              "    Complete-Commands:",
+              "    - 'message: &6You have been given a coin!'"
             ]
           ]
         }, {

@@ -1,74 +1,139 @@
 package me.megamichiel.animatedmenu.menu;
 
-import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.ClickType;
-
-import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Consumer;
 
-public class MenuGrid {
+public class MenuGrid implements Iterable<MenuItem> {
 
     private final AbstractMenu menu;
-    private MenuItem[] items;
-    private int size = 0;
+
+    private MenuItem head, tail;
+    private int size = 0, itemId = 0;
+    private boolean dynamicSlots = false;
     
-    MenuGrid(AbstractMenu menu, int size) {
+    MenuGrid(AbstractMenu menu) {
         this.menu = menu;
-        items = new MenuItem[size];
     }
-
-    void sortSlots() {
-        MenuItem[] solid = new MenuItem[size],
-                dynamic = new MenuItem[size];
-        int solidSize = 0, dynamicSize = 0;
-        for (int i = 0; i < size; i++) {
-            if (items[i].getInfo().hasDynamicSlot()) dynamic[dynamicSize++] = items[i];
-            else solid[solidSize++] = items[i];
+    
+    public MenuItem add(ItemInfo info) {
+        MenuItem item = new MenuItem(info, itemId++);
+        ++size;
+        if (head == null) {
+            if (info.hasDynamicSlot()) dynamicSlots = true;
+            return head = tail = item;
         }
-        System.arraycopy(solid, 0, items, 0, solidSize);
-        System.arraycopy(dynamic, 0, items, solidSize, dynamicSize);
-    }
-    
-    public void click(Player p, ClickType click, int slot) {
-        menu.click(p, slot, click);
-    }
-    
-    public MenuItem addItem(MenuItemInfo item) {
-        if (size == items.length)
-            items = Arrays.copyOf(items, size + 9);
-        return items[size++] = new MenuItem(item);
+        if (info.hasDynamicSlot()) {
+            (item.previous = tail).next = item;
+            if (!dynamicSlots)
+                dynamicSlots = true;
+            return tail = item;
+        }
+        (item.next = head).previous = item;
+        return head = item;
     }
 
-    public void removeItem(MenuItem item) {
-        removeItem(item.getInfo());
-    }
-
-    public void removeItem(MenuItemInfo item) {
-        for (int i = 0; i < items.length; i++) {
-            if (items[i] != null && items[i].getInfo() == item) {
+    public boolean remove(ItemInfo info) {
+        for (MenuItem item = head; item != null; item = item.next) {
+            if (item.getInfo() == info) {
+                MenuItem prev = item.previous, next = item.next;
+                if (prev != null) prev.next = next;
+                if (next != null) next.previous = prev;
                 --size;
-                while (i < size)
-                    items[i] = items[++i];
-                items[i] = null;
-                break;
+                item.removed = true;
+                item.previous = null;
+                if (item == head) head = next;
+                if (item == tail) {
+                    tail = prev;
+                    if (prev != null && dynamicSlots && !prev.getInfo().hasDynamicSlot())
+                        dynamicSlots = false;
+                }
+                menu.itemRemoved(item);
+                return true;
             }
         }
+        return false;
+    }
+
+    public boolean contains(ItemInfo info) {
+        for (MenuItem item = head; item != null; item = item.next)
+            if (!item.removed && item.getInfo() == info)
+                return true;
+        return false;
     }
 
     public void clear() {
-        while (size > 0) items[--size] = null;
+        for (MenuItem item = head, next; item != null;) {
+            next = item.next;
+            item.next = item.previous = null;
+            item = next;
+        }
+        head = tail = null;
+        dynamicSlots = false;
     }
 
-    public MenuItem[] getItems() {
-        return items;
-    }
-
-    public void forEachItem(Consumer<? super MenuItem> action) {
-        for (int i = 0; i < size; i++)
-            action.accept(items[i]);
-    }
-
-    public int getSize() {
+    public int size() {
         return size;
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    public boolean hasDynamicSlots() {
+        return dynamicSlots;
+    }
+
+    public MenuItem head() {
+        return head;
+    }
+
+    public MenuItem tail() {
+        return tail;
+    }
+
+    @Override
+    public Iterator<MenuItem> iterator() {
+        return new Iterator<MenuItem>() {
+            MenuItem item = head, last;
+
+            MenuItem getItem() {
+                while (item != null && item.removed)
+                    item = item.next; // Next retains when removed
+                return item;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return getItem() != null;
+            }
+
+            @Override
+            public MenuItem next() {
+                if (getItem() == null) throw new IllegalStateException();
+                item = (last = item).next;
+                return last;
+            }
+
+            @Override
+            public void remove() {
+                if (last == null)
+                    throw new IllegalStateException();
+                MenuGrid.this.remove(last.getInfo());
+                last = null;
+            }
+        };
+    }
+
+    @Override
+    public void forEach(Consumer<? super MenuItem> action) {
+        for (MenuItem item = head; item != null; item = item.next)
+            action.accept(item);
+    }
+
+    @Override
+    public Spliterator<MenuItem> spliterator() {
+        return Spliterators.spliterator(iterator(), size, Spliterator.DISTINCT | Spliterator.ORDERED | Spliterator.NONNULL);
     }
 }
