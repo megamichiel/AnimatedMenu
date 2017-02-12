@@ -52,6 +52,8 @@ Connections:
   The delay in ticks between connection refreshes  
 
 - #### Warn-Offline-Servers ####
+  Default value: false  
+  \------------------------------  
   Sets whether a warning should be printed when a [Connections](#user-content-connections) server cannot be reached  
 
 ### Plus features ###

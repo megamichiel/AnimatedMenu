@@ -94,7 +94,7 @@ Menus are where it all starts in the plugin
   Prevent this menu from being openable through /animatedmenu open  
 
 - #### Click-Delay ####
-  The delay (in ticks) that a player needs must wait before clicking an item again  
+  The delay (in ticks) that a player must wait before clicking an item again  
 
 - #### Delay-Message ####
   Supports special placeholders  

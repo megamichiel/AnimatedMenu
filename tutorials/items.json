@@ -214,7 +214,32 @@
           "description": [
             "Specifies mappings from values retrieved in #State to item info",
             "The key is the value to accept. You can separate it by a semicolon (;) to accept multiple results",
-            "You can use every standard item config option here, except for the ones mentioned in #State"
+            "Each value supports placeholders and special placeholders",
+            "You can use every standard item config option here, except for the ones mentioned in #State",
+            "A small but working example:",
+            [
+              "===CODE YAML===",
+              "#The :#: makes it a whole number, floor rounds a number down and round rounds a number to the nearest whole number",
+              "State: '\\(:#:floor(round(%player_health%) / 5))'",
+              "#Specify some default values reused in each state (can be overridden):",
+              "State-Template:",
+              "  Click-Handlers:",
+              "  - Commands:",
+              "    - 'message: &aYou got me :D'",
+              "States:",
+              "  0: # Red wool",
+              "    Material: wool:1:14",
+              "    Name: '&cYou nearly dead man!'",
+              "  1: # Orange wool",
+              "    Material: wool:1:1",
+              "    Name: '&6Careful, your health is getting low!'",
+              "  2;3: # Yellow wool",
+              "    Material: wool:1:4",
+              "    Name: '&eKeep your health up like that!'",
+              "  4: # Green wool",
+              "    Material: wool:1:5",
+              "    Name: '&aYou got health for days!'"
+            ]
           ]
         }
       ]

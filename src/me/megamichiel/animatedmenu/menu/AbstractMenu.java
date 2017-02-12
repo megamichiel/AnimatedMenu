@@ -181,7 +181,7 @@ public abstract class AbstractMenu {
     }
 
     public void tick() {
-        MenuItem emptyItem = this.emptyItem;
+        MenuItem emptyItem = this.emptyItem; // Consistency!
 
         boolean emptyChanged = emptyItem != null && emptyItem.tick(),
                 changed = emptyChanged;
@@ -219,14 +219,15 @@ public abstract class AbstractMenu {
                         itemToSlot.forcePut(item, slot = ctx.getSlot(player, info, stack));
                         contents[slot] = stack;
                     }
-                } else { // old != null && stack != null
-                    stack = inv.getItem(slot = old);
-                    if (updateSlots && slot != (slot = ctx.getSlot(player, info, stack))) {
-                        itemToSlot.forcePut(item, slot);
-                        contents[slot] = info.apply(player, stack);
-                        inv.setItem(slot = old, null);
-                        contents[slot] = null;
-                    } else contents[slot] = info.apply(player, stack);
+                } else { // old != null
+                    if ((stack = inv.getItem(slot = old)) != null) {
+                        if (updateSlots && slot != (slot = ctx.getSlot(player, info, stack))) {
+                            itemToSlot.forcePut(item, slot);
+                            contents[slot] = info.apply(player, stack);
+                            inv.setItem(slot = old, null);
+                            contents[slot] = null;
+                        } else contents[slot] = info.apply(player, stack);
+                    }
                 }
             }
             info = emptyItem != null ? emptyItem.getInfo() : null;

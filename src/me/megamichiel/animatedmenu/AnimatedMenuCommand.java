@@ -39,8 +39,9 @@ public class AnimatedMenuCommand implements TabExecutor {
                 return RED + "Couldn't find a menu by that name!";
             Player target;
             if (args.length > 2) {
-                if (!PluginPermission.COMMAND_OPEN_OTHER.test(sender))
+                if (!PluginPermission.COMMAND_OPEN_OTHER.test(sender)) {
                     return RED + "You are not permitted to do that for other players!";
+                }
                 target = Bukkit.getPlayerExact(args[2]);
                 if (target == null) return RED + "Couldn't find a player by that name!";
             } else if (sender instanceof Player) target = (Player) sender;
@@ -52,10 +53,12 @@ public class AnimatedMenuCommand implements TabExecutor {
             if (args.length == 2) {
                 String query = args[1].toLowerCase(ENGLISH);
                 String menuName;
-                for (AnimatedMenu menu : plugin.getMenuRegistry())
+                for (AnimatedMenu menu : plugin.getMenuRegistry()) {
                     if (!menu.getSettings().isHiddenFromCommand() && (menuName =
-                            menu.getName().toLowerCase(ENGLISH)).startsWith(query))
+                            menu.getName().toLowerCase(ENGLISH)).startsWith(query)) {
                         list.add(menuName);
+                    }
+                }
             } else if (args.length == 3 && PluginPermission.COMMAND_OPEN_OTHER.test(sender)) {
                 String name = args[2].toLowerCase(ENGLISH);
                 for (Player player : Bukkit.getOnlinePlayers())

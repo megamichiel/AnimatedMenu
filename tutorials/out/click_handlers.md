@@ -112,7 +112,7 @@ Click-Handlers:
 
 
 - #### Click-Delay ####
-  The delay (in ticks) that a player needs must wait before clicking the item again  
+  The delay (in ticks) that a player must wait before clicking the item again  
 
 - #### Delay-Message ####
   Supports special placeholders  

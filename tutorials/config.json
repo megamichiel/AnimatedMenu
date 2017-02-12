@@ -56,6 +56,7 @@
           "description": "The delay in ticks between connection refreshes"
         }, {
           "name": "Warn-Offline-Servers",
+          "default": "false",
           "description": "Sets whether a warning should be printed when a #Connections server cannot be reached"
         }
       ]

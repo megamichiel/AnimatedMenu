@@ -67,7 +67,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     private final Set<Delay> delays = Collections.newSetFromMap(new WeakHashMap<>());
 
     private final RemoteConnections connections = new RemoteConnections(this);
-    private boolean warnOfflineServers = true;
+    private boolean warnOfflineServers = false;
     
     private final List<BukkitTask> asyncTasks = new ArrayList<>();
     
@@ -304,9 +304,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                     }
                 }
             }
+            warnOfflineServers = Flag.parseBoolean(config.getString("warn-offline-servers"));
+            connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L));
         }
-        warnOfflineServers = Flag.parseBoolean(config.getString("warn-offline-servers"));
-        connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L));
     }
     
     void reload() {
