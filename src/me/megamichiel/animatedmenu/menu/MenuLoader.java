@@ -226,8 +226,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                             menu.closeAll();
                             registry.remove(menu);
                         }
-                        YamlConfig config = ConfigManager.quickLoad(YamlConfig::new, file);
-                        menu = loadMenu(name, config);
+                        menu = loadMenu(name, ConfigManager.quickLoad(YamlConfig::new, file));
                         plugin.getLogger().info("Loaded " + file.getName());
                         registry.add(menu);
                         break;
@@ -241,8 +240,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                                 ((Player) viewer).closeInventory();
                             registry.remove(menu);
                         } else viewers = Collections.emptySet();
-                        config = ConfigManager.quickLoad(YamlConfig::new, file);
-                        menu = loadMenu(name, config);
+                        menu = loadMenu(name, ConfigManager.quickLoad(YamlConfig::new, file));
                         registry.add(menu);
                         for (Player p : viewers)
                             registry.openMenu(p, menu);

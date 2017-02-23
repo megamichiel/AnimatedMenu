@@ -40,7 +40,7 @@ public class ConfigItemInfo implements ItemInfo {
     private final StringBundle hidePermission;
     private final boolean negateHidePermission;
 
-    private final AnimatedMaterial material = new AnimatedMaterial();
+    private final AnimatedMaterial material;
     private final AnimatedText displayName = new AnimatedText();
     private final AnimatedLore lore = new AnimatedLore();
     private final Map<Enchantment, Integer> enchantments = new HashMap<>();
@@ -75,6 +75,7 @@ public class ConfigItemInfo implements ItemInfo {
         frameDelay = section.getInt("frame-delay", 20);
         refreshDelay = section.getInt("refresh-delay", frameDelay);
 
+        material = new AnimatedMaterial(plugin);
         if (!material.load(plugin, section, "material"))
             plugin.nag("Item " + name + " in menu " + menu.getName() + " doesn't contain Material!");
         if (!displayName.load(plugin, section, "name", new StringBundle(plugin, name)))

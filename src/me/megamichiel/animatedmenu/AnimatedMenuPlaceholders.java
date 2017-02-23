@@ -6,15 +6,12 @@ import com.earth2me.essentials.User;
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.PlaceholderHook;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
-import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.util.List;
-
-import static java.util.Locale.ENGLISH;
 
 /**
  * A class that handles some AnimatedMenu created placeholders
@@ -47,7 +44,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
             return info.isOnline() ? info.getMotd() : info.get("offline", player);
         }
         if (arg.startsWith("onlineplayers_")) {
-            ServerInfo info = plugin.getConnections().get(arg.substring(15));
+            ServerInfo info = plugin.getConnections().get(arg.substring(14));
             if (info == null) return "<invalid>";
             return info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";
         }
@@ -65,7 +62,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
         if (arg.startsWith("motdcheck_")) {
             ServerInfo info = plugin.getConnections().get(arg.substring(10));
             if (info == null) return "<invalid>";
-            String value = info.get(info.isOnline() ? info.getMotd().toLowerCase(ENGLISH) : "offline", player);
+            String value = info.get(info.isOnline() ? info.getMotd() : "offline", player);
             if (value == null) value = info.get("default", player);
             return value == null ? "<unknown>" : value;
         }

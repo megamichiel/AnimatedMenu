@@ -4,9 +4,7 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
 import org.bukkit.entity.Player;
 
-import java.util.Locale;
-
-public abstract class Command<T, C> {
+public abstract class Command<Type, Cached> {
 
     final String prefix;
 
@@ -14,11 +12,11 @@ public abstract class Command<T, C> {
         this.prefix = prefix;
     }
 
-    protected abstract T parse(Nagger nagger, String command);
+    protected abstract Type parse(Nagger nagger, String command);
 
-    protected abstract boolean execute(AnimatedMenuPlugin plugin, Player p, T value);
+    protected abstract boolean execute(AnimatedMenuPlugin plugin, Player p, Type value);
 
-    protected abstract C tryCacheValue(AnimatedMenuPlugin plugin, T value);
+    protected abstract Cached tryCacheValue(AnimatedMenuPlugin plugin, Type value);
 
-    protected abstract boolean executeCached(AnimatedMenuPlugin plugin, Player p, C value);
+    protected abstract boolean executeCached(AnimatedMenuPlugin plugin, Player p, Cached value);
 }

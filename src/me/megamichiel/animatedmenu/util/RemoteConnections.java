@@ -48,40 +48,27 @@ public class RemoteConnections implements Runnable {
         while (running) {
             for (Entry<String, ServerInfo> entry : statuses.entrySet()) {
                 ServerInfo info = entry.getValue();
-                try {
-                    Socket socket = new Socket(info.address.getAddress(), info.address.getPort());
+                try (Socket socket = new Socket(info.address.getAddress(), info.address.getPort())) {
                     OutputStream output = socket.getOutputStream();
                     InputStream input = socket.getInputStream();
-                    
-                    // Handshake
 
-                    String address = info.address.getHostString();
-                    byte[] addressBytes = address.getBytes(Charsets.UTF_8);
-
-                    ByteArrayOutputStream handshake = new ByteArrayOutputStream();
-                    writeVarInt(handshake, 5
-                            + varIntLength(addressBytes.length)
-                            + addressBytes.length);
-                    handshake.write(new byte[] { 0, 47 }); // Packet ID + Protocol Version
-                    writeVarInt(handshake, addressBytes.length);
-                    handshake.write(addressBytes);
-                    int port = info.address.getPort();
-                    handshake.write((port >> 8) & 0xFF);
-                    handshake.write(port & 0xFF);
-                    handshake.write(1); // Next protocol state: Status
-                    output.write(handshake.toByteArray());
-                    
-                    // Request
-                    output.write(new byte[] { 1, 0 }); // Length + Packet ID
+                    output.write(info.handshake);
                     
                     // Response
                     readVarInt(input);
                     if (input.read() != 0) { // Weird Packet ID
-                        socket.close();
                         continue;
                     }
-                    byte[] jsonBytes = new byte[readVarInt(input)];
-                    new DataInputStream(input).readFully(jsonBytes);
+                    int length = readVarInt(input), pos = 0;
+                    byte[] jsonBytes = new byte[length];
+
+                    // readFully
+                    while (pos < length) {
+                        if (pos > (pos += input.read(jsonBytes, pos, length - pos))) {
+                            throw new EOFException();
+                        }
+                    }
+
                     JsonElement response = new JsonParser().parse(new String(jsonBytes, Charsets.UTF_8));
                     String motd;
                     int online = 0, max = 0;
@@ -104,18 +91,16 @@ public class RemoteConnections implements Runnable {
                     info.onlinePlayers = online;
                     info.maxPlayers = max;
 
-                    byte[] write = new byte[10];
-                    write[0] = 9;
-                    write[1] = 1;
-                    int index = 2;
+                    byte[] ping = info.ping;
+                    int index = 10;
                     long time = System.currentTimeMillis();
-                    for (int i = 7; i >= 0; i--)
-                        write[index++] = (byte) ((time >> (i * 8)) & 0xFF);
-                    output.write(write);
+                    while (index > 1) {
+                        ping[--index] = (byte) (time & 0xFFL);
+                        time >>>= 8;
+                    }
+                    output.write(ping);
 
                     // input.skip(10); // Length (9) + ID (1) + Keep Alive ID
-                    
-                    socket.close();
                 } catch (Exception ex) {
                     if (plugin.warnOfflineServers()) {
                         plugin.nag("Failed to connect to " + info.address.getHostName() + ":" + info.address.getPort() + "!");
@@ -126,11 +111,13 @@ public class RemoteConnections implements Runnable {
             }
             try {
                 Thread.sleep(delay);
-            } catch (InterruptedException ex) {}
+            } catch (InterruptedException ex) {
+                // Meh, just keep going
+            }
         }
     }
     
-    private void writeVarInt(OutputStream output, int i) throws IOException {
+    private void writeVarInt(ByteArrayOutputStream output, int i) {
         while ((i & -0x80) != 0) {
             output.write(i & 0x7F | 0x80);
             i >>>= 7;
@@ -180,6 +167,7 @@ public class RemoteConnections implements Runnable {
     public class ServerInfo {
         
         private final InetSocketAddress address;
+        private final byte[] handshake, ping;
         private final Map<String, IPlaceholder<String>> cached = new HashMap<>();
         private final Map<StringBundle, IPlaceholder<String>> values = new HashMap<>();
         private boolean online = false;
@@ -188,6 +176,31 @@ public class RemoteConnections implements Runnable {
 
         private ServerInfo(InetSocketAddress address) {
             this.address = address;
+
+            String hostString = address.getHostString();
+            byte[] addressBytes = hostString.getBytes(Charsets.UTF_8);
+
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+
+            // Handshake
+            writeVarInt(bytes, 5
+                    + varIntLength(addressBytes.length)
+                    + addressBytes.length);
+            bytes.write(new byte[] { 0, 47 }, 0, 2); // Packet ID + Protocol Version
+            writeVarInt(bytes, addressBytes.length);
+            bytes.write(addressBytes, 0, addressBytes.length);
+            int port = address.getPort();
+            bytes.write((port >> 8) & 0xFF);
+            bytes.write(port & 0xFF);
+            bytes.write(1); // Next protocol state: Status
+
+            // Status Request
+            bytes.write(new byte[] { 1, 0 }, 0, 2);
+
+            handshake = bytes.toByteArray();
+            ping = new byte[10];
+            ping[0] = 9;
+            ping[1] = 1;
         }
 
         public String get(String key, Player player) {
@@ -216,15 +229,21 @@ public class RemoteConnections implements Runnable {
         }
 
         public void load(AbstractConfig section) {
+            String val;
             for (String key : section.keys()) {
-                if (!key.equals("ip")) {
-                    String val = section.getString(key);
-                    if (val == null) continue;
-                    StringBundle keySB = StringBundle.parse(plugin, key).colorAmpersands(),
-                            valSB = StringBundle.parse(plugin, val).colorAmpersands();
-                    if (keySB.containsPlaceholders())
-                        values.put(keySB, valSB.tryCache());
-                    else cached.put(keySB.toString(null), valSB.tryCache());
+                if ("ip".equals(key)) continue;
+                val = section.getString(key);
+                if (val == null) continue;
+                IPlaceholder<String> value = StringBundle.parse(plugin, val).colorAmpersands().tryCache();
+                switch (key) {
+                    case "online":case "offline":case "default":
+                        cached.put(key, value);
+                        break;
+                    default:
+                        StringBundle keySB = StringBundle.parse(plugin, section.getOriginalKey(key)).colorAmpersands();
+                        if (keySB.containsPlaceholders()) values.put(keySB, value);
+                        else cached.put(keySB.toString(null), value);
+                        break;
                 }
             }
         }

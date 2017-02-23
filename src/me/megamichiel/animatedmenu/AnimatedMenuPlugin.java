@@ -1,5 +1,6 @@
 package me.megamichiel.animatedmenu;
 
+import me.megamichiel.animatedmenu.animation.AnimatedMaterial;
 import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.command.Command;
 import me.megamichiel.animatedmenu.command.SoundCommand;
@@ -12,16 +13,20 @@ import me.megamichiel.animatedmenu.util.Flag;
 import me.megamichiel.animatedmenu.util.PluginPermission;
 import me.megamichiel.animatedmenu.util.RemoteConnections;
 import me.megamichiel.animationlib.AnimLib;
+import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.bukkit.PapiPlaceholder;
+import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
 import me.megamichiel.animationlib.config.type.YamlConfig;
+import me.megamichiel.animationlib.placeholder.StringBundle;
 import me.megamichiel.animationlib.util.LoggerNagger;
 import me.megamichiel.animationlib.util.pipeline.PipelineContext;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -33,6 +38,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.MaterialData;
@@ -48,12 +54,8 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.*;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static java.util.Locale.ENGLISH;
 import static org.bukkit.ChatColor.*;
@@ -89,15 +91,17 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     @Override
     public void onEnable() {
         if (!checkAnimationLib()) return;
-        else try {
-            Class.forName("me.megamichiel.animationlib.AnimLib");
-        } catch (ClassNotFoundException ex) {
-            getServer().getConsoleSender().sendMessage(new String[]{
-                    RED + "It appears you have the wrong AnimationLib plugin!",
-                    RED + "Download the correct one at https://www.spigotmc.org/resources/22295/"
-            });
-            getServer().getPluginManager().disablePlugin(this);
-            return;
+        else {
+            try {
+                Class.forName("me.megamichiel.animationlib.AnimLib");
+            } catch (ClassNotFoundException ex) {
+                getServer().getConsoleSender().sendMessage(new String[]{
+                        RED + "It appears you have the wrong AnimationLib plugin!",
+                        RED + "Download the correct one at https://www.spigotmc.org/resources/22295/"
+                });
+                getServer().getPluginManager().disablePlugin(this);
+                return;
+            }
         }
 
         registerPermissions();
@@ -276,6 +280,42 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 else plugin.nag("No menu with name " + value + " found!");
                 return true;
             }
+        }, new Command<StringBundle, ItemStack>("give") {
+
+            private ItemStack _parse(AnimatedMenuPlugin plugin, String value) {
+                int index = value.indexOf(' ');
+                if (index == -1) {
+                    return AnimatedMaterial.parseItemStack(plugin, value);
+                } else {
+                    NBTUtil util = NBTUtil.getInstance();
+                    ItemStack item = AnimatedMaterial.parseItemStack(plugin, value.substring(0, index));
+                    if (item != (item = util.asNMS(item))) {
+                        util.setTag(item, util.parse(value.substring(index + 1).trim()));
+                    }
+                    return item;
+                }
+            }
+
+            @Override
+            protected StringBundle parse(Nagger nagger, String command) {
+                return StringBundle.parse(nagger, command).colorAmpersands();
+            }
+
+            @Override
+            protected boolean execute(AnimatedMenuPlugin plugin, Player p, StringBundle value) {
+                return executeCached(plugin, p, _parse(plugin, value.toString(p)));
+            }
+
+            @Override
+            protected ItemStack tryCacheValue(AnimatedMenuPlugin plugin, StringBundle value) {
+                return value.containsPlaceholders() ? null : _parse(plugin, value.toString(null));
+            }
+
+            @Override
+            protected boolean executeCached(AnimatedMenuPlugin plugin, Player p, ItemStack value) {
+                p.getInventory().addItem(value);
+                return true;
+            }
         }, new TellRawCommand(this), new SoundCommand());
     }
     
@@ -287,23 +327,21 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         AbstractConfig config = getConfiguration();
         if (config.isSection("connections")) {
             AbstractConfig section = config.getSection("connections");
-            for (String key : section.keys()) {
-                if (section.isSection(key)) {
-                    AbstractConfig sec = section.getSection(key);
-                    String ip = sec.getString("ip");
-                    if (ip != null) {
-                        int index = ip.indexOf(':');
-                        int port;
-                        if (index == -1) port = 25565;
-                        else {
-                            port = Integer.parseInt(ip.substring(index + 1));
-                            ip = ip.substring(0, index);
-                        }
-                        connections.add(key.toLowerCase(ENGLISH),
-                                new InetSocketAddress(ip, port)).load(sec);
+            section.forEach((key, value) -> {
+                if (!(value instanceof AbstractConfig)) return;
+                AbstractConfig sec = (AbstractConfig) value;
+                String ip = sec.getString("ip");
+                if (ip != null) {
+                    int index = ip.indexOf(':');
+                    int port;
+                    if (index == -1) port = 25565;
+                    else {
+                        port = Integer.parseInt(ip.substring(index + 1));
+                        ip = ip.substring(0, index);
                     }
+                    connections.add(section.getOriginalKey(key), new InetSocketAddress(ip, port)).load(sec);
                 }
-            }
+            });
             warnOfflineServers = Flag.parseBoolean(config.getString("warn-offline-servers"));
             connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L));
         }
@@ -394,6 +432,15 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             return OpenAnimation.DefaultType.valueOf(name);
         } catch (IllegalArgumentException ex) {
             return null;
+        }
+    }
+
+    public short resolveDataValue(Nagger nagger, Material type, String str) {
+        try {
+            return (short) Integer.parseInt(str);
+        } catch (NumberFormatException ex) {
+            nagger.nag("Invalid data value: " + str);
+            return 0;
         }
     }
 

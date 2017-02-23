@@ -36,6 +36,8 @@ Click-Handlers:
 - [Price-Message](#user-content-price-message)
 - [Points](#user-content-points)
 - [Points-Message](#user-content-points-message)
+- [Exp](#user-content-exp)
+- [Exp-Message](#user-content-exp-message)
 - [Permission](#user-content-permission)
 - [Permission-Message](#user-content-permission-message)
 - [Bypass-Permission](#user-content-bypass-permission)
@@ -48,6 +50,8 @@ Click-Handlers:
 #### Plus features ####
 - [Requirement-Script](#user-content-requirement-script)
 - [Script-Message](#user-content-script-message)
+- [Item](#user-content-item)
+- [Item-Message](#user-content-item-message)
 
 ### Standard features ###
 - #### Click-Type ####
@@ -83,6 +87,13 @@ Click-Handlers:
   Default value: '&cYou don't have enough points for that!'  
   \------------------------------  
   The message to send when the player does not have [Points](#user-content-points)  
+
+- #### Exp ####
+  The amount of exp required to use this item.  
+  Start with an L to use levels, e.g. "Exp: 'L10'"  
+
+- #### Exp-Message ####
+  The message to send when the player does not have [Exp](#user-content-exp)  
 
 - #### Permission ####
   Supports placeholders  
@@ -142,6 +153,7 @@ Click-Handlers:
     - **sound** to send a sound to a player, format '&lt;soundname&gt; [volume] [pitch]'
       - For a list of sound names, see [this page](http://www.minecraftforum.net/forums/mapping-and-modding/mapping-and-modding-tutorials/1571574-all-minecraft-playsound-file-names-1-9)
 
+    - **give** to give an item to a player, format identical to [Item](#user-content-item)
     - If you have the Plus version, you also get access to these commands:
       - **bungee** to execute a command as the bungeecord console.
       - **bungeeplayer** to execute a bungeecord command as the player
@@ -167,4 +179,22 @@ Click-Handlers:
   Supports placeholders  
   \------------------------------  
   The message to send when the [Requirement-Script](#user-content-requirement-script) doesn't allow the player to click the item  
+
+- #### Item ####
+  Supports placeholders  
+  \------------------------------  
+  An item that the player must have to use this item. This item will be taken from them  
+  The format is '&lt;id&gt;:&lt;amount&gt;:&lt;data&gt; &lt;nbt&gt;', though &lt;amount&gt;, &lt;data&gt; and &lt;nbt&gt; are all optional  
+  &lt;data&gt; also supports values from data-values.yml  
+  A few examples:  
+
+```YAML
+Item: 'stone:1:granite'
+Item: 'diamond-sword {ench:[{id:16,lvl:3}]}'
+```
+
+- #### Item-Message ####
+  Supports placeholders  
+  \------------------------------  
+  The message to send to the player when they do not have [Item](#user-content-item)  
 

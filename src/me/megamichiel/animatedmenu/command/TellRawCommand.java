@@ -10,30 +10,34 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public class TellRawCommand extends Command<StringBundle, Object> {
-    
+
+    private final boolean available;
     private final Method deserialize, getHandle, sendMessage;
     
     public TellRawCommand(Nagger nagger) {
         super("tellraw");
-        Method m1 = null, m2 = null, m3 = null;
+        boolean available = true;
+        Method deserialize = null, getHandle = null, sendMessage = null;
         try {
             String pkg = Bukkit.getServer().getClass().getPackage().getName();
             String nms = "net.minecraft.server." + pkg.split("\\.")[3];
             try {
-                m1 = Class.forName(nms + ".IChatBaseComponent$ChatSerializer").getDeclaredMethod("a", String.class);
+                deserialize = Class.forName(nms + ".IChatBaseComponent$ChatSerializer").getDeclaredMethod("a", String.class);
             } catch (Exception ex) {
-                m1 = Class.forName(nms + ".ChatSerializer").getDeclaredMethod("a", String.class);
+                deserialize = Class.forName(nms + ".ChatSerializer").getDeclaredMethod("a", String.class);
             }
             Class<?> chatComponent = Class.forName(nms + ".IChatBaseComponent");
-            m2 = Class.forName(pkg + ".entity.CraftPlayer").getMethod("getHandle");
-            m3 = m2.getReturnType().getMethod("sendMessage", chatComponent);
+            getHandle = Class.forName(pkg + ".entity.CraftPlayer").getMethod("getHandle");
+            sendMessage = getHandle.getReturnType().getMethod("sendMessage", chatComponent);
         } catch (Exception ex) {
             nagger.nag("Unable to load chat message class! Tellraw won't be usable!");
             nagger.nag(ex);
+            available = false;
         }
-        deserialize = m1;
-        getHandle = m2;
-        sendMessage = m3;
+        this.available = available;
+        this.deserialize = deserialize;
+        this.getHandle = getHandle;
+        this.sendMessage = sendMessage;
     }
     
     @Override
@@ -45,6 +49,9 @@ public class TellRawCommand extends Command<StringBundle, Object> {
     public Object tryCacheValue(AnimatedMenuPlugin plugin, StringBundle value) {
         if (value.containsPlaceholders()) return null;
         String s = value.toString(null);
+        if (!available) {
+            return s;
+        }
         try {
             return deserialize.invoke(null, s);
         } catch (Exception ex) {
@@ -57,6 +64,10 @@ public class TellRawCommand extends Command<StringBundle, Object> {
     @Override
     public boolean execute(AnimatedMenuPlugin plugin, Player p, StringBundle value) {
         String s = value.toString(p);
+        if (!available) {
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), "minecraft:tellraw " + p.getName() + ' ' + s);
+            return true;
+        }
         try {
             return executeCached(plugin, p, deserialize.invoke(null, s));
         } catch (Exception ex) {
@@ -68,6 +79,10 @@ public class TellRawCommand extends Command<StringBundle, Object> {
     
     @Override
     public boolean executeCached(AnimatedMenuPlugin plugin, Player p, Object value) {
+        if (!available) {
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), "minecraft:tellraw " + p.getName() + ' ' + value);
+            return true;
+        }
         try {
             sendMessage.invoke(getHandle.invoke(p), value);
         } catch (Exception ex) {
