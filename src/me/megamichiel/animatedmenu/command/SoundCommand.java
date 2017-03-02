@@ -72,7 +72,6 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
         }
 
         public void play(Player player) {
-            player.sendMessage("Playing you sound " + sound);
             try {
                 player.playSound(player.getLocation(), sound, volume, pitch);
             } catch (IllegalArgumentException ex) {
