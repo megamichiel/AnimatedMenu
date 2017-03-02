@@ -57,7 +57,6 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.function.Function;
 
-import static java.util.Locale.ENGLISH;
 import static org.bukkit.ChatColor.*;
 
 public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNagger, PipelineContext {

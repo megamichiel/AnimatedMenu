@@ -33,6 +33,14 @@ public final class MenuItem {
         return refreshTick == -1;
     }
 
+    public void setFrameTick(int i) {
+        frameTick = Math.max(i, 0);
+    }
+
+    public void setRefreshTick(int i) {
+        refreshTick = Math.max(i, 0);
+    }
+
     public void requestRefresh() {
         refreshTick = 0;
     }

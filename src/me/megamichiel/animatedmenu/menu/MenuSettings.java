@@ -17,9 +17,9 @@ public class MenuSettings {
 
     private ItemStack opener;
     private boolean openerName, openerLore;
+    private int openerJoinSlot = -1;
 
     private boolean openOnJoin;
-    private int openerJoinSlot = -1;
     private CommandInfo openCommand;
     private boolean hiddenFromCommand = false;
 

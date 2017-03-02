@@ -68,6 +68,10 @@ public interface ItemInfo {
             inverse.remove(slot);
         }
 
+        public Integer getSlot(MenuItem item) {
+            return items.get(item);
+        }
+
         public ItemStack[] getContents() {
             return contents;
         }

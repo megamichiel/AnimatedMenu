@@ -1,8 +1,5 @@
 package me.megamichiel.animatedmenu.menu;
 
-import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animationlib.animation.AnimatedText;
-import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.event.inventory.InventoryType;
 
 public class MenuType {
@@ -10,7 +7,7 @@ public class MenuType {
     public static final MenuType HOPPER = new MenuType(InventoryType.HOPPER, "minecraft:hopper", 5, 1);
     public static final MenuType DISPENSER = new MenuType(InventoryType.DISPENSER, "minecraft:dispenser", 3, 3);
     public static final MenuType DROPPER = new MenuType(InventoryType.DROPPER, "minecraft:dropper", 3, 3);
-    public static final MenuType CRAFTING = new MenuType(InventoryType.CRAFTING, "minecraft:crafting_table", 3, 3);
+    public static final MenuType CRAFTING = new MenuType(InventoryType.WORKBENCH, "minecraft:crafting_table", 3, 3);
     
     public static final MenuType[] VALUES = new MenuType[] { HOPPER, DISPENSER, DROPPER, CRAFTING };
 
@@ -36,8 +33,7 @@ public class MenuType {
     
     public static MenuType chest(int rows) {
         MenuType type = CHEST[rows - 1];
-        if (type == null) return CHEST[rows - 1] = new MenuType(rows);
-        return type;
+        return type != null ? type : (CHEST[rows - 1] = new MenuType(rows));
     }
     
     public static MenuType fromName(String name) {

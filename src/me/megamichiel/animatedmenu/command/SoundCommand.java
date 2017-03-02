@@ -44,7 +44,7 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
         public SoundInfo(Nagger nagger, String value) {
             this.nagger = nagger;
             String[] split = value.split(" ");
-            sound = split[0].toLowerCase(Locale.ENGLISH).replace('-', '_');
+            sound = split[0].toLowerCase(Locale.ENGLISH).replace('-', '_').replace('.', '_');
             float volume = 0, pitch = 0;
             if (split.length > 1) {
                 try {

@@ -1,11 +1,27 @@
 package me.megamichiel.animatedmenu.menu.item;
 
 import me.megamichiel.animatedmenu.menu.ItemInfo;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
+import java.util.function.Consumer;
 
 public class SimpleItemInfo implements ItemInfo {
+
+    public static ItemStack createItem(Material type, int amount, short durability) {
+        return createItem(type, amount, durability, meta -> {});
+    }
+
+    public static ItemStack createItem(Material type, int amount, short durability, Consumer<? super ItemMeta> meta) {
+        ItemStack item = new ItemStack(type, amount, durability);
+        ItemMeta im = item.getItemMeta();
+        meta.accept(im);
+        item.setItemMeta(im);
+        return item;
+    }
 
     private final int slot;
     private final ItemStack stack;

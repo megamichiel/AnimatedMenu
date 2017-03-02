@@ -1,26 +1,31 @@
 package me.megamichiel.animatedmenu;
 
-import me.megamichiel.animatedmenu.menu.AnimatedMenu;
-import me.megamichiel.animatedmenu.menu.MenuLoader;
+import me.megamichiel.animatedmenu.menu.*;
+import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.bukkit.BukkitCommandAPI;
 import me.megamichiel.animationlib.command.CommandInfo;
 import me.megamichiel.animationlib.command.CommandSubscription;
+import me.megamichiel.animationlib.placeholder.StringBundle;
 import me.megamichiel.animationlib.util.Subscription;
+import org.apache.commons.lang.Validate;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
     private final MenuLoader menuLoader;
 
-    private final Map<String, AnimatedMenu> menus = new HashMap<>();
-    private final Map<AnimatedMenu, Runnable> commandSubscriptions = new HashMap<>();
+    private final Map<String, AnimatedMenu> menus = new ConcurrentHashMap<>();
+    private final Map<AnimatedMenu, Runnable> commandSubscriptions = new ConcurrentHashMap<>();
 
     private final AnimatedMenuPlugin plugin;
     protected final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
@@ -81,8 +86,26 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @param menu the menu to check
      * @return true if the menu is registered, false otherwise
      */
-    public boolean contains(AnimatedMenu menu) {
+    protected boolean contains(AnimatedMenu menu) {
         return menus.get(menu.getName()) == menu;
+    }
+
+    public AnimatedMenu newMenu(String title, MenuType type) {
+        return newMenu(UUID.randomUUID().toString(), title, type);
+    }
+
+    public AnimatedMenu newMenu(String name, String title, MenuType type) {
+        return newMenu(name, new AnimatedText(new StringBundle(null, title)), 0, type);
+    }
+
+    public AnimatedMenu newMenu(String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
+        AnimatedMenu menu = new AnimatedMenu(plugin, name, menuLoader, title, titleUpdateDelay, type, null, null);
+        add(menu);
+        return menu;
+    }
+
+    public MenuBuilder newMenuBuilder(MenuType type) {
+        return new MenuBuilder(type);
     }
     
     /**
@@ -198,5 +221,95 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
     public MenuLoader getMenuLoader() {
         return menuLoader;
+    }
+
+    public class MenuBuilder {
+
+        private final MenuType type;
+
+        private String name;
+        private AnimatedText title;
+        private int titleUpdatedDelay, slotUpdateDelay;
+        private boolean hiddenFromCommand;
+
+        private final List<Consumer<? super Player>> closeListeners = new ArrayList<>();
+        private final List<BiConsumer<? super AnimatedMenu, ? super Player>> biCloseListeners = new ArrayList<>();
+        private final List<ItemInfo> items = new ArrayList<>();
+
+        MenuBuilder(MenuType type) {
+            this.type = type;
+        }
+
+        public MenuBuilder withName(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public MenuBuilder withTitle(String title) {
+            this.title = new AnimatedText(new StringBundle(null, title));
+            return this;
+        }
+
+        public MenuBuilder withTitle(int updateDelay, String... titles) {
+            title = new AnimatedText(Stream.of(titles).map(s -> new StringBundle(null, s)).toArray(StringBundle[]::new));
+            titleUpdatedDelay = updateDelay;
+            return this;
+        }
+
+        public MenuBuilder withSlotUpdateDelay(int slotUpdateDelay) {
+            this.slotUpdateDelay = slotUpdateDelay;
+            return this;
+        }
+
+        public MenuBuilder hiddenFromCommand() {
+            hiddenFromCommand = true;
+            return this;
+        }
+
+        public MenuBuilder withCloseListener(Consumer<? super Player> listener) {
+            closeListeners.add(listener);
+            return this;
+        }
+
+        public MenuBuilder withCloseListener(BiConsumer<? super AnimatedMenu, ? super Player> listener) {
+            biCloseListeners.add(listener);
+            return this;
+        }
+
+        public MenuBuilder removeWhenClosed() {
+            biCloseListeners.add((menu, player) -> remove(menu));
+            return this;
+        }
+
+        public MenuBuilder withItem(ItemInfo item) {
+            items.add(item);
+            return this;
+        }
+
+        public MenuBuilder withItem(ItemInfo... items) {
+            Collections.addAll(this.items, items);
+            return this;
+        }
+
+        public AnimatedMenu build() {
+            Validate.notNull(title, "Title cannot be null!");
+            Validate.isTrue(!title.isEmpty(), "At least 1 title must be specified!");
+
+            AnimatedMenu menu = newMenu(name == null ? UUID.randomUUID().toString() : name, title, titleUpdatedDelay, type);
+            menu.setSlotUpdateDelay(slotUpdateDelay);
+
+            MenuSettings settings = menu.getSettings();
+
+            closeListeners.forEach(listener -> settings.addListener(listener, true));
+            biCloseListeners.forEach(listener -> settings.addListener(player -> listener.accept(menu, player), true));
+            if (hiddenFromCommand) settings.setHiddenFromCommand(true);
+
+            items.forEach(menu.getMenuGrid()::add);
+            return menu;
+        }
+
+        public void openFor(Player player) {
+            openMenu(player, build());
+        }
     }
 }

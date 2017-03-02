@@ -7,7 +7,6 @@ import me.megamichiel.animatedmenu.animation.AnimatedOpenAnimation;
 import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animationlib.config.AbstractConfig;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
@@ -48,7 +47,7 @@ public abstract class AbstractMenu {
     }
 
     public void dankLoad(AbstractConfig config) {
-        setSlotUpdateDelay(Math.max(config.getInt("slot-update-delay", 20), 0));
+        setSlotUpdateDelay(config.getInt("slot-update-delay", 20));
 
         double speed = config.getDouble("animation-speed", 1);
         openAnimation.init(plugin, speed <= 0 ? 1 : speed);
@@ -64,8 +63,8 @@ public abstract class AbstractMenu {
         clickDelay = delay <= 0 ? null : plugin.addPlayerDelay(delayMessage, delay);
     }
 
-    protected void setSlotUpdateDelay(int slotUpdateDelay) {
-        this.slotUpdateDelay = slotUpdateDelay;
+    public void setSlotUpdateDelay(int slotUpdateDelay) {
+        this.slotUpdateDelay = Math.max(slotUpdateDelay, 0);
     }
 
     boolean hasEmptyItem() {
@@ -196,9 +195,8 @@ public abstract class AbstractMenu {
             return;
         }
 
-        int invSize = menuType.getSize();
-        ItemStack[] contents = new ItemStack[invSize];
         ItemInfo.SlotContext ctx = slotContext;
+        ItemStack[] contents = ctx.getContents();
         double[] weights = ctx.getWeights();
         sessions.forEach((player, session) -> {
             if (session.opening != null) {
@@ -219,7 +217,7 @@ public abstract class AbstractMenu {
                         itemToSlot.forcePut(item, slot = ctx.getSlot(player, info, stack));
                         contents[slot] = stack;
                     }
-                } else { // old != null
+                } else {
                     if ((stack = inv.getItem(slot = old)) != null) {
                         if (updateSlots && slot != (slot = ctx.getSlot(player, info, stack))) {
                             itemToSlot.forcePut(item, slot);
