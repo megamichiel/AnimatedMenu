@@ -141,6 +141,7 @@ Click-Handlers:
   Animatable, List, Supports placeholders  
   \------------------------------  
   The commands to execute when the player is allowed to click this item  
+  NOTE: If you want to use { and } for things as tellraw, use \{ and \}  
   By default, the player will execute the command you enter,  
   but you can start a command with these followed by a colon to do something special:  
     - **console** to make the console execute the command
@@ -149,11 +150,11 @@ Click-Handlers:
     - **broadcast** to broadcast a message to the entire server
     - **server** to send the player to a specific bungeecord server
     - **menu** to open a specific menu
-    - **tellraw** to send a raw message (e.g. {"text":"Hello there!"})
+    - **tellraw** to send a raw message (e.g. \{"text":"Hello there!"\})
     - **sound** to send a sound to a player, format '&lt;soundname&gt; [volume] [pitch]'
       - For a list of sound names, see [this page](http://www.minecraftforum.net/forums/mapping-and-modding/mapping-and-modding-tutorials/1571574-all-minecraft-playsound-file-names-1-9)
 
-    - **give** to give an item to a player, format identical to [Item](#user-content-item)
+    - **give** to give an item to a player, format identical to [Item](#user-content-item) but { and } should be replaced with \{ and \}
     - If you have the Plus version, you also get access to these commands:
       - **bungee** to execute a command as the bungeecord console.
       - **bungeeplayer** to execute a bungeecord command as the player
