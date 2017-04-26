@@ -112,7 +112,7 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
         boolean saveNavigation = settings.saveNavigation();
         if (saveNavigation) {
             AnimatedMenu menu = navigation.get(who);
-            if (menu != null) {
+            if (menu != null && menu != this) {
                 menu.open(who, session -> {
                     if (ready != null) ready.accept(session);
                     if (session != null) session.set(ORIGIN, this);

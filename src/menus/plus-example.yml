@@ -1,0 +1,72 @@
+#Make this an admin menu. With this enabled, you can use %menuadmin_<placeholder>% to do stuff for a target player
+#A command must be set (unless transitioning from another admin menu) so that a player can be specified
+Admin: yes
+#If this is set to no, and no target player is specified, %menuadmin_<placeholder>% will act as %<placeholder>%
+#If it is true, the menu won't open without a target player
+Require-Other: yes
+
+# Play some open animation!
+Open-Animation:
+  1: down
+  2: up
+  3: left
+  4: right
+  5: down-left
+  6: down-right
+  7: up-left
+  8: up-right
+  9: out
+  10: in
+  11: snake-down
+  12: snake-up
+  13: snake-left
+  14: snake-right
+
+#Example usage of %menuadmin_<placeholder>%
+Menu-Name: '&aAdmin: &6%menuadmin_player_name%'
+Rows: 1
+
+#The permission required to open this menu
+Permission: some.admin.permission
+#The message to send if the player doesn't have Permission
+Permission-Message: '&cYou are not allowed to open this menu!'
+
+#When Require-Other is true in an admin, this might be useful
+Command: bemyadmin
+
+Open-Commands:
+- 'message: &aNow managing %menuadmin_player_name%'
+Close-Commands;
+- 'message: &aNo longer managing %menuadmin_player_name%'
+
+#Item that should fill up all empty slots
+Empty-Item:
+  #When this is set to 'yes', the same item will be put in all slots.
+  #In other cases, the item is loaded for each slot which is a bit less efficient, especially with a lot of empty slots
+  Single: yes
+  Material: stained-glass-pane:1:7
+  Name: ''
+
+#Items that should go in the menu
+Items:
+- Slot: '{random_empty}'
+  Material: skull:1:3
+  Name: '&aStats of &6%menuadmin_player_name%'
+  SkullOwner: '%menuadmin_player_name%'
+  Lore:
+  - ''
+  - '&7Health: &c%menuadmin_player_health%/%menuadmin_player_max_health%'
+  - '&7Food: %menuadmin_player_food_level%/20'
+  - ''
+  - '&7Click to kill player'
+  Commands:
+  - 'console: kill %menuadmin_player_name%'
+- Slot: 5
+  State: '%menuadmin_player_is_op%'
+  States:
+    'yes':
+      Material: wool:1:5
+      Name: '&a%menuadmin_player_name% is op!'
+    'no':
+      Material: wool:1:14
+      Name: '&c%menuadmin_player_name% is not op!'

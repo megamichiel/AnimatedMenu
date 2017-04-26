@@ -36,7 +36,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         this.plugin = plugin;
         File menus = directory = new File(plugin.getDataFolder(), "menus");
         if (!menus.exists()) {
-            if (menus.mkdir()) {
+            if (menus.mkdirs()) {
                 saveDefaultMenus();
             } else plugin.nag("Failed to create menus folder!");
         }
@@ -203,7 +203,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 name = sec.getString("name");
                 usage = sec.getString("usage", usage);
                 description = sec.getString("description", description);
-                lenientArgs = section.getBoolean("lenient-args", true);
+                lenientArgs = sec.getBoolean("lenient-args", true);
             } else if (command instanceof String || AbstractConfig.isPrimitiveWrapper(command)) {
                 name = command.toString();
             } else name = null;

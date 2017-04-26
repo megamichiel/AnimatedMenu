@@ -71,7 +71,7 @@ Items:
     - '&7Click me before I turn &cgreen!'
   #The enchantments to apply to the item
   Enchantments:
-  - 'unbreakable:1'
+  - 'unbreaking:1'
   #Hide enchantment names
   Hide-Flags: enchants
   #Only show the item when the player has this permission
