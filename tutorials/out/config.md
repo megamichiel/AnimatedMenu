@@ -7,6 +7,7 @@ There's a bunch of features you can customize in config.yml
 - [Connections](#user-content-connections)
 - [Connection-Refresh-Delay](#user-content-connection-refresh-delay)
 - [Warn-Offline-Servers](#user-content-warn-offline-servers)
+- [Run-Sync](#user-content-run-sync)
 
 #### Plus features ####
 - [Templates](#user-content-templates)
@@ -55,6 +56,11 @@ Connections:
   Default value: false  
   \------------------------------  
   Sets whether a warning should be printed when a [Connections](#user-content-connections) server cannot be reached  
+
+- #### Run-Sync ####
+  Makes menus run on the main server thread instead of externally.  
+  By doing this, the chance of things breaking due to plugins or the server not liking it is minimized.  
+  With AnimatedMenu Plus, NBT items are also used which have faster performance than standard item.  
 
 ### Plus features ###
 - #### Templates ####

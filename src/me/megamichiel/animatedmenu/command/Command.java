@@ -4,12 +4,18 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
 import org.bukkit.entity.Player;
 
+import java.util.Locale;
+
 public abstract class Command<Type, Cached> {
 
     final String prefix;
 
     protected Command(String prefix) {
-        this.prefix = prefix;
+        this.prefix = prefix.toLowerCase(Locale.ENGLISH);
+    }
+
+    public final String getPrefix() {
+        return prefix;
     }
 
     protected abstract Type parse(Nagger nagger, String command);

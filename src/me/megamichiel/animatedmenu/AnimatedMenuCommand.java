@@ -1,5 +1,6 @@
 package me.megamichiel.animatedmenu;
 
+import me.megamichiel.animatedmenu.menu.AbstractMenu;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.util.PluginPermission;
 import org.bukkit.Bukkit;
@@ -13,6 +14,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 
 import static java.util.Locale.ENGLISH;
+import static me.megamichiel.animatedmenu.util.PluginPermission.*;
 import static org.bukkit.ChatColor.*;
 
 /**
@@ -28,38 +30,61 @@ public class AnimatedMenuCommand implements TabExecutor {
     private final Map<String, BiFunction<CommandSender, String[], List<String>>> tabCompleters = new HashMap<>();
     private final Map<String, PluginPermission> permissions = new LinkedHashMap<>();
     private final Map<String, String> usages = new HashMap<>();
-    
+
+    @SuppressWarnings("deprecation")
     AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
         usages.put("help", GREEN + "$command [help]: " + YELLOW + "See this help menu");
-        addHandler("open", "open <menu> [player]", "Open a specific menu",
-                PluginPermission.COMMAND_OPEN, (sender, args) -> {
+        addHandler("list", "list", "List the menus you can open", COMMAND_LIST, (sender, args) -> {
+            StringBuilder sb = new StringBuilder();
+            if (sender instanceof Player) {
+                Player player = (Player) sender;
+                plugin.getMenuRegistry().getMenus().stream()
+                        .filter(menu -> !menu.getSettings().isHiddenFromCommand() && menu.canOpen(player) == null)
+                        .map(AbstractMenu::getName).forEach(name -> {
+                    if (sb.length() > 0) sb.append(", ");
+                    sb.append(name);
+                });
+            } else {
+                for (AnimatedMenu menu : plugin.getMenuRegistry().getMenus()) {
+                    if (sb.length() > 0) sb.append(", ");
+                    sb.append(menu.getName());
+                    if (menu.getSettings().isHiddenFromCommand()) {
+                        sb.append(" (hidden)");
+                    }
+                }
+            }
+
+            return GREEN  + "Menus: " + sb.toString();
+        }, (sender, args) -> Collections.emptyList());
+        addHandler("open", "open <menu> [player]", "Open a specific menu", COMMAND_OPEN, (sender, args) -> {
             if (args.length < 2) return RED + "You must specify a menu!";
             AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
             if (menu == null || menu.getSettings().isHiddenFromCommand())
                 return RED + "Couldn't find a menu by that name!";
             Player target;
             if (args.length > 2) {
-                if (!PluginPermission.COMMAND_OPEN_OTHER.test(sender)) {
+                if (!COMMAND_OPEN_OTHER.test(sender)) {
                     return RED + "You are not permitted to do that for other players!";
                 }
                 target = Bukkit.getPlayerExact(args[2]);
                 if (target == null) return RED + "Couldn't find a player by that name!";
             } else if (sender instanceof Player) target = (Player) sender;
             else return RED + "$command open <menu> <player>";
-            plugin.getMenuRegistry().openMenu(target, menu);
+            menu.open(target);
             return target.equals(sender) ? null : (GREEN + "Opened menu for " + target.getName() + "!");
         }, (sender, args) -> {
             List<String> list = new ArrayList<>();
             if (args.length == 2) {
                 String query = args[1].toLowerCase(ENGLISH);
                 String menuName;
+                Player player = sender instanceof Player ? (Player) sender : null;
                 for (AnimatedMenu menu : plugin.getMenuRegistry()) {
-                    if (!menu.getSettings().isHiddenFromCommand() && (menuName =
-                            menu.getName().toLowerCase(ENGLISH)).startsWith(query)) {
+                    if (!menu.getSettings().isHiddenFromCommand() && menu.canOpen(player) == null
+                            && (menuName = menu.getName().toLowerCase(ENGLISH)).startsWith(query)) {
                         list.add(menuName);
                     }
                 }
-            } else if (args.length == 3 && PluginPermission.COMMAND_OPEN_OTHER.test(sender)) {
+            } else if (args.length == 3 && COMMAND_OPEN_OTHER.test(sender)) {
                 String name = args[2].toLowerCase(ENGLISH);
                 for (Player player : Bukkit.getOnlinePlayers())
                     if (player.getName().toLowerCase(ENGLISH).startsWith(name))
@@ -67,31 +92,31 @@ public class AnimatedMenuCommand implements TabExecutor {
             }
             return list;
         });
-        addHandler("item", "item <menu> [player]", "Get a menu's menu opener",
-                PluginPermission.COMMAND_ITEM, (sender, args) -> {
+        addHandler("item", "item <menu> [player]", "Get a menu's menu opener", COMMAND_ITEM, (sender, args) -> {
             if (args.length < 2) return RED + "You must specify a menu!";
             AnimatedMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
             if (menu == null) return RED + "Couldn't find a menu by that name!";
             Player target;
             if (args.length > 2) {
-                if (!PluginPermission.COMMAND_ITEM_OTHER.test(sender))
+                if (!COMMAND_ITEM_OTHER.test(sender))
                     return RED + "You are not permitted to do that for other players!";
                 target = Bukkit.getPlayerExact(args[2]);
                 if (target == null) return RED + "Couldn't find a player by that name!";
             } else if (sender instanceof Player) target = (Player) sender;
             else return RED + "$command item <menu> <player>";
-            menu.getSettings().giveOpener(target.getInventory(), true);
-            return target.equals(sender) ? null : (GREEN + "Gave " + target.getName() + " the menu item!");
+            if (!menu.getSettings().giveOpener(target.getInventory(), true)) {
+                return RED + "That menu doesn't have an opener!";
+            }
+            return GREEN + (target.equals(sender) ? "Gave yourself the menu's item" : "Gave " + target.getName() + " the menu's item!");
         }, (sender, args) -> {
             List<String> list = new ArrayList<>();
             if (args.length == 2) {
                 String query = args[1].toLowerCase(ENGLISH);
                 String menuName;
                 for (AnimatedMenu menu : plugin.getMenuRegistry())
-                    if (!menu.getSettings().isHiddenFromCommand() && (menuName =
-                            menu.getName().toLowerCase(ENGLISH)).startsWith(query))
+                    if (menu.getSettings().hasOpener() && (menuName = menu.getName().toLowerCase(ENGLISH)).startsWith(query))
                         list.add(menuName);
-            } else if (args.length == 3 && PluginPermission.COMMAND_ITEM_OTHER.test(sender)) {
+            } else if (args.length == 3 && COMMAND_ITEM_OTHER.test(sender)) {
                 String name = args[2].toLowerCase(ENGLISH);
                 for (Player player : Bukkit.getOnlinePlayers())
                     if (player.getName().toLowerCase(ENGLISH).startsWith(name))
@@ -99,8 +124,7 @@ public class AnimatedMenuCommand implements TabExecutor {
             }
             return list;
         });
-        addHandler("reload", "reload", "Reload the plugin",
-                PluginPermission.COMMAND_RELOAD, (sender, args) -> {
+        addHandler("reload", "reload", "Reload the plugin", COMMAND_RELOAD, (sender, args) -> {
             plugin.reload();
             return DARK_GRAY + "[" + GOLD + plugin.getDescription().getName() + DARK_GRAY + "] "
                     + ChatColor.GREEN + "Plugin reloaded! "
@@ -128,7 +152,7 @@ public class AnimatedMenuCommand implements TabExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String type = args.length == 0 ? "help" : args[0].toLowerCase(ENGLISH);
         if("help".equals(type)) {
-            if (!PluginPermission.COMMAND_HELP.test(sender))
+            if (!COMMAND_HELP.test(sender))
                 return invalid(sender, "You don't have permission for that!");
             sender.sendMessage(messages);
             permissions.forEach((arg, perm) -> {

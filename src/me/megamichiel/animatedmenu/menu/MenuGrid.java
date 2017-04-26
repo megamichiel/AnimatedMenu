@@ -1,54 +1,117 @@
 package me.megamichiel.animatedmenu.menu;
 
+import me.megamichiel.animatedmenu.menu.item.ItemInfo;
+
 import java.util.Iterator;
+import java.util.List;
 import java.util.Spliterator;
-import java.util.Spliterators;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public class MenuGrid implements Iterable<MenuItem> {
 
     private final AbstractMenu menu;
+    private final List<MenuItem> items = new CopyOnWriteArrayList<>();
 
-    private MenuItem head, tail;
-    private int size = 0, itemId = 0;
-    private boolean dynamicSlots = false;
+    private int itemId = 0;
     
     MenuGrid(AbstractMenu menu) {
         this.menu = menu;
     }
-    
-    public MenuItem add(ItemInfo info) {
-        MenuItem item = new MenuItem(info, itemId++);
-        ++size;
-        if (head == null) {
-            if (info.hasDynamicSlot()) dynamicSlots = true;
-            return head = tail = item;
+
+    boolean tick(boolean base) {
+        for (MenuItem item : items) {
+            if (item.tick() && !base) {
+                base = true;
+            }
         }
-        if (info.hasDynamicSlot()) {
-            (item.previous = tail).next = item;
-            if (!dynamicSlots)
-                dynamicSlots = true;
-            return tail = item;
-        }
-        (item.next = head).previous = item;
-        return head = item;
+        return base;
     }
 
-    public boolean remove(ItemInfo info) {
-        for (MenuItem item = head; item != null; item = item.next) {
-            if (item.getInfo() == info) {
-                MenuItem prev = item.previous, next = item.next;
-                if (prev != null) prev.next = next;
-                if (next != null) next.previous = prev;
-                --size;
-                item.removed = true;
-                item.previous = null;
-                if (item == head) head = next;
-                if (item == tail) {
-                    tail = prev;
-                    if (prev != null && dynamicSlots && !prev.getInfo().hasDynamicSlot())
-                        dynamicSlots = false;
+    /**
+     * Adds an item to this menu depending on ItemInfo#hasFixedSlot.<br/>
+     * If it returns false, #addLast will be used. Otherwise, it will be added after the last item with fixed slot (or the front)
+     *
+     * @param info The info of the item to add
+     * @return The newly created MenuItem
+     */
+    public MenuItem add(ItemInfo info) {
+        if (info.hasFixedSlot()) {
+            for (int i = 0; i < items.size(); i++) {
+                if (!items.get(i).getInfo().hasFixedSlot()) {
+                    MenuItem item = new MenuItem(info, itemId++);
+                    items.add(i, item);
+                    return item;
                 }
+            }
+        }
+        return addLast(info);
+    }
+
+    /**
+     * Adds an item to the end of this menu grid
+     *
+     * @param info The info of the item to add
+     * @return The newly created MenuItem
+     */
+    public MenuItem addLast(ItemInfo info) {
+        MenuItem item = new MenuItem(info, itemId++);
+        items.add(item);
+        return item;
+    }
+
+    /**
+     * Adds an item to the front of this menu grid
+     *
+     * @param info The info of the item to add
+     * @return The newly created MenuItem
+     */
+    public MenuItem addFirst(ItemInfo info) {
+        MenuItem item = new MenuItem(info, itemId++);
+        items.add(0, item);
+        return item;
+    }
+
+    /**
+     * Adds an item before another item.<br/>
+     * If the target item is not in the menu, <i>null</i> will be returned
+     *
+     * @param info The info of the item to add
+     * @return The newly created MenuItem
+     */
+    public MenuItem addBefore(MenuItem item, ItemInfo info) {
+        int index = items.indexOf(item);
+        if (index < 0) return null;
+        MenuItem newItem = new MenuItem(info, itemId++);
+        items.add(index, newItem);
+        return newItem;
+    }
+
+    /**
+     * Adds an item before after item.<br/>
+     * If the target item is not in the menu, <i>null</i> will be returned
+     *
+     * @param info The info of the item to add
+     * @return The newly created MenuItem
+     */
+    public MenuItem addAfter(MenuItem item, ItemInfo info) {
+        int index = items.indexOf(item);
+        if (index < 0) return null;
+        MenuItem newItem = new MenuItem(info, itemId++);
+        items.add(index + 1, newItem);
+        return newItem;
+    }
+
+    /**
+     * Removes an item from this menu grid
+     *
+     * @param info The info of the item to remove from this grid
+     * @return True if this menu grid contained <i>info</i>. False otherwise
+     */
+    public boolean remove(ItemInfo info) {
+        for (MenuItem item : items) {
+            if (item.getInfo() == info) {
+                items.remove(item);
                 menu.itemRemoved(item);
                 return true;
             }
@@ -56,84 +119,78 @@ public class MenuGrid implements Iterable<MenuItem> {
         return false;
     }
 
-    public boolean contains(ItemInfo info) {
-        for (MenuItem item = head; item != null; item = item.next)
-            if (!item.removed && item.getInfo() == info)
-                return true;
+    /**
+     * Removes an item from this menu grid
+     *
+     * @param item The item to remove from this grid
+     * @return True if this menu grid contained <i>info</i>. False otherwise
+     */
+    public boolean remove(MenuItem item) {
+        if (items.remove(item)) {
+            menu.itemRemoved(item);
+            return true;
+        }
         return false;
     }
 
-    public void clear() {
-        for (MenuItem item = head, next; item != null;) {
-            next = item.next;
-            item.next = item.previous = null;
-            item = next;
+    /**
+     * Returns the MenuItem associated with a given ItemInfo
+     *
+     * @param info The ItemInfo that the target MenuItem has
+     * @return The MenuItem that holds the given ItemInfo, or null if not found
+     */
+    public MenuItem getItem(ItemInfo info) {
+        for (MenuItem item : items) {
+            if (item.getInfo() == info) {
+                return item;
+            }
         }
-        head = tail = null;
-        dynamicSlots = false;
+        return null;
+    }
+
+    /**
+     * Checks if this menu grid contains an item
+     *
+     * @param info The info to find
+     * @return True if this menu grid contains <i>info</i>. False otherwise
+     */
+    public boolean contains(ItemInfo info) {
+        for (MenuItem item : items) {
+            if (item.getInfo() == info) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Clears this MenuGrid, removing all of its items
+     */
+    public void clear() {
+        items.forEach(menu::itemRemoved);
+        items.clear();
     }
 
     public int size() {
-        return size;
+        return items.size();
     }
 
     public boolean isEmpty() {
-        return size == 0;
-    }
-
-    public boolean hasDynamicSlots() {
-        return dynamicSlots;
-    }
-
-    public MenuItem head() {
-        return head;
-    }
-
-    public MenuItem tail() {
-        return tail;
+        return items.isEmpty();
     }
 
     @Override
     public Iterator<MenuItem> iterator() {
-        return new Iterator<MenuItem>() {
-            MenuItem item = head, last;
-
-            MenuItem getItem() {
-                while (item != null && item.removed)
-                    item = item.next; // Next retains when removed
-                return item;
-            }
-
-            @Override
-            public boolean hasNext() {
-                return getItem() != null;
-            }
-
-            @Override
-            public MenuItem next() {
-                if (getItem() == null) throw new IllegalStateException();
-                item = (last = item).next;
-                return last;
-            }
-
-            @Override
-            public void remove() {
-                if (last == null)
-                    throw new IllegalStateException();
-                MenuGrid.this.remove(last.getInfo());
-                last = null;
-            }
-        };
+        return items.iterator();
     }
 
     @Override
     public void forEach(Consumer<? super MenuItem> action) {
-        for (MenuItem item = head; item != null; item = item.next)
-            action.accept(item);
+        items.forEach(action);
     }
 
     @Override
     public Spliterator<MenuItem> spliterator() {
-        return Spliterators.spliterator(iterator(), size, Spliterator.DISTINCT | Spliterator.ORDERED | Spliterator.NONNULL);
+        return items.spliterator();
     }
 }

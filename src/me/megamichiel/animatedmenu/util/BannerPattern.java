@@ -1,25 +1,30 @@
 package me.megamichiel.animatedmenu.util;
 
 import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.bukkit.nbt.NBTModifiers;
+import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
 import org.bukkit.DyeColor;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
 import org.bukkit.inventory.meta.BannerMeta;
 
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 
 @SuppressWarnings("deprecation")
 public class BannerPattern {
 
     public static final BannerPattern EMPTY = new BannerPattern(null, "");
-    
-    private static final Map<Character, DyeColor> colors = new HashMap<>();
+
+    private static final DyeColor[] colors = new DyeColor[16];
     
     static {
-        for (int i = 0; i < 16; i++)
-            colors.put((char) ('a' + i), DyeColor.getByWoolData((byte) (15 - i)));
+        for (int i = 0; i < 16; i++) {
+            colors[i] = DyeColor.getByDyeData((byte) (15 - i));
+        }
     }
 
     private final Pattern baseColor;
@@ -31,8 +36,7 @@ public class BannerPattern {
         if (array.length % 2 != 0) throw new IllegalArgumentException("Banner pattern length must be a multiple of 2!");
         for (int length = array.length, index = 0; index < length; index += 2) {
             char color = array[index], type = array[index + 1];
-            DyeColor dyeColor = colors.get(color);
-            if (dyeColor == null) {
+            if (color < 'a' || color > 'p') {
                 nagger.nag("No pattern color found by identifier '" + color + "'!");
                 continue;
             }
@@ -41,7 +45,7 @@ public class BannerPattern {
                 nagger.nag("No pattern type found by identifier '" + type + "'!");
                 continue;
             }
-            patterns.add(new Pattern(dyeColor, patternType.patternType));
+            patterns.add(new Pattern(colors[color - 'a'], patternType.patternType));
         }
         Iterator<Pattern> it = patterns.iterator();
         if (it.hasNext()) {
@@ -54,6 +58,26 @@ public class BannerPattern {
         if (baseColor != null) {
             meta.setBaseColor(baseColor.getColor());
             meta.setPatterns(patterns);
+        }
+    }
+
+    public void apply(NBTUtil util, Map<String, Object> map) {
+        if (baseColor != null) {
+            Object entityTag = util.createTag();
+            Map<String, Object> entityMap = util.getMap(entityTag);
+
+            entityMap.put("Base", NBTModifiers.INT.wrap((int) baseColor.getColor().getDyeData()));
+            Object patterns = util.createList();
+            List<Object> list = util.getList(patterns);
+            for (Pattern p : this.patterns) {
+                Object entry = util.createTag();
+                Map<String, Object> entryMap = util.getMap(entry);
+                entryMap.put("Color", NBTModifiers.INT.wrap((int) p.getColor().getDyeData()));
+                entryMap.put("Pattern", NBTModifiers.STRING.wrap(p.getPattern().getIdentifier()));
+                list.add(entry);
+            }
+            entityMap.put("Patterns", patterns);
+            map.put("BlockEntityTag", entityTag);
         }
     }
 

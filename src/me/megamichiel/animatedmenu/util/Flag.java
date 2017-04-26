@@ -25,13 +25,9 @@ public enum Flag {
     };
     
     public abstract boolean matches(boolean b);
-    
-    public boolean booleanValue() {
-        return this != FALSE;
-    }
 
     public static boolean parseBoolean(String str) {
-        return parseFlag(str, FALSE) == TRUE;
+        return parseBoolean(str, false);
     }
 
     public static boolean parseBoolean(String str, boolean def) {
@@ -43,6 +39,6 @@ public enum Flag {
             .put("both", BOTH).put("all", BOTH).build();
 
     public static Flag parseFlag(String str, Flag def) {
-        return str == null ? def : flags.getOrDefault(str.toLowerCase(Locale.ENGLISH), FALSE);
+        return str == null ? def : flags.getOrDefault(str.toLowerCase(Locale.ENGLISH), def);
     }
 }

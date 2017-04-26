@@ -5,7 +5,32 @@ import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.entity.Player;
 
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+
 public abstract class TextCommand extends Command<StringBundle, String> {
+
+    public static final TextCommand DEFAULT = ofPlayer("", false, Player::performCommand);
+
+    public static TextCommand ofPlayer(String prefix, boolean color, BiConsumer<Player, String> executor) {
+        return new TextCommand(prefix, color) {
+            @Override
+            protected boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
+                executor.accept(p, value);
+                return true;
+            }
+        };
+    }
+
+    public static TextCommand of(String prefix, boolean color, Consumer<String> executor) {
+        return new TextCommand(prefix, color) {
+            @Override
+            protected boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
+                executor.accept(value);
+                return true;
+            }
+        };
+    }
 
     private final boolean color;
 

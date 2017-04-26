@@ -11,7 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 
 @SuppressWarnings("deprecation")
-public class MaterialMatcher {
+public class MaterialParser {
     
     private static final Method ITEM_BY_NAME, ITEM_TO_MATERIAL, BLOCK_BY_NAME, BLOCK_TO_MATERIAL;
     private static final Map<String, Material> cache = new HashMap<>();
@@ -44,23 +44,20 @@ public class MaterialMatcher {
     }
     
     public static Material parse(String value) {
-        value = value.toLowerCase(Locale.ENGLISH).replace("-", "_");
-        Material m = cache.get(value);
-        if (m != null) return m;
-        try {
-            Object o = ITEM_BY_NAME.invoke(null, value);
-            if (o != null && o != Material.AIR)
-                m = (Material) ITEM_TO_MATERIAL.invoke(null, o);
-            else if (((o = BLOCK_BY_NAME.invoke(null, value))) != null) {
-                m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
-                if (m == Material.AIR) m = null;
+        return cache.computeIfAbsent(value.toLowerCase(Locale.ENGLISH).replace("-", "_"), id -> {
+            try {
+                Object o = ITEM_BY_NAME.invoke(null, id);
+                if (o != null && o != Material.AIR) {
+                    return (Material) ITEM_TO_MATERIAL.invoke(null, o);
+                } else if (((o = BLOCK_BY_NAME.invoke(null, id))) != null) {
+                    Material m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
+                    if (m != Material.AIR) return m;
+                }
+            } catch (Exception ex) {
+                // Failed to load in <clinit>
             }
-        } catch (Exception ex) {
-            // Failed to load in <clinit>
-        }
-        if (m == null) m = Material.matchMaterial(value);
-        if (m != null) cache.put(value, m);
-        return m;
+            return Material.matchMaterial(id);
+        });
     }
     
     private static final Map<String, Enchantment> enchantments = new HashMap<>();
@@ -104,8 +101,9 @@ public class MaterialMatcher {
             // Nop
         }
 
-        for (Enchantment ench : Enchantment.values())
+        for (Enchantment ench : Enchantment.values()) {
             enchantments.put(Integer.toString(ench.getId()), ench);
+        }
     }
     
     public static Enchantment getEnchantment(String id) {

@@ -16,15 +16,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 public class AnimatedLore extends Animatable<Frame> {
-    
-    private static final long serialVersionUID = 6241886968360414688L;
 
-    private File dataFolder;
+    private File imagesFolder;
 
     public boolean load(AnimatedMenuPlugin plugin, AbstractConfig section, String key) {
-        dataFolder = plugin.getDataFolder();
+        imagesFolder = new File(plugin.getDataFolder(), "images");
         return super.load(plugin, section, key);
     }
 
@@ -36,11 +35,11 @@ public class AnimatedLore extends Animatable<Frame> {
     private Frame loadFrame(Nagger nagger, List<String> list) {
         Frame frame = new Frame();
         for (String item : list) {
-            if (item.toLowerCase(Locale.US).startsWith("file: ")) {
-                File file = new File(dataFolder, "images/" + item.substring(6));
-                if (file.exists() && file.isFile()) {
+            if (item.toLowerCase(Locale.ENGLISH).startsWith("file:")) {
+                File file = new File(imagesFolder, item.substring(5).trim());
+                if (file.isFile()) {
                     try {
-                        readImage(file, s -> frame.add(IPlaceholder.constant(s)));
+                        readImage(file, frame::add);
                     } catch (IOException e) {
                         nagger.nag("Failed to read file " + file.getName() + "!");
                         nagger.nag(e);
@@ -58,17 +57,10 @@ public class AnimatedLore extends Animatable<Frame> {
         return section.getStringList(key);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     protected Frame convert(Nagger nagger, Object o) {
         return loadFrame(nagger, (List<String>) o);
-    }
-
-    @Override
-    public AnimatedLore clone() {
-        AnimatedLore lore = (AnimatedLore) super.clone();
-        for (int i = lore.size(); i-- != 0;)
-            lore.set(i, new Frame(lore.get(i)));
-        return lore;
     }
 
     public class Frame extends ArrayList<IPlaceholder<String>> {
@@ -82,26 +74,21 @@ public class AnimatedLore extends Animatable<Frame> {
         public Frame(Collection<? extends IPlaceholder<String>> list) {
             super(list);
         }
-
-        public Frame(StringBundle... bundles) {
-            super(Arrays.asList(bundles));
-        }
         
-        public List<String> toStringList(Nagger nagger, Player p) {
-            List<String> list = new ArrayList<>(size());
-            this.stream().map(b -> b.invoke(nagger, p)).forEach(list::add);
-            return list;
+        public Stream<String> stream(Nagger nagger, Player p) {
+            return stream().map(b -> b.invoke(nagger, p));
         }
         
         public String toString(Nagger nagger, Player p) {
             StringBuilder sb = new StringBuilder();
-            for (IPlaceholder<String> bundle : this)
+            for (IPlaceholder<String> bundle : this) {
                 sb.append(bundle.invoke(nagger, p));
+            }
             return sb.toString();
         }
     }
 
-    private static void readImage(File file, Consumer<String> action) throws IOException {
+    private static void readImage(File file, Consumer<IPlaceholder<String>> action) throws IOException {
         BufferedImage img = ImageIO.read(file);
         int height = img.getHeight(), width = img.getWidth();
         for (int y = 0; y < height; y++) {
@@ -115,7 +102,7 @@ public class AnimatedLore extends Animatable<Frame> {
                 }
                 sb.append(StringBundle.BOX);
             }
-            action.accept(sb.toString());
+            action.accept(IPlaceholder.constant(sb.toString()));
         }
     }
 

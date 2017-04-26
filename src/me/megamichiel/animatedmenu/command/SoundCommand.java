@@ -3,9 +3,8 @@ package me.megamichiel.animatedmenu.command;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.placeholder.StringBundle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-
-import java.util.Locale;
 
 public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> {
 
@@ -37,14 +36,37 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
 
     public static class SoundInfo {
 
-        private final Nagger nagger;
-        private final String sound;
+        private final Sound sound;
+        private final String soundName;
         private final float volume, pitch;
 
         public SoundInfo(Nagger nagger, String value) {
-            this.nagger = nagger;
             String[] split = value.split(" ");
-            sound = split[0].toLowerCase(Locale.ENGLISH).replace('-', '.').replace('_', '.');
+            String str = split[0];
+
+            int length = str.length();
+            char[] bukkitName = new char[length], nmsName = new char[length];
+            for (int i = 0; i < length; ++i) {
+                switch (str.charAt(i)) {
+                    case '-':case '_':case '.':
+                        bukkitName[i] = '_';
+                        nmsName[i] = '.';
+                        break;
+                    default:
+                        bukkitName[i] = Character.toUpperCase(str.charAt(i));
+                        nmsName[i] = Character.toLowerCase(str.charAt(i));
+                        break;
+                }
+            }
+            Sound sound;
+            try {
+                sound = Sound.valueOf(new String(bukkitName, 0, length));
+            } catch (IllegalArgumentException ex) {
+                sound = null;
+            }
+            this.sound = sound;
+            soundName = sound != null ? null : new String(nmsName, 0, length);
+
             float volume = 1, pitch = 1;
             if (split.length > 1) {
                 try {
@@ -64,19 +86,10 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
             this.pitch = pitch;
         }
 
-        public SoundInfo(Nagger nagger, String sound, float volume, float pitch) {
-            this.nagger = nagger;
-            this.sound = sound;
-            this.volume = volume;
-            this.pitch = pitch;
-        }
-
         public void play(Player player) {
-            try {
+            if (sound != null) {
                 player.playSound(player.getLocation(), sound, volume, pitch);
-            } catch (IllegalArgumentException ex) {
-                nagger.nag("No sound by name '" + sound + "' found!");
-            }
+            } else player.playSound(player.getLocation(), soundName, volume, pitch);
         }
     }
 }

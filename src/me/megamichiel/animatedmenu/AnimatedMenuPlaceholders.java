@@ -18,9 +18,8 @@ import java.util.List;
  */
 public class AnimatedMenuPlaceholders extends PlaceholderHook {
     
-    public static void register(AnimatedMenuPlugin plugin) {
-        PlaceholderAPI.registerPlaceholderHook(
-                "animatedmenu", new AnimatedMenuPlaceholders(plugin));
+    static void register(AnimatedMenuPlugin plugin) {
+        PlaceholderAPI.registerPlaceholderHook("animatedmenu", new AnimatedMenuPlaceholders(plugin));
     }
     
     private final AnimatedMenuPlugin plugin;
@@ -31,63 +30,70 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
         this.plugin = plugin;
         Plugin p = plugin.getServer().getPluginManager().getPlugin("Essentials");
         if (p != null) {
-            hasEssentials = true;
-            ess = (IEssentials) p;
+            try {
+                ess = (IEssentials) p;
+                hasEssentials = true;
+            } catch (NoClassDefFoundError err) {
+                // No essentials
+            }
         }
     }
     
     @Override
     public String onPlaceholderRequest(Player player, String arg) {
-        if (arg.startsWith("motd_")) {
-            ServerInfo info = plugin.getConnections().get(arg.substring(5));
-            if (info == null) return "<invalid>";
-            return info.isOnline() ? info.getMotd() : info.get("offline", player);
+        int index = arg.indexOf('_');
+        switch (index > 0 ? arg.substring(0, index++) : "") { // Increase index by 1 to align with later substrings
+            case "motd":
+                ServerInfo info = plugin.getConnections().get(arg.substring(index));
+                if (info == null) return "<invalid>";
+                return info.isOnline() ? info.getMotd() : info.get("offline", player);
+            case "onlineplayers":
+                info = plugin.getConnections().get(arg.substring(index));
+                if (info == null) return "<invalid>";
+                return info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";
+            case "maxplayers":
+                info = plugin.getConnections().get(arg.substring(index));
+                if (info == null) return "<invalid>";
+                return info.isOnline() ? Integer.toString(info.getMaxPlayers()) : "0";
+            case "status":
+                info = plugin.getConnections().get(arg.substring(index));
+                if (info == null) return "<invalid>";
+                String value = info.get(info.isOnline() ? "online" : "offline", player);
+                return value == null ? "<unknown>" : value;
+            case "motdcheck":
+                info = plugin.getConnections().get(arg.substring(index));
+                if (info == null) return "<invalid>";
+                value = info.get(info.isOnline() ? info.getMotd() : "offline", player);
+                if (value == null) value = info.get("default", player);
+                return value == null ? "<unknown>" : value;
+            case "worldplayers":
+                String worldName = arg.substring(index);
+                for (World world : Bukkit.getWorlds()) {
+                    if (worldName.equalsIgnoreCase(world.getName())) {
+                        return Integer.toString(world.getPlayers().size());
+                    }
+                }
+                return "<invalid>";
+            case "shownplayers":
+                if (!hasEssentials) return "<no_essentials>";
+                worldName = arg.substring(index);
+                boolean showHidden = true;
+                User user;
+                if (player != null) {
+                    user = ess.getUser(player);
+                    showHidden = user.isAuthorized("essentials.list.hidden") || user.canInteractVanished();
+                } else user = null;
+                int count = 0;
+                for (List<User> list : PlayerList.getPlayerLists(ess, user, showHidden).values()) {
+                    for (User usah : list) {
+                        if (usah.getWorld().getName().equals(worldName)) {
+                            count++;
+                        }
+                    }
+                }
+                return Integer.toString(count);
+            default:
+                return "<invalid:" + arg + ">";
         }
-        if (arg.startsWith("onlineplayers_")) {
-            ServerInfo info = plugin.getConnections().get(arg.substring(14));
-            if (info == null) return "<invalid>";
-            return info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";
-        }
-        if (arg.startsWith("maxplayers_")) {
-            ServerInfo info = plugin.getConnections().get(arg.substring(11));
-            if (info == null) return "<invalid>";
-            return info.isOnline() ? Integer.toString(info.getMaxPlayers()) : "0";
-        }
-        if (arg.startsWith("status_")) {
-            ServerInfo info = plugin.getConnections().get(arg.substring(7));
-            if (info == null) return "<invalid>";
-            String value = info.get(info.isOnline() ? "online" : "offline", player);
-            return value == null ? "<unknown>" : value;
-        }
-        if (arg.startsWith("motdcheck_")) {
-            ServerInfo info = plugin.getConnections().get(arg.substring(10));
-            if (info == null) return "<invalid>";
-            String value = info.get(info.isOnline() ? info.getMotd() : "offline", player);
-            if (value == null) value = info.get("default", player);
-            return value == null ? "<unknown>" : value;
-        }
-        if (arg.startsWith("worldplayers_")) {
-            String worldName = arg.substring(13);
-            for (World world : Bukkit.getWorlds())
-                if (worldName.equalsIgnoreCase(world.getName()))
-                    return Integer.toString(world.getPlayers().size());
-            return "<invalid>";
-        }
-        if (arg.startsWith("shownplayers_")) {
-            if (!hasEssentials) return "<no_essentials>";
-            String worldName = arg.substring(13);
-            boolean showHidden = true;
-            User user;
-            if (player != null) {
-                user = ess.getUser(player);
-                showHidden = user.isAuthorized("essentials.list.hidden") || user.canInteractVanished();
-            } else user = null;
-            int count = 0;
-            for (List<User> list : PlayerList.getPlayerLists(ess, user, showHidden).values())
-                for (User usah : list) if (usah.getWorld().getName().equals(worldName))
-                    count++;
-            return Integer.toString(count);
-        }
-        return "<invalid:" + arg + ">";
     }
 }

@@ -14,7 +14,6 @@ Menus are where it all starts in the plugin
 - [Menu-Opener-Slot](#user-content-menu-opener-slot)
 - [Open-On-Join](#user-content-open-on-join)
 - [Open-Sound](#user-content-open-sound)
-- [Open-Sound-Pitch](#user-content-open-sound-pitch)
 - [Command](#user-content-command)
 - [Hide-From-Command](#user-content-hide-from-command)
 - [Click-Delay](#user-content-click-delay)
@@ -24,7 +23,6 @@ Menus are where it all starts in the plugin
 #### Plus features ####
 - [Slot-Update-Delay](#user-content-slot-update-delay)
 - [Open-Animation](#user-content-open-animation)
-- [Animation-Speed](#user-content-animation-speed)
 - [Empty-Item](#user-content-empty-item)
 - [Open-Commands](#user-content-open-commands)
 - [Close-Commands](#user-content-close-commands)
@@ -80,15 +78,22 @@ Menus are where it all starts in the plugin
   Whether the menu should open when a player joins  
 
 - #### Open-Sound ####
-  The sound to play when the menu is opened  
+  The sound to play when the menu is opened, in format &lt;sound&gt;[:&lt;volume&gt;[:&lt;pitch&gt;]]  
   NOTE: This uses /playsound command names. For a list of sounds, see [this page](http://www.minecraftforum.net/forums/mapping-and-modding/mapping-and-modding-tutorials/1571574-all-minecraft-playsound-file-names-1-9)  
-
-- #### Open-Sound-Pitch ####
-  The pitch of the open sound  
 
 - #### Command ####
   The command to type to open the menu  
   Use ; to specify multiple commands, e.g. 'command1; command2'  
+  This can also be a section, where you can specify more stuff:  
+
+```YAML
+Command:
+  Name: 'somecommand'
+  Usage: '/somecommand'
+  Description: Opens a menu
+  Lenient-Args: true
+```
+  If Lenient-Args is set to false and a player was to enter too many arguments in the command, it would fail  
 
 - #### Hide-From-Command ####
   Prevent this menu from being openable through /animatedmenu open  
@@ -131,13 +136,17 @@ Menus are where it all starts in the plugin
     - snake-down, snake-up, snake-right, snake-left
 
 
-- #### Animation-Speed ####
-  Default value: 1.0  
-  \------------------------------  
-  The default speed of the open animation(s)  
-
 - #### Empty-Item ####
-  The item to put in empty slots, see [Items](items.md) for the format  
+  The item to put in empty slots, see [Items](items.md) for the format.  
+  If you set 'Single' to 'true', the item will only be loaded once when opening the menu instead of repeating it for each item.  
+  Setting it would look something like this:  
+
+```YAML
+Empty-Item:
+  Name: '&6Empty Item'
+  Material: stone
+  Single: true
+```
 
 - #### Open-Commands ####
   The commands to perform when the menu opens, see [Commands](click_handlers.md#commands)  

@@ -1,6 +1,7 @@
 package me.megamichiel.animatedmenu.menu.item;
 
-import me.megamichiel.animatedmenu.menu.ItemInfo;
+import me.megamichiel.animatedmenu.menu.MenuItem;
+import me.megamichiel.animatedmenu.menu.MenuSession;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -35,34 +36,34 @@ public class SimpleItemInfo implements ItemInfo {
 
     @Override
     public int getDelay(boolean refresh) {
-        return 1000;
+        return Integer.MAX_VALUE;
     }
 
     @Override
     public void nextFrame() {}
 
     @Override
-    public boolean hasDynamicSlot() {
-        return false;
+    public boolean hasFixedSlot() {
+        return true;
     }
 
     @Override
-    public int getSlot(Player player, SlotContext ctx) {
+    public int getSlot(Player player, MenuSession session, MenuItem.SlotContext ctx) {
         return slot;
     }
 
     @Override
-    public ItemStack load(Player player) {
+    public ItemStack load(Player player, MenuSession session) {
         return stack;
     }
 
     @Override
-    public ItemStack apply(Player player, ItemStack item) {
+    public ItemStack apply(Player player, MenuSession session, ItemStack item) {
         return item;
     }
 
     @Override
-    public void click(Player player, ClickType type) {
+    public void click(Player player, MenuSession session, ClickType type) {
         if (listener != null) listener.onClick(player, type);
     }
 

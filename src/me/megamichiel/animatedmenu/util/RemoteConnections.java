@@ -39,8 +39,9 @@ public class RemoteConnections implements Runnable {
     
     public void cancel() {
         running = false;
-        if (runningThread != null)
+        if (runningThread != null) {
             runningThread.interrupt();
+        }
     }
     
     @Override
@@ -128,26 +129,23 @@ public class RemoteConnections implements Runnable {
 
     private int varIntLength(int i) {
         for (int j = 1; j < 5; j++)
-            if ((i & (0xffffffff << (j * 7))) == 0)
+            if ((i & (0xFFFFFFFF << (j * 7))) == 0)
                 return j;
         return 5;
     }
     
     private int readVarInt(InputStream stream) throws IOException {
-        int i = 0;
-        int j = 0;
-        
-        int b0;
+        int value = 0, offset = 0, read;
         
         do {
-            b0 = stream.read();
-            i |= (b0 & 0x7F) << j++ * 7;
-            if (j > 5) {
+            read = stream.read();
+            value |= (read & 0x7F) << offset++ * 7;
+            if (offset > 5) {
                 throw new RuntimeException("VarInt too big");
             }
-        } while ((b0 & 0x80) == 0x80);
+        } while ((read & 0x80) == 0x80);
         
-        return i;
+        return value;
     }
     
     public void clear() {

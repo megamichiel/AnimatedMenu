@@ -13,24 +13,30 @@ import static me.megamichiel.animationlib.util.ArrayUtils.flip;
 
 public class OpenAnimation {
 
-    private final int[][] frames;
+    private final Type type;
     private final double speed;
 
-    public OpenAnimation(int[][] frames, double speed) {
-        this.frames = frames;
+    OpenAnimation(Type type, double speed) {
+        this.type = type;
         this.speed = speed;
     }
 
-    public Animation newAnimation(Consumer<int[]> action) {
-        return new Animation(action);
+    OpenAnimation(Type type) {
+        this(type, 1.0);
+    }
+
+    public Animation newAnimation(MenuType menuType, Consumer<int[]> action) {
+        return type == null ? null : new Animation(menuType, action);
     }
 
     public class Animation {
 
+        private final int[][] frames;
         private final Consumer<int[]> action;
         private double frame = 0;
 
-        private Animation(Consumer<int[]> action) {
+        private Animation(MenuType menuType, Consumer<int[]> action) {
+            frames = type.sort(menuType);
             this.action = action;
         }
 
@@ -47,6 +53,14 @@ public class OpenAnimation {
 
     public interface Type {
         int[][] sort(MenuType type);
+
+        default OpenAnimation newAnimation() {
+            return new OpenAnimation(this);
+        }
+
+        default OpenAnimation newAnimation(double speed) {
+            return new OpenAnimation(this, speed);
+        }
     }
 
     public enum DefaultType implements Type {

@@ -6,7 +6,9 @@ import me.megamichiel.animationlib.animation.Animatable;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import org.bukkit.entity.Player;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.BiPredicate;
 
 import static java.util.Locale.ENGLISH;
@@ -38,40 +40,38 @@ public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlu
     protected List<BiPredicate<AnimatedMenuPlugin, Player>> convert(Nagger nagger, Object o) {
         List<BiPredicate<AnimatedMenuPlugin, Player>> result = new ArrayList<>();
         if (!(o instanceof List)) return result;
-        BiPredicate<AnimatedMenuPlugin, Player> handler;
         for (Object raw : (List) o) {
             if (isStringOrPrimitive(raw)) {
                 String str = raw.toString();
-                Command<?, ?> cmd = getCommand(str.toLowerCase(ENGLISH));
-                if (cmd.prefix != null)
+                int index = str.indexOf(':');
+                Command<?, ?> cmd;
+                if (index <= 0) cmd = TextCommand.DEFAULT;
+                else if ((cmd = plugin.findCommand(str.substring(0, index))) == TextCommand.DEFAULT) {
+                    nagger.nag("No command with id '" + str.substring(0, index) + "' found! Defaulting to player command");
+                }
+                if (!cmd.prefix.isEmpty()) {
                     str = str.substring(cmd.prefix.length() + 1).trim();
-                if ((handler = getCommandHandler(cmd, plugin, str)) != null)
-                    result.add(handler);
+                }
+                BiPredicate<AnimatedMenuPlugin, Player> handler = getCommandHandler(cmd, plugin, str);
+                if (handler != null) result.add(handler);
             } else if (raw instanceof AbstractConfig) {
-                for (Map.Entry<String, Object> entry : ((AbstractConfig) raw).values().entrySet()) {
-                    String name = entry.getKey().toLowerCase(ENGLISH);
-                    Command<?, ?> command = plugin.getCommands().stream()
-                            .filter(cmd -> name.equals(cmd.prefix.toLowerCase(ENGLISH)))
-                            .findAny().orElse(null);
-                    if (command == null) continue;
-                    Object value = entry.getValue();
+                ((AbstractConfig) raw).forEach((key, value) -> {
+                    Command<?, ?> command = plugin.findCommand(key.toLowerCase(ENGLISH));
+                    if (command == TextCommand.DEFAULT) return;
                     if (isStringOrPrimitive(value)) {
-                        if ((handler = getCommandHandler(command, plugin, value.toString())) != null)
+                        BiPredicate<AnimatedMenuPlugin, Player> handler = getCommandHandler(command, plugin, value.toString());
+                        if (handler != null) {
                             result.add(handler);
-                    } else if (value instanceof List)
+                        }
+                    } else if (value instanceof List) {
                         ((List<?>) value).stream().filter(this::isStringOrPrimitive)
                                 .map(val -> getCommandHandler(command, plugin, val.toString()))
                                 .filter(Objects::nonNull).forEach(result::add);
-                }
+                    }
+                });
             }
         }
         return result;
-    }
-
-    private Command getCommand(String name) {
-        return plugin.getCommands().stream()
-                .filter(cmd -> name.startsWith(cmd.prefix.toLowerCase(Locale.ENGLISH) + ':'))
-                .findAny().orElseGet(DefaultCommand::new);
     }
 
     @Override
@@ -81,8 +81,9 @@ public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlu
 
     public void execute(Player p) {
         List<BiPredicate<AnimatedMenuPlugin, Player>> commands = next();
-        if (commands != null) for (BiPredicate<AnimatedMenuPlugin, Player> predicate : commands)
-            if (!predicate.test(plugin, p))
-                break;
+        if (commands != null)
+            for (BiPredicate<AnimatedMenuPlugin, Player> predicate : commands)
+                if (!predicate.test(plugin, p))
+                    break;
     }
 }

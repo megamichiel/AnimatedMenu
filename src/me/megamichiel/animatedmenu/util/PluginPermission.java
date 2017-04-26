@@ -14,6 +14,7 @@ public enum PluginPermission implements Predicate<Permissible> {
 
     COMMAND_HELP("Be able to view the command help menu", TRUE),
     COMMAND_RELOAD("Use /animatedmenu reload", OP),
+    COMMAND_LIST("Use /animatedmenu list", TRUE),
     COMMAND_OPEN("Use /animatedmenu open <menu>", TRUE),
     COMMAND_ITEM("Use /animatedmenu item <menu>", OP),
 

@@ -1,9 +1,10 @@
-package me.megamichiel.animatedmenu.menu.item;
+package me.megamichiel.animatedmenu.menu.config;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.command.CommandExecutor;
 import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animatedmenu.util.Flag;
+import me.megamichiel.animatedmenu.util.PluginCurrency;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.entity.Player;
@@ -20,7 +21,7 @@ public class ClickHandler {
             new Purchase<Double>("price", "&cYou don't have enough money for that!") {
                 @Override
                 protected Double parse(AnimatedMenuPlugin plugin, String value) {
-                    if (!plugin.isVaultPresent()) return null;
+                    if (!PluginCurrency.VAULT.isAvailable()) return null;
                     try {
                         double d = Double.parseDouble(value);
                         return d > 0 ? d : null;
@@ -31,17 +32,17 @@ public class ClickHandler {
 
                 @Override
                 protected boolean test(AnimatedMenuPlugin plugin, Player player, Double value) {
-                    return plugin.economy.has(player, value);
+                    return PluginCurrency.VAULT.has(player, value);
                 }
 
                 @Override
                 protected void take(AnimatedMenuPlugin plugin, Player player, Double value) {
-                    plugin.economy.withdrawPlayer(player, value);
+                    PluginCurrency.VAULT.take(player, value);
                 }
             }, new Purchase<Integer>("points", "&cYou don't have enough points for that!") {
                 @Override
                 protected Integer parse(AnimatedMenuPlugin plugin, String value) {
-                    if (!plugin.isPlayerPointsPresent()) return null;
+                    if (!PluginCurrency.PLAYER_POINTS.isAvailable()) return null;
                     try {
                         int i = Integer.parseInt(value);
                         return i > 0 ? i : null;
@@ -52,16 +53,16 @@ public class ClickHandler {
 
                 @Override
                 protected boolean test(AnimatedMenuPlugin plugin, Player player, Integer value) {
-                    return plugin.playerPointsAPI.look(player.getUniqueId()) >= value;
+                    return PluginCurrency.PLAYER_POINTS.has(player, value);
                 }
 
                 @Override
                 protected void take(AnimatedMenuPlugin plugin, Player player, Integer value) {
-                    plugin.playerPointsAPI.take(player.getUniqueId(), value);
+                    PluginCurrency.PLAYER_POINTS.take(player, value);
                 }
-            }, new ClickHandler.Purchase<Object>("exp", "&cYou don't have enough exp for that!") {
+            }, new ClickHandler.Purchase<Number>("exp", "&cYou don't have enough exp for that!") {
                 @Override
-                protected Object parse(AnimatedMenuPlugin plugin, String value) {
+                protected Number parse(AnimatedMenuPlugin plugin, String value) {
                     try {
                         if (value.charAt(0) == 'L' || value.charAt(0) == 'l') {
                             int i = Integer.parseInt(value.substring(1));
@@ -75,15 +76,15 @@ public class ClickHandler {
                 }
 
                 @Override
-                protected boolean test(AnimatedMenuPlugin plugin, Player player, Object value) {
-                    if (value instanceof Float) return player.getExp() >= (Float) value;
-                    return player.getLevel() >= (Integer) value;
+                protected boolean test(AnimatedMenuPlugin plugin, Player player, Number value) {
+                    if (value instanceof Float) return player.getExp() >= value.floatValue();
+                    return player.getLevel() >= value.intValue();
                 }
 
                 @Override
-                protected void take(AnimatedMenuPlugin plugin, Player player, Object value) {
-                    if (value instanceof Float) player.setExp(player.getExp() - (Float) value);
-                    else player.setLevel(player.getLevel() - (Integer) value);
+                protected void take(AnimatedMenuPlugin plugin, Player player, Number value) {
+                    if (value instanceof Float) player.setExp(player.getExp() - value.floatValue());
+                    else player.setLevel(player.getLevel() - value.intValue());
                 }
             }
     };
@@ -110,9 +111,8 @@ public class ClickHandler {
         if (values != null) {
             values.forEach((key, value) -> {
                 if (value instanceof AbstractConfig) {
-                    String path = key + " of item " + item + " in menu " + menu;
-                    Entry entry = plugin.getMenuRegistry().getMenuLoader()
-                            .parseClickHandler(path, (AbstractConfig) value);
+                    String path = key + "_" + item + "_" + menu;
+                    Entry entry = plugin.getMenuLoader().parseClickHandler(path, (AbstractConfig) value);
                     if (entry != null) entries.add(entry);
                 }
             });
@@ -131,15 +131,14 @@ public class ClickHandler {
         private final StringBundle permission, permissionMessage, bypassPermission;
         private final PurchaseData<?>[] purchases;
 
-        private final CommandExecutor clickExecutor, buyExecutor;
+        private final CommandExecutor clickExecutor;
         private final CloseAction closeAction;
 
         private final Delay delay;
 
-        public Entry(AnimatedMenuPlugin plugin, AbstractConfig section, Purchase<?>... purchases) {
+        public Entry(String path, AnimatedMenuPlugin plugin, AbstractConfig section, Purchase<?>... purchases) {
             click = new ClickPredicate(section);
             (clickExecutor = new CommandExecutor(plugin)).load(plugin, section, "commands");
-            (buyExecutor = new CommandExecutor(plugin)).load(plugin, section, "buy-commands");
             permission = StringBundle.parse(plugin, section.getString("permission"));
             permissionMessage = StringBundle.parse(plugin, section.getString("permission-message", PERMISSION_MESSAGE)).colorAmpersands();
             bypassPermission = StringBundle.parse(plugin, section.getString("bypass-permission"));
@@ -156,22 +155,22 @@ public class ClickHandler {
                 try {
                     closeAction = CloseAction.valueOf(close.toUpperCase(Locale.ENGLISH).replace('-', '_'));
                 } catch (IllegalArgumentException ex) {
-                    if (Flag.parseBoolean(close))
+                    if (Flag.parseBoolean(close)) {
                         closeAction = CloseAction.ON_SUCCESS;
+                    }
                 }
             }
             this.closeAction = closeAction;
 
             long clickDelay = section.getInt("click-delay") * 50L;
             if (clickDelay > 0) {
-                delay = plugin.addPlayerDelay(section.getString("delay-message"), clickDelay);
+                delay = plugin.addPlayerDelay("item_" + path, section.getString("delay-message"), clickDelay);
             } else delay = null;
         }
 
         void click(Player player, ClickType type) {
             if (!click.test(type)) return;
             if (canClick(player)) {
-                if (delay != null && !delay.test(player)) return;
                 clickExecutor.execute(player);
                 if (closeAction.onSuccess) player.closeInventory();
             } else if (closeAction.onFailure) player.closeInventory();
@@ -182,6 +181,8 @@ public class ClickHandler {
                 player.sendMessage(permissionMessage.toString(player));
                 return false;
             }
+            if (delay != null && !delay.test(player)) return false;
+
             if (bypassPermission == null || !player.hasPermission(bypassPermission.toString(player))) {
                 for (PurchaseData<?> purchase : purchases) {
                     if (!purchase.test(player)) return false;
@@ -189,7 +190,6 @@ public class ClickHandler {
                 for (PurchaseData<?> purchase : purchases) {
                     purchase.perform(player);
                 }
-                buyExecutor.execute(player);
                 return true;
             }
             return true;

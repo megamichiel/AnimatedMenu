@@ -27,7 +27,8 @@
               "Deleted files will get their menu removed"
             ]
           ]
-        }, {
+        },
+        {
           "name": "Connections",
           "options": ";",
           "description": [
@@ -50,17 +51,28 @@
               "    Default: '&cThis server has an unknown MOTD!'"
             ]
           ]
-        }, {
+        },
+        {
           "name": "Connection-Refresh-Delay",
           "default": "200 (= 10 seconds)",
           "description": "The delay in ticks between connection refreshes"
-        }, {
+        },
+        {
           "name": "Warn-Offline-Servers",
           "default": "false",
           "description": "Sets whether a warning should be printed when a #Connections server cannot be reached"
+        },
+        {
+          "name": "Run-Sync",
+          "description": [
+            "Makes menus run on the main server thread instead of externally.",
+            "By doing this, the chance of things breaking due to plugins or the server not liking it is minimized.",
+            "With AnimatedMenu Plus, NBT items are also used which have faster performance than standard item."
+          ]
         }
       ]
-    }, {
+    },
+    {
       "title": "Plus features",
       "values": [
         {
@@ -71,7 +83,8 @@
             "This has the same format as menu items, so see @{items.md|Items} for info",
             "Once you've set this up, you can use it at an item's @{items.md#template|Template}"
           ]
-        }, {
+        },
+        {
           "name": "PlayerInventory",
           "options": ":",
           "description": [
@@ -84,7 +97,8 @@
               "*Enabled-Worlds* or *Disabled-Worlds* specify the worlds in which this is enabled/disabled"
             ]
           ]
-        }, {
+        },
+        {
           "name": "Sql-Statements",
           "options": ";",
           "description": [
@@ -106,7 +120,8 @@
               "    - 'message: &6You have been given a coin!'"
             ]
           ]
-        }, {
+        },
+        {
           "name": "Open-Animations",
           "options": ":",
           "description": [
@@ -114,14 +129,16 @@
             "You can use menuType.width and menuType.height to obtain the menu's width and height",
             "It should return an array which contains multiple arrays all containing the slots to load"
           ]
-        }, {
+        },
+        {
           "name": "Enable-Polls",
           "description": [
             "When set to 'true', the /poll command is added",
             "In a nutshell; it's allows for creating polls to ask players for their opinion",
             "The rest you can find out yourself :3"
           ]
-        }, {
+        },
+        {
           "name": "Max-Player-Polls",
           "default": "-1",
           "description": [

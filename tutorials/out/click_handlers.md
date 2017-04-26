@@ -45,7 +45,6 @@ Click-Handlers:
 - [Click-Delay](#user-content-click-delay)
 - [Delay-Message](#user-content-delay-message)
 - [Commands](#user-content-commands)
-- [Buy-Commands](#user-content-buy-commands)
 
 #### Plus features ####
 - [Requirement-Script](#user-content-requirement-script)
@@ -144,13 +143,14 @@ Click-Handlers:
   NOTE: If you want to use { and } for things as tellraw, use \{ and \}  
   By default, the player will execute the command you enter,  
   but you can start a command with these followed by a colon to do something special:  
+    - **chat** to make the player chat a message
     - **console** to make the console execute the command
     - **message** to send a message to the player
     - **op** to make the player execute the command as operator
     - **broadcast** to broadcast a message to the entire server
     - **server** to send the player to a specific bungeecord server
     - **menu** to open a specific menu
-    - **tellraw** to send a raw message (e.g. \{"text":"Hello there!"\})
+    - **tellraw** to send a raw message (e.g. \\{"text":"Hello there!"\\})
     - **sound** to send a sound to a player, format '&lt;soundname&gt; [volume] [pitch]'
       - For a list of sound names, see [this page](http://www.minecraftforum.net/forums/mapping-and-modding/mapping-and-modding-tutorials/1571574-all-minecraft-playsound-file-names-1-9)
 
@@ -162,11 +162,9 @@ Click-Handlers:
 
       - **script** to execute some javascript code
       - **sql** to execute a config specified [SQL Statement](config.md#sql_statements)
+      - **admin** to make an admin menu player execute a command
 
 
-
-- #### Buy-Commands ####
-  Identical to [Commands](#user-content-commands) but it only executes when the player paid for [Price](#user-content-price) and/or [Points](#user-content-points) ([Bypass-Permission](#user-content-bypass-permission) would ignore this)  
 
 ### Plus features ###
 - #### Requirement-Script ####

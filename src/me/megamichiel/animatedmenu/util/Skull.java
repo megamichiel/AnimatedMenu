@@ -7,9 +7,14 @@ import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.bukkit.nbt.NBTModifiers;
+import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.io.IOException;
@@ -24,23 +29,26 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 
 public class Skull {
     
     private static final Field skullProfile;
-    private static final Method fillProfile;
+    private static final Method fillProfile, serializeProfile;
 
     private static final String USERNAME_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     
     static {
         Field field = null;
-        Method method = null;
+        Method method = null, method1 = null;
         try {
             String pkg = Bukkit.getServer().getClass().getPackage().getName();
             field = Class.forName(pkg + ".inventory.CraftMetaSkull").getDeclaredField("profile");
             field.setAccessible(true);
-            
-            Class<?> clazz = Class.forName("net.minecraft.server." + pkg.split("\\.")[3] + ".TileEntitySkull");
+
+            pkg = "net.minecraft.server" + pkg.substring(pkg.lastIndexOf('.'));
+
+            Class<?> clazz = Class.forName(pkg + ".TileEntitySkull");
             for (Method m : clazz.getDeclaredMethods()) {
                 if (Modifier.isStatic(m.getModifiers())) {
                     Class<?>[] params = m.getParameterTypes();
@@ -50,9 +58,22 @@ public class Skull {
                     }
                 }
             }
-        } catch (Exception ex) {}
+            method1 = Class.forName(pkg + ".GameProfileSerializer").getDeclaredMethod(
+                    "serialize", Class.forName(pkg + ".NBTTagCompound"), field.getType());
+        } catch (Exception ex) {
+            // Not supported
+        }
         skullProfile = field;
         fillProfile = method;
+        serializeProfile = method1;
+    }
+
+    public static Skull forName(String name) {
+        Skull skull = new Skull(null, name);
+
+        if (!cachedProfiles.containsKey(name)) loadProfile(name);
+
+        return skull;
     }
     
     private static final Map<String, GameProfile> cachedProfiles = new ConcurrentHashMap<>();
@@ -70,27 +91,61 @@ public class Skull {
             if (profile.getName() != null) {
                 try {
                     skullProfile.set(meta, profile);
-                } catch (Exception ex) {}
+                } catch (Exception ex) {
+                    // No support ;c
+                }
             }
         } else {
             loadProfile(name);
             meta.setOwner(name);
         }
     }
-    
+
+    public void apply(Player player, Map<String, Object> map) {
+        String name = this.name.toString(player);
+        GameProfile profile = cachedProfiles.get(name);
+        if (profile != null) {
+            if (profile.getName() != null) {
+                try {
+                    map.put("SkullOwner", serializeProfile.invoke(null, NBTUtil.getInstance().createTag(), profile));
+                } catch (Exception ex) {
+                    // No support ;c
+                }
+            }
+        } else {
+            loadProfile(name);
+            map.put("SkullOwner", NBTModifiers.STRING.wrap(name));
+        }
+    }
+
+    public ItemStack toItemStack(Player player, int amount, Consumer<ItemMeta> meta) {
+        ItemStack item = new ItemStack(Material.SKULL_ITEM, amount, (short) 3);
+        ItemMeta im = item.getItemMeta();
+        apply(player, (SkullMeta) im);
+        meta.accept(im);
+        return item;
+    }
+
+    public ItemStack toItemStack(Player player, Consumer<ItemMeta> meta) {
+        return toItemStack(player, 1, meta);
+    }
+
     private static void load(final String savedName, String name) {
         final GameProfile profile = new GameProfile(null, name);
         cachedProfiles.put(savedName, profile);
         try {
-            if (fillProfile.getParameterTypes().length == 2) // Spigot
+            if (fillProfile.getParameterTypes().length == 2) { // Spigot
                 fillProfile.invoke(null, profile, (Predicate<GameProfile>) profile1 -> {
                     if (profile1 != null)
                         cachedProfiles.put(savedName, profile1);
                     return false;
                 });
-            else if (fillProfile.getParameterTypes().length == 1) // Bukkit
+            } else if (fillProfile.getParameterTypes().length == 1) { // Bukkit
                 cachedProfiles.put(savedName, (GameProfile) fillProfile.invoke(null, profile));
-        } catch (Exception ex) {}
+            }
+        } catch (Exception ex) {
+            // No support ;c
+        }
     }
     
     public static void loadProfile(final String name) {

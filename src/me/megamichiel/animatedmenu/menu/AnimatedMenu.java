@@ -4,10 +4,8 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.command.exec.CommandContext;
 import me.megamichiel.animationlib.command.exec.CommandExecutor;
-import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
-import me.megamichiel.animationlib.util.db.SQLHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -15,155 +13,158 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
+import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
-    
-    private static final Method GET_HANDLE, SEND_PACKET, UPDATE_INVENTORY;
-    private static final Field PLAYER_CONNECTION, ACTIVE_CONTAINER, WINDOW_ID;
-    private static final Constructor<?> OPEN_WINDOW, CHAT_MESSAGE;
-    
-    static {
-        Method getHandle = null, sendPacket = null, updateInventory = null;
-        Field playerConnection = null, activeContainer = null, windowId = null;
-        Constructor<?> openWindow = null, chatMessage = null;
-        try {
-            Class<?> clazz = Class.forName(Bukkit.getServer().getClass().getPackage().getName() + ".entity.CraftPlayer");
-            getHandle = clazz.getMethod("getHandle");
-            playerConnection = getHandle.getReturnType().getField("playerConnection");
-            Class<?> packet = Class.forName(playerConnection.getType().getPackage().getName() + ".PacketPlayOutOpenWindow");
-            for (Constructor<?> cnst : packet.getConstructors())
-                if (cnst.getParameterTypes().length == 5)
-                    openWindow = cnst;
-            sendPacket = playerConnection.getType().getMethod("sendPacket", packet.getInterfaces()[0]);
-            Class<?> msg = Class.forName(packet.getPackage().getName() + ".ChatMessage");
-            chatMessage = msg.getConstructor(String.class, Object[].class);
-            Class<?> container = Class.forName(packet.getPackage().getName() + ".Container");
-            updateInventory = getHandle.getReturnType().getMethod("updateInventory", container);
-            activeContainer = getHandle.getReturnType().getSuperclass().getField("activeContainer");
-            windowId = activeContainer.getType().getField("windowId");
-        } catch (Exception ex) {
-            System.err.println("Something went wrong while loading NMS stuff!");
-            ex.printStackTrace();
-        }
-        GET_HANDLE = getHandle;
-        SEND_PACKET = sendPacket;
-        PLAYER_CONNECTION = playerConnection;
-        OPEN_WINDOW = openWindow;
-        CHAT_MESSAGE = chatMessage;
-        UPDATE_INVENTORY = updateInventory;
-        ACTIVE_CONTAINER = activeContainer;
-        WINDOW_ID = windowId;
-    }
 
-    private final AnimatedText menuTitle;
+    private static final MenuSession.Property<AnimatedMenu> ORIGIN = MenuSession.Property.of();
+
+    private final AnimatedText title;
+    private final boolean titleAnimatable;
     private final MenuSettings settings = new MenuSettings(this);
+    private final Map<Player, AnimatedMenu> navigation = new WeakHashMap<>();
     private final int titleUpdateDelay;
-    private final IPlaceholder<String> permission, permissionMessage;
-    private final List<SQLHandler.Entry> sqlAwaits = new ArrayList<>();
-    private IPlaceholder<String> waitMessage;
 
-    private int titleUpdateTick = 0;
+    private int titleUpdateTick;
     
-    public AnimatedMenu(AnimatedMenuPlugin plugin, String name,
-                        MenuLoader loader, AnimatedText title,
-                        int titleUpdateDelay, MenuType type,
-                        StringBundle permission, StringBundle permissionMessage) {
-        super(plugin, name, type, loader);
-        this.menuTitle = title;
-        this.titleUpdateDelay = titleUpdateDelay;
-
-        this.permission = permission == null ? null : permission.tryCache();
-        this.permissionMessage = permissionMessage == null ?
-                IPlaceholder.constant(ChatColor.RED + "You are not allowed to open that menu!") : permissionMessage.tryCache();
+    public AnimatedMenu(AnimatedMenuPlugin plugin, String name, AnimatedText title,
+                        int titleUpdateDelay, MenuType type) {
+        super(plugin, name, type);
+        this.title = title;
+        this.titleUpdateDelay = titleUpdateTick = titleUpdateDelay;
+        titleAnimatable = title.isAnimated() || title.get(0).containsPlaceholders();
     }
 
-    @Override
-    public void dankLoad(AbstractConfig config) {
-        super.dankLoad(config);
-        List<String> list = config.getStringList("sql-await");
-        if (list.isEmpty()) {
-            String s = config.getString("sql-await");
-            if (s != null) Collections.addAll(list, s.split(","));
-        }
-        if (!list.isEmpty()) {
-            SQLHandler placeholders = SQLHandler.getInstance();
-            list.stream().map(String::trim).map(placeholders::getEntry)
-                    .filter(Objects::nonNull).forEach(sqlAwaits::add);
-            StringBundle sb = StringBundle.parse(plugin, config.getString("wait-message"));
-            waitMessage = sb == null ? null : sb.colorAmpersands().tryCache();
-        }
+    public AnimatedMenu(AnimatedMenuPlugin plugin, String name, String title, MenuType type) {
+        this(plugin, name, new AnimatedText(new StringBundle(null, title)), 0, type);
+    }
+
+    public AnimatedMenu(AnimatedMenuPlugin plugin, String title, MenuType type) {
+        this(plugin, UUID.randomUUID().toString(), new AnimatedText(new StringBundle(null, title)), 0, type);
     }
 
     public MenuSettings getSettings() {
         return settings;
     }
 
-    public void handleMenuClose(Player who, AnimatedMenu newMenu) {
-        if (removeViewer(who)) settings.callListeners(who, true);
+    public void requestTitleUpdate() {
+        titleUpdateTick = 0;
     }
 
-    private Inventory createInventory(Player who) {
-        String title = menuTitle.get().toString(who);
+    public MenuSession handleMenuClose(Player who, MenuSession newSession) {
+        MenuSession session = removeViewer(who);
+        if (session != null) {
+            settings.callListeners(who, session, true);
+            AnimatedMenu origin = session.get(ORIGIN);
+            if (origin != null) {
+                if (newSession != null) {
+                    newSession.set(ORIGIN, origin);
+                } else {
+                    origin.navigation.put(who, this);
+                }
+            }
+        }
+        return session;
+    }
+
+    private void openInventory(Player who, Consumer<? super MenuSession> action) {
+        String title = this.title.get().toString(who);
         if (title.length() > 32) title = title.substring(0, 32);
+        MenuType menuType = getMenuType();
         Inventory inv;
-        if (menuType.getInventoryType() == InventoryType.CHEST)
+        if (menuType.getInventoryType() == InventoryType.CHEST) {
             inv = Bukkit.createInventory(null, menuType.getSize(), title);
-        else inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
-        setup(who, inv);
-        return inv;
+        } else inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
+        who.openInventory(inv);
+        setup(who, inv, action);
     }
 
     public String canOpen(Player who) {
+        IPlaceholder<String> permission = settings.getPermission();
         if (permission != null && !who.hasPermission(permission.invoke(plugin, who))) {
-            if (permissionMessage != null)
-                return permissionMessage.invoke(plugin, who);
+            if (settings.getPermissionMessage() != null) {
+                return settings.getPermissionMessage().invoke(plugin, who);
+            }
             return "";
         }
         return null;
     }
-    
-    public void open(Player who, Consumer<Inventory> ready) {
-        if (!sqlAwaits.isEmpty()) {
-            if (waitMessage != null)
-                who.sendMessage(waitMessage.invoke(plugin, who));
-            SQLHandler.getInstance().awaitRefresh(who, sqlAwaits, () -> {
-                settings.callListeners(who, false);
-                ready.accept(createInventory(who));
-            });
+
+    /**
+     * Makes a given Player open this menu
+     */
+    public final void open(Player who) {
+        open(who, null);
+    }
+
+    /**
+     * Makes a given Player open this menu
+     *
+     * @param who The Player that should open the menu
+     * @param ready A Consumer that will receive a MenuSession instance when the Player has opened the menu. If the player cannot open the menu, <i>null</i> is passed
+     */
+    public void open(Player who, Consumer<? super MenuSession> ready) {
+        boolean saveNavigation = settings.saveNavigation();
+        if (saveNavigation) {
+            AnimatedMenu menu = navigation.get(who);
+            if (menu != null) {
+                menu.open(who, session -> {
+                    if (ready != null) ready.accept(session);
+                    if (session != null) session.set(ORIGIN, this);
+                });
+                return;
+            }
+        }
+
+        String s = canOpen(who);
+        if (s != null) {
+            if (!s.isEmpty()) who.sendMessage(s);
+            if (ready != null) ready.accept(null);
             return;
         }
-        settings.callListeners(who, false);
-        ready.accept(createInventory(who));
+        List<Predicate<? super Player>> awaits = settings.getAwaits();
+        if (!awaits.isEmpty()) {
+            if (settings.getWaitMessage() != null) {
+                who.sendMessage(settings.getWaitMessage().invoke(plugin, who));
+            }
+            plugin.post(() -> {
+                for (Predicate<? super Player> await : awaits) {
+                    if (!await.test(who)) {
+                        return;
+                    }
+                }
+                plugin.post(() -> openInventory(who, session -> {
+                    if (saveNavigation) session.set(ORIGIN, this);
+                    plugin.getMenuRegistry().onOpen(who, this, session);
+                    settings.callListeners(who, session, false);
+                    if (ready != null) ready.accept(session);
+                }), false);
+            }, true);
+            return;
+        }
+        openInventory(who, session -> {
+            if (saveNavigation) session.set(ORIGIN, this);
+            plugin.getMenuRegistry().onOpen(who, this, session);
+            settings.callListeners(who, session, false);
+            if (ready != null) ready.accept(session);
+        });
     }
 
     @Override
     public void tick() {
-        if (menuTitle.size() > 1 && titleUpdateTick++ == titleUpdateDelay) {
-            titleUpdateTick = 0;
-            menuTitle.next();
-            try {
-                for (Player player : getViewers()) {
-                    String title = this.menuTitle.get().toString(player);
-                    if (title.length() > 32) title = title.substring(0, 32);
-                    Object handle = GET_HANDLE.invoke(player);
-                    Object container = ACTIVE_CONTAINER.get(handle);
-                    Object packet = OPEN_WINDOW.newInstance(WINDOW_ID.getInt(container), menuType.getNmsName(),
-                            CHAT_MESSAGE.newInstance(title, new Object[0]), menuType.getSize(), 0);
-                    SEND_PACKET.invoke(PLAYER_CONNECTION.get(handle), packet);
-                    UPDATE_INVENTORY.invoke(handle, container);
-                }
-            } catch (Exception ex) {
-                plugin.nag("Unable to update menu title!");
-                plugin.nag(ex);
-            }
+        if (titleAnimatable && titleUpdateTick-- == 0) {
+            titleUpdateTick = titleUpdateDelay;
+            title.next();
+            plugin.post(() -> forEachSession((player, session) -> {
+                String title = this.title.get().toString(player);
+                if (title.length() > 32) title = title.substring(0, 32);
+                session.updateTitle(title);
+            }), false);
         }
         super.tick();
     }
@@ -175,10 +176,14 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
             sender.sendMessage(ChatColor.RED + "You must be a player for that!");
             return;
         }
-        plugin.getMenuRegistry().openMenu((Player) sender, this);
+        if (!getSettings().hasLenientArgs() && ctx.getArgs().length > 0) {
+            sender.sendMessage(ChatColor.RED + "Too many arguments!");
+            return;
+        }
+        open((Player) sender);
     }
 
-    protected String getDefaultUsage() {
+    public String getDefaultUsage() {
         return "/<command>";
     }
 }

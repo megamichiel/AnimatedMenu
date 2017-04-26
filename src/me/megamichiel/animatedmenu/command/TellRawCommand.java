@@ -23,7 +23,7 @@ public class TellRawCommand extends Command<StringBundle, Object> {
             String nms = "net.minecraft.server." + pkg.split("\\.")[3];
             try {
                 deserialize = Class.forName(nms + ".IChatBaseComponent$ChatSerializer").getDeclaredMethod("a", String.class);
-            } catch (Exception ex) {
+            } catch (ClassNotFoundException ex) {
                 deserialize = Class.forName(nms + ".ChatSerializer").getDeclaredMethod("a", String.class);
             }
             Class<?> chatComponent = Class.forName(nms + ".IChatBaseComponent");

@@ -93,7 +93,7 @@
             ]
           ]
         }, {
-          "name": "SkullOwner",
+          "name": "Skull-Owner",
           "options": "%+",
           "description": [
             "The skull owner, if this item is a player skull, can be either:",
@@ -105,7 +105,11 @@
             ]
           ]
         }, {
-          "name": "BannerPattern",
+          "name": "Egg-Type",
+          "options": "+",
+          "description": "The entity type of a spawn egg. See [this](https://hub.spigotmc.org/javadocs/spigot/org/bukkit/entity/EntityType.html) page for a list of types"
+        }, {
+          "name": "Banner-Pattern",
           "options": "+",
           "description": [
             "The banner pattern to apply to a banner",
@@ -129,10 +133,10 @@
             "You can either specify the sum of the numbers you need, or have a comma-separated list of their names"
           ]
         }, {
-          "name": "Hide-Permission",
+          "name": "View-Permission",
           "description": [
             "A permission required to see this item",
-            "Start with a dash ( - ) to negate the effect"
+            "Start with a dash ( - ) to negate the effect (only visible without permission)"
           ]
         }, {
           "name": "Unbreakable",
@@ -167,10 +171,10 @@
             "It accepts negative and large values to force certain items at specific positions"
           ]
         }, {
-          "name": "Hide-Script",
+          "name": "View-Script",
           "options": "%<",
           "description": [
-            "Some JavaScript code that checks whether a player can see this item",
+            "Some JavaScript code that checks if a player can see this item",
             "For example, '%vault_eco_balance% >= 100' checks if the player has at least $100"
           ]
         }, {
@@ -198,6 +202,13 @@
               "#Slot, #Frame-Delay and #Refresh-Delay should be specified here",
               "All the other config options are only loaded under each #States value",
               "You can even use nested states! Go nuts!"
+            ],
+            "You can prefix the state for specific results (doesn't require placeholders):",
+            [
+              "*permission:* returns 'yes' if the player has a permission, 'no' otherwise",
+              "*money:* returns 'yes' if the player has X amount of money, 'no' otherwise",
+              "*points:* returns 'yes' if the player has X amount of (player)points, 'no' otherwise",
+              "*level:* returns 'yes' if the player has at least a certain XP level, 'no' otherwise"
             ]
           ]
         }, {

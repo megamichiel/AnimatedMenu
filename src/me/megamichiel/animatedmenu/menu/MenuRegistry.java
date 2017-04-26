@@ -1,6 +1,7 @@
-package me.megamichiel.animatedmenu;
+package me.megamichiel.animatedmenu.menu;
 
-import me.megamichiel.animatedmenu.menu.*;
+import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animatedmenu.menu.item.ItemInfo;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.bukkit.BukkitCommandAPI;
 import me.megamichiel.animationlib.command.CommandInfo;
@@ -12,43 +13,30 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 
-import java.io.File;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
-
-    private final MenuLoader menuLoader;
 
     private final Map<String, AnimatedMenu> menus = new ConcurrentHashMap<>();
     private final Map<AnimatedMenu, Runnable> commandSubscriptions = new ConcurrentHashMap<>();
 
     private final AnimatedMenuPlugin plugin;
-    protected final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
+    private final Map<Player, AnimatedMenu> openMenu = new WeakHashMap<>();
 
-    protected MenuRegistry(AnimatedMenuPlugin plugin, MenuLoader loader) {
+    public MenuRegistry(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
-        menuLoader = loader;
     }
 
-    Map<Player, AnimatedMenu> getOpenMenu() {
-        return openMenu;
-    }
-
-    Collection<AnimatedMenu> getMenus() {
+    public Collection<AnimatedMenu> getMenus() {
         return Collections.unmodifiableCollection(menus.values());
     }
 
-    void onDisable() {
-        for (Object player : openMenu.keySet().toArray()) {
-            ((Player) player).sendMessage(ChatColor.RED + "Menu closing due to plugin disabling/reloading");
-            ((Player) player).closeInventory();
-        }
-        if (menuLoader != null) menuLoader.onDisable();
+    public void onDisable() {
+        menus.values().forEach(this::remove);
     }
     
     @Override
@@ -62,20 +50,27 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             }
         }
     }
-    
+
+    /**
+     * Returns the AnimatedMenuPlugin this registry belongs to
+     */
+    public AnimatedMenuPlugin getPlugin() {
+        return plugin;
+    }
+
     /**
      * Get a player's opened menu
      * @param who the player to get the opened menu of
      * @return the player's opened menu, or null if the player doesn't have a menu open
      */
-    AnimatedMenu getOpenedMenu(Player who) {
+    public AnimatedMenu getOpenedMenu(Player who) {
         return openMenu.get(who);
     }
     
     /**
      * Clears all menus
      */
-    protected void clear() {
+    public void clear() {
         menus.clear();
         commandSubscriptions.values().forEach(Runnable::run);
         commandSubscriptions.clear();
@@ -99,7 +94,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     }
 
     public AnimatedMenu newMenu(String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
-        AnimatedMenu menu = new AnimatedMenu(plugin, name, menuLoader, title, titleUpdateDelay, type, null, null);
+        AnimatedMenu menu = new AnimatedMenu(plugin, name, title, titleUpdateDelay, type);
         add(menu);
         return menu;
     }
@@ -113,7 +108,10 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @param menu the menu to add
      */
     public void add(AnimatedMenu menu) {
-        menus.put(menu.getName(), menu);
+        AnimatedMenu old = menus.put(menu.getName(), menu);
+        if (old != null) {
+            Optional.ofNullable(commandSubscriptions.remove(old)).ifPresent(Runnable::run);
+        }
         addMenuCommand(menu);
     }
     
@@ -122,7 +120,11 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      * @param menu the menu to remove
      */
     public void remove(AnimatedMenu menu) {
-        menus.remove(menu.getName());
+        menu.getViewers().forEach(player -> {
+            player.sendMessage(ChatColor.RED + "Menu has been removed");
+            player.closeInventory();
+        });
+        menus.remove(menu.getName(), menu);
         Optional.ofNullable(commandSubscriptions.remove(menu)).ifPresent(Runnable::run);
     }
     
@@ -153,45 +155,14 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
         return menus.values().spliterator();
     }
 
-    protected void closeMenu(Player who) {
+    public void handleMenuClose(Player who) {
         AnimatedMenu menu = openMenu.remove(who);
         if (menu != null) menu.handleMenuClose(who, null);
     }
-    
-    /**
-     * Make a player open a menu
-     * @param who the player who should open the menu
-     * @param menu the menu to open
-     */
-    public void openMenu(Player who, AnimatedMenu menu) {
-        String s = menu.canOpen(who);
-        if (s != null) {
-            if (!s.isEmpty()) who.sendMessage(s);
-            return;
-        }
-        menu.open(who, inventory -> {
-            AnimatedMenu old = openMenu.remove(who);
-            if (old != null) old.handleMenuClose(who, menu);
-            who.openInventory(inventory);
-            openMenu.put(who, menu);
-        });
-    }
-    
-    void loadMenus() {
-        clear();
-        
-        Logger logger = plugin.getLogger();
-        logger.info("Loading menus...");
 
-        File file = new File(plugin.getDataFolder(), "images");
-        if (!file.exists() && !file.mkdir())
-            plugin.getLogger().warning("Failed to create images folder!");
-
-        List<AnimatedMenu> list = getMenuLoader().loadMenus();
-        if (list != null) {
-            list.forEach(this::add);
-        }
-        logger.info(this.menus.size() + " menu" + (this.menus.size() == 1 ? "" : "s") + " loaded");
+    void onOpen(Player who, AnimatedMenu menu, MenuSession session) {
+        AnimatedMenu old = openMenu.put(who, menu);
+        if (old != null) old.handleMenuClose(who, session);
     }
 
     private void addMenuCommand(AnimatedMenu menu) {
@@ -202,7 +173,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             deleteOld(api, openCommand.name(), list);
             for (String alias : openCommand.aliases())
                 deleteOld(api, alias, list);
-            // Make sure me command is removed first on disable:
+            // Make sure the command is removed first on disable:
             list.add(0, api.registerCommand(plugin, openCommand));
             commandSubscriptions.put(menu, createSubscription(list));
         }
@@ -219,10 +190,6 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
         return () -> list.forEach(Subscription::unsubscribe);
     }
 
-    public MenuLoader getMenuLoader() {
-        return menuLoader;
-    }
-
     public class MenuBuilder {
 
         private final MenuType type;
@@ -231,9 +198,9 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
         private AnimatedText title;
         private int titleUpdatedDelay, slotUpdateDelay;
         private boolean hiddenFromCommand;
+        private ItemInfo emptyItem;
 
-        private final List<Consumer<? super Player>> closeListeners = new ArrayList<>();
-        private final List<BiConsumer<? super AnimatedMenu, ? super Player>> biCloseListeners = new ArrayList<>();
+        private final List<BiConsumer<? super Player, ? super MenuSession>> closeListeners = new ArrayList<>();
         private final List<ItemInfo> items = new ArrayList<>();
 
         MenuBuilder(MenuType type) {
@@ -256,6 +223,12 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             return this;
         }
 
+        public MenuBuilder withTitle(int updateDelay, AnimatedText title) {
+            this.title = title;
+            titleUpdatedDelay = updateDelay;
+            return this;
+        }
+
         public MenuBuilder withSlotUpdateDelay(int slotUpdateDelay) {
             this.slotUpdateDelay = slotUpdateDelay;
             return this;
@@ -266,18 +239,13 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             return this;
         }
 
-        public MenuBuilder withCloseListener(Consumer<? super Player> listener) {
+        public MenuBuilder withCloseListener(BiConsumer<? super Player, ? super MenuSession> listener) {
             closeListeners.add(listener);
             return this;
         }
 
-        public MenuBuilder withCloseListener(BiConsumer<? super AnimatedMenu, ? super Player> listener) {
-            biCloseListeners.add(listener);
-            return this;
-        }
-
         public MenuBuilder removeWhenClosed() {
-            biCloseListeners.add((menu, player) -> remove(menu));
+            closeListeners.add((player, session) -> remove((AnimatedMenu) session.getMenu()));
             return this;
         }
 
@@ -291,6 +259,11 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             return this;
         }
 
+        public MenuBuilder withEmptyItem(ItemInfo item) {
+            emptyItem = item;
+            return this;
+        }
+
         public AnimatedMenu build() {
             Validate.notNull(title, "Title cannot be null!");
             Validate.isTrue(!title.isEmpty(), "At least 1 title must be specified!");
@@ -301,15 +274,15 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             MenuSettings settings = menu.getSettings();
 
             closeListeners.forEach(listener -> settings.addListener(listener, true));
-            biCloseListeners.forEach(listener -> settings.addListener(player -> listener.accept(menu, player), true));
             if (hiddenFromCommand) settings.setHiddenFromCommand(true);
 
             items.forEach(menu.getMenuGrid()::add);
+            if (emptyItem != null) menu.setEmptyItem(emptyItem);
             return menu;
         }
 
         public void openFor(Player player) {
-            openMenu(player, build());
+            build().open(player);
         }
     }
 }

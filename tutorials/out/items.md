@@ -12,17 +12,18 @@ What are menus without items?
 - [Lore](#user-content-lore)
 - [Enchantments](#user-content-enchantments)
 - [Color](#user-content-color)
-- [SkullOwner](#user-content-skullowner)
-- [BannerPattern](#user-content-bannerpattern)
+- [Skull-Owner](#user-content-skull-owner)
+- [Egg-Type](#user-content-egg-type)
+- [Banner-Pattern](#user-content-banner-pattern)
 - [Hide-Flags](#user-content-hide-flags)
-- [Hide-Permission](#user-content-hide-permission)
+- [View-Permission](#user-content-view-permission)
 - [Unbreakable](#user-content-unbreakable)
 - [Click-Handlers](#user-content-click-handlers)
 
 #### Plus features ####
 - [Template](#user-content-template)
 - [Weight](#user-content-weight)
-- [Hide-Script](#user-content-hide-script)
+- [View-Script](#user-content-view-script)
 - [NBT](#user-content-nbt)
 - [Animate-NBT](#user-content-animate-nbt)
 - [State](#user-content-state)
@@ -103,7 +104,7 @@ What are menus without items?
     - **RRGGBB** where each position ranges from 0-9 and A-F
 
 
-- #### SkullOwner ####
+- #### Skull-Owner ####
   Animatable with Plus version, Supports placeholders  
   \------------------------------  
   The skull owner, if this item is a player skull, can be either:  
@@ -113,7 +114,12 @@ What are menus without items?
     - Base64 encoded profile texture
 
 
-- #### BannerPattern ####
+- #### Egg-Type ####
+  Animatable with Plus version  
+  \------------------------------  
+  The entity type of a spawn egg. See [this](https://hub.spigotmc.org/javadocs/spigot/org/bukkit/entity/EntityType.html) page for a list of types  
+
+- #### Banner-Pattern ####
   Animatable with Plus version  
   \------------------------------  
   The banner pattern to apply to a banner  
@@ -134,9 +140,9 @@ What are menus without items?
 
   You can either specify the sum of the numbers you need, or have a comma-separated list of their names  
 
-- #### Hide-Permission ####
+- #### View-Permission ####
   A permission required to see this item  
-  Start with a dash ( - ) to negate the effect  
+  Start with a dash ( - ) to negate the effect (only visible without permission)  
 
 - #### Unbreakable ####
   Whether this item should be unbreakable or not  
@@ -162,10 +168,10 @@ What are menus without items?
   You can use this to, for example, sort a menu by player count on different servers  
   It accepts negative and large values to force certain items at specific positions  
 
-- #### Hide-Script ####
+- #### View-Script ####
   Script, Supports placeholders  
   \------------------------------  
-  Some JavaScript code that checks whether a player can see this item  
+  Some JavaScript code that checks if a player can see this item  
   For example, '%vault_eco_balance% &gt;= 100' checks if the player has at least $100  
 
 - #### NBT ####
@@ -188,6 +194,12 @@ What are menus without items?
     - [Slot](#user-content-slot), [Frame-Delay](#user-content-frame-delay) and [Refresh-Delay](#user-content-refresh-delay) should be specified here
     - All the other config options are only loaded under each [States](#user-content-states) value
     - You can even use nested states! Go nuts!
+
+  You can prefix the state for specific results (doesn't require placeholders):  
+    - **permission:** returns 'yes' if the player has a permission, 'no' otherwise
+    - **money:** returns 'yes' if the player has X amount of money, 'no' otherwise
+    - **points:** returns 'yes' if the player has X amount of (player)points, 'no' otherwise
+    - **level:** returns 'yes' if the player has at least a certain XP level, 'no' otherwise
 
 
 - #### State-Template ####
