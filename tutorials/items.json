@@ -159,6 +159,13 @@
       "title": "Plus features",
       "values": [
         {
+          "name": "Slot-Update-Delay",
+          "default": "20",
+          "description": [
+            "The interval in ticks between each slot update",
+            "Only applicable when the slot is not fixed"
+          ]
+        }, {
           "name": "Template",
           "description": "Specifies a template to use from the defined ones in @{config.md#templates|Templates}"
         }, {

@@ -115,10 +115,6 @@
       "title": "Plus features",
       "values": [
         {
-          "name": "Slot-Update-Delay",
-          "default": "20",
-          "description": "The interval in ticks between each item slot update"
-        }, {
           "name": "Open-Animation",
           "options": "@",
           "description": [

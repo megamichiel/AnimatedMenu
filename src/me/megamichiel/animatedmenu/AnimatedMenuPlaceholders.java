@@ -12,14 +12,33 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.util.List;
+import java.util.function.BiFunction;
 
 /**
  * A class that handles some AnimatedMenu created placeholders
  */
-public class AnimatedMenuPlaceholders extends PlaceholderHook {
+public class AnimatedMenuPlaceholders implements BiFunction<Player, String, String> {
     
     static void register(AnimatedMenuPlugin plugin) {
-        PlaceholderAPI.registerPlaceholderHook("animatedmenu", new AnimatedMenuPlaceholders(plugin));
+        AnimatedMenuPlaceholders placeholders = new AnimatedMenuPlaceholders(plugin);
+        try {
+            PlaceholderAPI.registerPlaceholderHook("animatedmenu", new PlaceholderHook() {
+                @Override
+                public String onPlaceholderRequest(Player player, String arg) {
+                    return placeholders.apply(player, arg);
+                }
+            });
+        } catch (NoClassDefFoundError err) {
+            // No PlaceholderAPI, but that's okay
+        }
+        if (plugin.getServer().getPluginManager().isPluginEnabled("MVdWPlaceholderAPI")) {
+            try {
+                be.maximvdw.placeholderapi.PlaceholderAPI.registerPlaceholder(plugin, "animatedmenu",
+                        event -> placeholders.apply(event.getPlayer(), event.getPlaceholder()));
+            } catch (NoClassDefFoundError err) {
+                // No MVdWPlaceholderAPI, but that is also okay
+            }
+        }
     }
     
     private final AnimatedMenuPlugin plugin;
@@ -40,7 +59,7 @@ public class AnimatedMenuPlaceholders extends PlaceholderHook {
     }
     
     @Override
-    public String onPlaceholderRequest(Player player, String arg) {
+    public String apply(Player player, String arg) {
         int index = arg.indexOf('_');
         switch (index > 0 ? arg.substring(0, index++) : "") { // Increase index by 1 to align with later substrings
             case "motd":

@@ -39,8 +39,8 @@ Command:
   Name: selector
   Usage: '/selector'
   Description: 'Open the server selector'
-  # When the player types too many arguments, do we allow them to open the menu anyways?
-  Lenient-Args: true
+  # When the player types too many arguments, execute a different command instead with the specified arguments
+  Fallback: say
 
 #Global menu click delay the player needs to wait before being able to click again
 Click-Delay: 20

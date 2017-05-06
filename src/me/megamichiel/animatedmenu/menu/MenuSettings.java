@@ -24,7 +24,8 @@ public class MenuSettings {
 
     private boolean openOnJoin;
     private CommandInfo openCommand;
-    private boolean hiddenFromCommand = false, lenientArgs = true, saveNavigation = false;
+    private String fallbackCommand;
+    private boolean hiddenFromCommand = false, saveNavigation = false;
 
     private IPlaceholder<String> permission, permissionMessage;
 
@@ -112,12 +113,12 @@ public class MenuSettings {
         return hiddenFromCommand;
     }
 
-    public void setLenientArgs(boolean lenientArgs) {
-        this.lenientArgs = lenientArgs;
+    public String getFallbackCommand() {
+        return fallbackCommand;
     }
 
-    public boolean hasLenientArgs() {
-        return lenientArgs;
+    public void setFallbackCommand(String fallbackCommand) {
+        this.fallbackCommand = fallbackCommand;
     }
 
     public void setSaveNavigation(boolean saveNavigation) {

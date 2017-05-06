@@ -196,7 +196,7 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
 
         private String name;
         private AnimatedText title;
-        private int titleUpdatedDelay, slotUpdateDelay;
+        private int titleUpdatedDelay;
         private boolean hiddenFromCommand;
         private ItemInfo emptyItem;
 
@@ -226,11 +226,6 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
         public MenuBuilder withTitle(int updateDelay, AnimatedText title) {
             this.title = title;
             titleUpdatedDelay = updateDelay;
-            return this;
-        }
-
-        public MenuBuilder withSlotUpdateDelay(int slotUpdateDelay) {
-            this.slotUpdateDelay = slotUpdateDelay;
             return this;
         }
 
@@ -269,7 +264,6 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             Validate.isTrue(!title.isEmpty(), "At least 1 title must be specified!");
 
             AnimatedMenu menu = newMenu(name == null ? UUID.randomUUID().toString() : name, title, titleUpdatedDelay, type);
-            menu.setSlotUpdateDelay(slotUpdateDelay);
 
             MenuSettings settings = menu.getSettings();
 

@@ -1,5 +1,5 @@
 name: AnimatedMenu
-version: 3.0.1
+version: 3.0.2
 main: me.megamichiel.animatedmenu.AnimatedMenuPlugin
 author: megamichiel
 softdepend: [Vault, PlayerPoints, PlaceholderAPI, AnimationLib]

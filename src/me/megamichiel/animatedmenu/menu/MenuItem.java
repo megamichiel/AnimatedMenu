@@ -10,44 +10,62 @@ import java.util.Arrays;
 
 public final class MenuItem {
 
+    private final AbstractMenu menu;
     private final ItemInfo info;
-    private final int id, frameDelay, refreshDelay;
-    private int frameTick, refreshTick;
+    private final int id, frameDelay, refreshDelay, slotDelay;
+    private int frameTick, refreshTick, slotTick;
 
-    MenuItem(ItemInfo info, int id) {
+    MenuItem(AbstractMenu menu, ItemInfo info, int id) {
+        this.menu = menu;
         this.info = info;
         this.id = id;
-        frameDelay = frameTick = Math.abs(info.getDelay(false));
-        refreshDelay = refreshTick = Math.abs(info.getDelay(true));
+        frameDelay = frameTick = Math.abs(info.getDelay(ItemInfo.DelayType.FRAME));
+        refreshDelay = refreshTick = Math.abs(info.getDelay(ItemInfo.DelayType.REFRESH));
+        slotDelay = slotTick = Math.abs(info.getDelay(ItemInfo.DelayType.SLOT));
     }
 
     boolean tick() {
-        if (frameTick-- == 0) {
+        if (--frameTick == -1) {
             frameTick = frameDelay;
-            info.nextFrame();
+            try {
+                info.nextFrame();
+            } catch (Exception ex) {
+                menu.getPlugin().nag("Failed to tick item " + info + " in menu " + menu.getName() + "!");
+                ex.printStackTrace();
+            }
         }
-        return refreshTick-- == 0;
+        // Use | to make sure both fields are updated. First time I'm actually using this operator :O
+        return --refreshTick == -1 | --slotTick == -1;
     }
 
     void postTick() {
-        if (refreshTick == -1)
+        if (refreshTick == -1) {
             refreshTick = refreshDelay;
+        }
+        if (slotTick == -1) {
+            slotTick = slotDelay;
+        }
     }
 
     boolean canRefresh() {
         return refreshTick == -1;
     }
 
-    public void setFrameTick(int i) {
-        frameTick = Math.max(i, 0);
+    boolean canSlotChange() {
+        return slotTick == -1;
     }
 
-    public void setRefreshTick(int i) {
-        refreshTick = Math.max(i, 0);
+    public void setTick(ItemInfo.DelayType type, int i) {
+        if (i < 0) i = 0;
+        switch (type) {
+            case FRAME: frameTick = i; break;
+            case REFRESH: refreshTick = i; break;
+            case SLOT: slotTick = i; break;
+        }
     }
 
-    public void requestRefresh() {
-        refreshTick = 0;
+    public void requestUpdate(ItemInfo.DelayType type) {
+        setTick(type, 0);
     }
 
     public ItemInfo getInfo() {
@@ -147,9 +165,19 @@ public final class MenuItem {
 
         int getSlot(Player player, MenuSession session, ItemInfo item, ItemStack stack) {
             this.stack = stack;
-            weight = item.getWeight(player, session, this);
-            int slot = item.getSlot(player, session, this);
-            if (slot < 0 || slot >= amounts.length) return -1;
+            int slot;
+            try {
+                weight = item.getWeight(player, session, this);
+                slot = item.getSlot(player, session, this);
+            } catch (Exception ex) {
+                session.getPlugin().nag("Failed to update slot of " + item + " in menu " + session.getMenu().getName() + "!");
+                ex.printStackTrace();
+                return -1;
+            }
+
+            if (slot < 0 || slot >= amounts.length) {
+                return -1;
+            }
             amounts[slot] = stack.getAmount();
             weights[slot] = weight;
             return slot;
@@ -157,7 +185,12 @@ public final class MenuItem {
 
         void addItem(Player player, MenuSession session, int slot, ItemInfo info, int amount) {
             amounts[slot] = amount;
-            weights[slot] = info.getWeight(player, session, this);
+            try {
+                weights[slot] = info.getWeight(player, session, this);
+            } catch (Exception ex) {
+                session.getPlugin().nag("Failed to update weight of " + info + " in menu " + session.getMenu().getName() + "!");
+                ex.printStackTrace();
+            }
         }
 
         void setItems(BiMap<Integer, MenuItem> items) {

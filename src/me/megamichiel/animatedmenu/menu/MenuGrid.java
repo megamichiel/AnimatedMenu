@@ -39,7 +39,7 @@ public class MenuGrid implements Iterable<MenuItem> {
         if (info.hasFixedSlot()) {
             for (int i = 0; i < items.size(); i++) {
                 if (!items.get(i).getInfo().hasFixedSlot()) {
-                    MenuItem item = new MenuItem(info, itemId++);
+                    MenuItem item = new MenuItem(menu, info, itemId++);
                     items.add(i, item);
                     return item;
                 }
@@ -55,7 +55,7 @@ public class MenuGrid implements Iterable<MenuItem> {
      * @return The newly created MenuItem
      */
     public MenuItem addLast(ItemInfo info) {
-        MenuItem item = new MenuItem(info, itemId++);
+        MenuItem item = new MenuItem(menu, info, itemId++);
         items.add(item);
         return item;
     }
@@ -67,7 +67,7 @@ public class MenuGrid implements Iterable<MenuItem> {
      * @return The newly created MenuItem
      */
     public MenuItem addFirst(ItemInfo info) {
-        MenuItem item = new MenuItem(info, itemId++);
+        MenuItem item = new MenuItem(menu, info, itemId++);
         items.add(0, item);
         return item;
     }
@@ -82,7 +82,7 @@ public class MenuGrid implements Iterable<MenuItem> {
     public MenuItem addBefore(MenuItem item, ItemInfo info) {
         int index = items.indexOf(item);
         if (index < 0) return null;
-        MenuItem newItem = new MenuItem(info, itemId++);
+        MenuItem newItem = new MenuItem(menu, info, itemId++);
         items.add(index, newItem);
         return newItem;
     }
@@ -97,7 +97,7 @@ public class MenuGrid implements Iterable<MenuItem> {
     public MenuItem addAfter(MenuItem item, ItemInfo info) {
         int index = items.indexOf(item);
         if (index < 0) return null;
-        MenuItem newItem = new MenuItem(info, itemId++);
+        MenuItem newItem = new MenuItem(menu, info, itemId++);
         items.add(index + 1, newItem);
         return newItem;
     }

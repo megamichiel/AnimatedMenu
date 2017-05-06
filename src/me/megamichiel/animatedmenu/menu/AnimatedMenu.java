@@ -6,6 +6,7 @@ import me.megamichiel.animationlib.command.exec.CommandContext;
 import me.megamichiel.animationlib.command.exec.CommandExecutor;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
+import me.megamichiel.animationlib.util.pipeline.PipelineContext;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -143,8 +144,8 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
                     plugin.getMenuRegistry().onOpen(who, this, session);
                     settings.callListeners(who, session, false);
                     if (ready != null) ready.accept(session);
-                }), false);
-            }, true);
+                }), PipelineContext.SYNC);
+            }, PipelineContext.ASYNC);
             return;
         }
         openInventory(who, session -> {
@@ -162,9 +163,8 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
             title.next();
             plugin.post(() -> forEachSession((player, session) -> {
                 String title = this.title.get().toString(player);
-                if (title.length() > 32) title = title.substring(0, 32);
-                session.updateTitle(title);
-            }), false);
+                session.updateTitle(title.length() > 32 ? title.substring(0, 32) : title);
+            }), PipelineContext.SYNC);
         }
         super.tick();
     }
@@ -172,12 +172,22 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
     @Override
     public void onCommand(CommandContext ctx) {
         CommandSender sender = (CommandSender) ctx.getSender();
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "You must be a player for that!");
+
+        String fallback = getSettings().getFallbackCommand();
+        if (fallback != null && ctx.getArgs().length > 0) {
+            if (fallback.isEmpty()) {
+                sender.sendMessage(ChatColor.RED + "Too many arguments!");
+            } else {
+                StringBuilder sb = new StringBuilder(fallback);
+                for (String arg : ctx.getArgs()) {
+                    sb.append(' ').append(arg);
+                }
+                ((Player) sender).performCommand(sb.toString());
+            }
             return;
         }
-        if (!getSettings().hasLenientArgs() && ctx.getArgs().length > 0) {
-            sender.sendMessage(ChatColor.RED + "Too many arguments!");
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(ChatColor.RED + "You must be a player for that!");
             return;
         }
         open((Player) sender);

@@ -9,7 +9,7 @@ import org.bukkit.inventory.ItemStack;
 
 public interface ItemInfo {
 
-    int getDelay(boolean refresh);
+    int getDelay(DelayType type);
     default void nextFrame() {}
 
     default boolean hasFixedSlot() {
@@ -26,4 +26,8 @@ public interface ItemInfo {
     ItemStack apply(Player player, MenuSession session, ItemStack item);
 
     void click(Player player, MenuSession session, ClickType type);
+
+    enum DelayType {
+        FRAME, REFRESH, SLOT
+    }
 }

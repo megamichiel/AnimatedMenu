@@ -197,13 +197,18 @@ public class MenuLoader implements DirectoryListener.FileListener {
         if (command != null) {
             AnimatedMenu menu = settings.getMenu();
             String name, usage = menu.getDefaultUsage(), description = "Opens menu " + menu.getName();
-            boolean lenientArgs = true;
+            String fallbackCommand = null;
             if (command instanceof AbstractConfig) {
                 AbstractConfig sec = (AbstractConfig) command;
                 name = sec.getString("name");
                 usage = sec.getString("usage", usage);
                 description = sec.getString("description", description);
-                lenientArgs = sec.getBoolean("lenient-args", true);
+                fallbackCommand = sec.getString("fallback");
+                if (fallbackCommand != null) {
+                    fallbackCommand = fallbackCommand.trim();
+                } else if (!sec.getBoolean("lenient-args", true)) {
+                    fallbackCommand = "";
+                }
             } else if (command instanceof String || AbstractConfig.isPrimitiveWrapper(command)) {
                 name = command.toString();
             } else name = null;
@@ -212,12 +217,12 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 String[] split = name.split(";");
                 name = split[0].trim().toLowerCase(Locale.ENGLISH);
                 String[] aliases = new String[split.length - 1];
-                for (int i = 0; i < aliases.length; i++) {
-                    aliases[i] = split[i + 1].trim().toLowerCase(Locale.ENGLISH);
+                for (int i = 0; i < aliases.length;) {
+                    aliases[i] = split[++i].trim().toLowerCase(Locale.ENGLISH);
                 }
 
                 settings.setOpenCommand(name, usage, description, aliases);
-                settings.setLenientArgs(lenientArgs);
+                settings.setFallbackCommand(fallbackCommand);
             }
         }
     }

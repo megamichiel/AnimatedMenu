@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class SimpleItemInfo implements ItemInfo {
 
@@ -25,17 +26,23 @@ public class SimpleItemInfo implements ItemInfo {
     }
 
     private final int slot;
-    private final ItemStack stack;
+    private final Function<Player, ItemStack> item;
     private final ClickListener listener;
 
     public SimpleItemInfo(int slot, ItemStack stack, ClickListener listener) {
         this.slot = slot;
-        this.stack = stack;
+        this.item = player -> stack;
+        this.listener = listener;
+    }
+
+    public SimpleItemInfo(int slot, Function<Player, ItemStack> item, ClickListener listener) {
+        this.slot = slot;
+        this.item = item;
         this.listener = listener;
     }
 
     @Override
-    public int getDelay(boolean refresh) {
+    public int getDelay(DelayType type) {
         return Integer.MAX_VALUE;
     }
 
@@ -54,7 +61,7 @@ public class SimpleItemInfo implements ItemInfo {
 
     @Override
     public ItemStack load(Player player, MenuSession session) {
-        return stack;
+        return item.apply(player);
     }
 
     @Override

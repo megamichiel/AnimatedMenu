@@ -8,7 +8,6 @@ import me.megamichiel.animatedmenu.menu.config.MenuLoader;
 import me.megamichiel.animatedmenu.util.*;
 import me.megamichiel.animationlib.AnimLib;
 import me.megamichiel.animationlib.Nagger;
-import me.megamichiel.animationlib.bukkit.PapiPlaceholder;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
 import me.megamichiel.animationlib.config.AbstractConfig;
 import me.megamichiel.animationlib.config.ConfigManager;
@@ -16,6 +15,7 @@ import me.megamichiel.animationlib.config.type.YamlConfig;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import me.megamichiel.animationlib.util.LoggerNagger;
+import me.megamichiel.animationlib.util.ReflectClass;
 import me.megamichiel.animationlib.util.pipeline.PipelineContext;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -109,11 +109,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         saveDefaultConfig();
         
         registerDefaultCommandHandlers();
-        if (PapiPlaceholder.apiAvailable) {
-            AnimatedMenuPlaceholders.register(this);
-        }
+        AnimatedMenuPlaceholders.register(this);
         loadDelays();
-        post(menuLoader::loadConfig, false);
+        post(menuLoader::loadConfig, SYNC);
         
         /* Other Stuff */
         checkForUpdate();
@@ -124,7 +122,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         } else asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
     }
 
-    private static final String ANIMLIB_VERSION = "1.5.6";
+    private static final String ANIMLIB_VERSION = "1.6.1";
 
     private boolean checkAnimationLib() {
         Plugin plugin = getServer().getPluginManager().getPlugin("AnimationLib");
@@ -376,7 +374,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         for (AnimatedMenu menu : menuRegistry) {
             menu.getSettings().giveOpener(inv, false);
             if (menu.getSettings().shouldOpenOnJoin()) {
-                post(() -> menu.open(player), false);
+                post(() -> menu.open(player), SYNC);
             }
         }
     }
@@ -386,8 +384,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     {
         Predicate<PlayerInteractEvent> predicate;
         try {
+            new ReflectClass(PlayerInteractEvent.class).getMethod("getHand");
             predicate = event -> event.getHand() == EquipmentSlot.OFF_HAND;
-        } catch (NoSuchMethodError | NoClassDefFoundError err) {
+        } catch (ReflectClass.ReflectException ex) {
             predicate = event -> false;
         }
         isOffHand = predicate;
@@ -426,8 +425,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         e.setCancelled(true);
         int slot = e.getRawSlot();
         InventoryView view = e.getView();
-        if ((view.getTopInventory() != null) && slot >= 0
-                && (slot < view.getTopInventory().getSize())) {
+        if (view.getTopInventory() != null && slot >= 0 && slot < view.getTopInventory().getSize()) {
             open.click(p, e.getSlot(), e.getClick());
         }
     }
@@ -474,12 +472,12 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     }
 
     public int parseTime(AbstractConfig config, String key, int def) {
-        return parseTime(config.getInt(key, def));
+        return parseTime(this, config.getInt(key, def));
     }
 
-    public int parseTime(Object o) {
+    public int parseTime(Nagger nagger, Object o) {
         if (o instanceof Number) return ((Number) o).intValue();
-        nag("Invalid number: " + o);
+        nagger.nag("Invalid number: " + o);
         return 0;
     }
 

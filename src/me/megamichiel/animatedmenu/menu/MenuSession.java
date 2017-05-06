@@ -9,6 +9,7 @@ import org.bukkit.inventory.Inventory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 public class MenuSession {
 
@@ -82,6 +83,11 @@ public class MenuSession {
     public <T> T set(Property<T> property, T value) {
         Object old = value != null ? properties.put(property, value) : properties.remove(property);
         return old != null ? (T) old : property.defaultValue;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T compute(Property<T> property, Supplier<T> supplier) {
+        return (T) properties.computeIfAbsent(property, prop -> supplier.get());
     }
 
     @SuppressWarnings("unchecked")

@@ -26,5 +26,6 @@
     <orderEntry type="library" name="AnimationLib" level="project" />
     <orderEntry type="library" name="craftbukkit-1.11" level="project" />
     <orderEntry type="library" name="Essentials-2.x-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="MVdWPlaceholderAPI" level="project" />
   </component>
 </module>

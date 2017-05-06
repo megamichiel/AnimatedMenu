@@ -21,7 +21,6 @@ Menus are where it all starts in the plugin
 - [Items](#user-content-items)
 
 #### Plus features ####
-- [Slot-Update-Delay](#user-content-slot-update-delay)
 - [Open-Animation](#user-content-open-animation)
 - [Empty-Item](#user-content-empty-item)
 - [Open-Commands](#user-content-open-commands)
@@ -120,11 +119,6 @@ Command:
   See the [Items](items.md) page for info on how to set this up  
 
 ### Plus features ###
-- #### Slot-Update-Delay ####
-  Default value: 20  
-  \------------------------------  
-  The interval in ticks between each item slot update  
-
 - #### Open-Animation ####
   Animatable  
   \------------------------------  

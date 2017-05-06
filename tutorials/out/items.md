@@ -21,6 +21,7 @@ What are menus without items?
 - [Click-Handlers](#user-content-click-handlers)
 
 #### Plus features ####
+- [Slot-Update-Delay](#user-content-slot-update-delay)
 - [Template](#user-content-template)
 - [Weight](#user-content-weight)
 - [View-Script](#user-content-view-script)
@@ -157,6 +158,12 @@ What are menus without items?
   See the [Click-Handlers](click_handlers.md) page for info on this  
 
 ### Plus features ###
+- #### Slot-Update-Delay ####
+  Default value: 20  
+  \------------------------------  
+  The interval in ticks between each slot update  
+  Only applicable when the slot is not fixed  
+
 - #### Template ####
   Specifies a template to use from the defined ones in [Templates](config.md#templates)  
 

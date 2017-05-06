@@ -30,7 +30,6 @@ public abstract class AbstractMenu {
     private MenuItem emptyItem;
     private boolean singleEmptyItem;
 
-    private int slotUpdateDelay = 100, slotUpdateTimer = 100;
     private Delay clickDelay;
 
     private final Map<Player, MenuSession> sessions = new ConcurrentHashMap<>();
@@ -53,16 +52,12 @@ public abstract class AbstractMenu {
         clickDelay = delay <= 0 ? null : plugin.addPlayerDelay("menu_" + name, delayMessage, delay);
     }
 
-    public void setSlotUpdateDelay(int slotUpdateDelay) {
-        this.slotUpdateDelay = Math.max(slotUpdateDelay, 0);
-    }
-
     public boolean hasEmptyItem() {
         return emptyItem != null;
     }
 
     public void setEmptyItem(ItemInfo info) {
-        this.emptyItem = info == null ? null : new MenuItem(info, 0);
+        this.emptyItem = info == null ? null : new MenuItem(this, info, 0);
     }
 
     public void setSingleEmptyItem(boolean singleEmptyItem) {
@@ -182,19 +177,13 @@ public abstract class AbstractMenu {
         sessions.keySet().forEach(Player::closeInventory);
     }
 
-    public void requestSlotUpdate() {
-        slotUpdateTimer = 0;
-    }
-
     public void tick() {
         MenuItem emptyItem = this.emptyItem; // Consistency!
 
         boolean emptyChanged = emptyItem != null && emptyItem.tick(),
                      changed = menuGrid.tick(emptyChanged);
 
-        boolean updateSlots = slotUpdateTimer-- == 0;
-        if (updateSlots) slotUpdateTimer = slotUpdateDelay;
-        else if (!changed) { // Nothing's changed, only update open animations
+        if (!changed) { // Nothing's changed, only update open animations
             for (MenuSession session : sessions.values()) {
                 if (session.opening != null && session.opening.tick()) {
                     session.opening = null;
@@ -220,25 +209,44 @@ public abstract class AbstractMenu {
                 Integer old = itemToSlot.get(item);
                 if (old != null) { // Item exists in the inventory
                     stack = inv.getItem(slot = old);
-                    newStack = item.canRefresh() ? info.apply(player, session, stack) : stack;
+                    try {
+                        newStack = item.canRefresh() ? info.apply(player, session, stack) : stack;
+                    } catch (Exception ex) {
+                        plugin.nag("Failed to tick item " + info + " in menu " + name + "!");
+                        ex.printStackTrace();
+                        newStack = stack;
+                    }
                     if (newStack == null) {
                         inv.setItem(slot, null);
                         itemToSlot.remove(item);
-                    } else if (updateSlots && slot != (slot = ctx.getSlot(player, session, info, stack))) {
-                        inv.setItem(old, null);
-                        if (slot == -1) {
-                            itemToSlot.remove(item);
-                        } else  {
-                            itemToSlot.forcePut(item, slot);
+                    } else if (item.canSlotChange()) {
+                        if (slot != (slot = ctx.getSlot(player, session, info, stack))) {
+                            inv.setItem(old, null);
+                            if (slot == -1) {
+                                itemToSlot.remove(item);
+                            } else  {
+                                itemToSlot.forcePut(item, slot);
+                                inv.setItem(slot, newStack);
+                            }
+                        } else if (newStack != stack) {
                             inv.setItem(slot, newStack);
                         }
                     } else {
                         if (newStack != stack) inv.setItem(slot, newStack);
-                        if (!updateSlots) ctx.addItem(player, session, slot, info, newStack.getAmount());
+                        ctx.addItem(player, session, slot, info, newStack.getAmount());
                     }
-                } else if ((stack = info.load(player, session)) != null && (slot = ctx.getSlot(player, session, info, stack)) != -1) {
-                    inv.setItem(slot, stack);
-                    itemToSlot.forcePut(item, slot);
+                } else {
+                    try {
+                        stack = info.load(player, session);
+                    } catch (Exception ex) {
+                        plugin.nag("Failed to load item " + info + " in menu " + name + "!");
+                        ex.printStackTrace();
+                        continue;
+                    }
+                    if (stack != null && (slot = ctx.getSlot(player, session, info, stack)) != -1) {
+                        inv.setItem(slot, stack);
+                        itemToSlot.forcePut(item, slot);
+                    }
                 }
             }
             if (emptyItem != null) {
@@ -247,10 +255,22 @@ public abstract class AbstractMenu {
                 for (int i = inv.getSize(); --i >= 0;) {
                     if (!slotToItem.containsKey(i)) {
                         if ((stack = inv.getItem(i)) != null) {
-                            if (emptyChanged && stack != info.apply(player, session, stack)) {
-                                inv.setItem(i, stack);
+                            try {
+                                if (emptyChanged && stack != info.apply(player, session, stack)) {
+                                    inv.setItem(i, stack);
+                                }
+                            } catch (Exception ex) {
+                                plugin.nag("Failed to update empty item in menu " + name + "!");
+                                ex.printStackTrace();
                             }
-                        } else inv.setItem(i, info.load(player, session));
+                        } else {
+                            try {
+                                inv.setItem(i, info.load(player, session));
+                            } catch (Exception ex) {
+                                plugin.nag("Failed to load empty item in menu " + name + "!");
+                                ex.printStackTrace();
+                            }
+                        }
                     }
                 }
             }

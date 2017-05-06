@@ -72,6 +72,7 @@ public class ConfigItemInfo implements ItemInfo {
     }
 
     private final AnimatedMenuPlugin plugin;
+    private final String name;
     private final int slot, frameDelay, refreshDelay;
 
     private final Predicate<Player> viewPredicate;
@@ -92,6 +93,7 @@ public class ConfigItemInfo implements ItemInfo {
 
     ConfigItemInfo(AnimatedMenuPlugin plugin, AbstractMenu menu, String name, AbstractConfig section) {
         this.plugin = plugin;
+        this.name = name;
 
         MenuType type = menu.getMenuType();
         if (section.isInt("x") && section.isInt("y")) {
@@ -192,8 +194,12 @@ public class ConfigItemInfo implements ItemInfo {
     }
 
     @Override
-    public int getDelay(boolean refresh) {
-        return refresh ? refreshDelay : frameDelay;
+    public int getDelay(DelayType type) {
+        switch (type) {
+            case FRAME: return frameDelay;
+            case REFRESH: return refreshDelay;
+            default: return Integer.MAX_VALUE;
+        }
     }
 
     @Override
@@ -277,6 +283,11 @@ public class ConfigItemInfo implements ItemInfo {
     @Override
     public void click(Player player, MenuSession session, ClickType type) {
         clickListener.click(player, type);
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 
     private static int clampSlot(int max, int val) {
