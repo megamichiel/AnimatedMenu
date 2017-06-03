@@ -31,7 +31,7 @@ public class Delay implements Runnable {
         } else this.delayMessage = null;
         this.delay = delay;
 
-        // Remove expired delays every minute, to reduce the map size and memory usage
+        // Remove expired delays every minute to keep the map at a reasonable size
         plugin.getServer().getScheduler().runTaskTimer(plugin, this, 1200L, 1200L);
     }
 
@@ -76,7 +76,7 @@ public class Delay implements Runnable {
     @Override
     public void run() {
         long time = System.currentTimeMillis();
-        delays.values().removeIf(timer -> timer.get() >= time);
+        delays.values().removeIf(timer -> time >= timer.get());
     }
 
     private class MessageNagger implements ParsingNagger, ParsingContext {

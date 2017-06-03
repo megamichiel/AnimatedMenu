@@ -66,6 +66,16 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
     public AnimatedMenu getOpenedMenu(Player who) {
         return openMenu.get(who);
     }
+
+    /**
+     * Gets a player's opened menu session
+     * @param who the player to get the session of
+     * @return the player's opened menu session, or null if the player doesn't have a menu open
+     */
+    public MenuSession getSession(Player who) {
+        AnimatedMenu menu = openMenu.get(who);
+        return menu == null ? null : menu.getSession(who);
+    }
     
     /**
      * Clears all menus
@@ -83,20 +93,6 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
      */
     protected boolean contains(AnimatedMenu menu) {
         return menus.get(menu.getName()) == menu;
-    }
-
-    public AnimatedMenu newMenu(String title, MenuType type) {
-        return newMenu(UUID.randomUUID().toString(), title, type);
-    }
-
-    public AnimatedMenu newMenu(String name, String title, MenuType type) {
-        return newMenu(name, new AnimatedText(new StringBundle(null, title)), 0, type);
-    }
-
-    public AnimatedMenu newMenu(String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
-        AnimatedMenu menu = new AnimatedMenu(plugin, name, title, titleUpdateDelay, type);
-        add(menu);
-        return menu;
     }
 
     public MenuBuilder newMenuBuilder(MenuType type) {
@@ -263,15 +259,22 @@ public class MenuRegistry implements Iterable<AnimatedMenu>, Runnable {
             Validate.notNull(title, "Title cannot be null!");
             Validate.isTrue(!title.isEmpty(), "At least 1 title must be specified!");
 
-            AnimatedMenu menu = newMenu(name == null ? UUID.randomUUID().toString() : name, title, titleUpdatedDelay, type);
+            AnimatedMenu menu = new AnimatedMenu(name == null ? UUID.randomUUID().toString() : name, title, titleUpdatedDelay, type);
 
             MenuSettings settings = menu.getSettings();
 
             closeListeners.forEach(listener -> settings.addListener(listener, true));
-            if (hiddenFromCommand) settings.setHiddenFromCommand(true);
+            if (hiddenFromCommand) {
+                settings.setHiddenFromCommand(true);
+            }
 
             items.forEach(menu.getMenuGrid()::add);
-            if (emptyItem != null) menu.setEmptyItem(emptyItem);
+            if (emptyItem != null) {
+                menu.setEmptyItem(emptyItem);
+            }
+
+            add(menu);
+
             return menu;
         }
 

@@ -1,6 +1,5 @@
 package me.megamichiel.animatedmenu.menu;
 
-import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.command.exec.CommandContext;
 import me.megamichiel.animationlib.command.exec.CommandExecutor;
@@ -33,20 +32,20 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
 
     private int titleUpdateTick;
     
-    public AnimatedMenu(AnimatedMenuPlugin plugin, String name, AnimatedText title,
+    public AnimatedMenu(String name, AnimatedText title,
                         int titleUpdateDelay, MenuType type) {
-        super(plugin, name, type);
+        super(name, type);
         this.title = title;
         this.titleUpdateDelay = titleUpdateTick = titleUpdateDelay;
         titleAnimatable = title.isAnimated() || title.get(0).containsPlaceholders();
     }
 
-    public AnimatedMenu(AnimatedMenuPlugin plugin, String name, String title, MenuType type) {
-        this(plugin, name, new AnimatedText(new StringBundle(null, title)), 0, type);
+    public AnimatedMenu(String name, String title, MenuType type) {
+        this(name, new AnimatedText(new StringBundle(null, title)), 0, type);
     }
 
-    public AnimatedMenu(AnimatedMenuPlugin plugin, String title, MenuType type) {
-        this(plugin, UUID.randomUUID().toString(), new AnimatedText(new StringBundle(null, title)), 0, type);
+    public AnimatedMenu(String title, MenuType type) {
+        this(UUID.randomUUID().toString(), new AnimatedText(new StringBundle(null, title)), 0, type);
     }
 
     public MenuSettings getSettings() {
@@ -115,8 +114,12 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
             AnimatedMenu menu = navigation.get(who);
             if (menu != null && menu != this) {
                 menu.open(who, session -> {
-                    if (ready != null) ready.accept(session);
-                    if (session != null) session.set(ORIGIN, this);
+                    if (ready != null) {
+                        ready.accept(session);
+                    }
+                    if (session != null) {
+                        session.set(ORIGIN, this);
+                    }
                 });
                 return;
             }
@@ -124,12 +127,29 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
 
         String s = canOpen(who);
         if (s != null) {
-            if (!s.isEmpty()) who.sendMessage(s);
-            if (ready != null) ready.accept(null);
+            if (!s.isEmpty()) {
+                who.sendMessage(s);
+            }
+            if (ready != null) {
+                ready.accept(null);
+            }
             return;
         }
         List<Predicate<? super Player>> awaits = settings.getAwaits();
-        if (!awaits.isEmpty()) {
+        Consumer<MenuSession> action = session -> {
+            if (settings.saveNavigation()) {
+                session.set(ORIGIN, this);
+            }
+            Player player = session.getPlayer();
+            plugin.getMenuRegistry().onOpen(player, this, session);
+            settings.callListeners(player, session, false);
+            if (ready != null) {
+                ready.accept(session);
+            }
+        };
+        if (awaits.isEmpty()) {
+            openInventory(who, action);
+        } else {
             if (settings.getWaitMessage() != null) {
                 who.sendMessage(settings.getWaitMessage().invoke(plugin, who));
             }
@@ -139,32 +159,21 @@ public class AnimatedMenu extends AbstractMenu implements CommandExecutor {
                         return;
                     }
                 }
-                plugin.post(() -> openInventory(who, session -> {
-                    if (saveNavigation) session.set(ORIGIN, this);
-                    plugin.getMenuRegistry().onOpen(who, this, session);
-                    settings.callListeners(who, session, false);
-                    if (ready != null) ready.accept(session);
-                }), PipelineContext.SYNC);
+                plugin.post(() -> openInventory(who, action), PipelineContext.SYNC);
             }, PipelineContext.ASYNC);
-            return;
         }
-        openInventory(who, session -> {
-            if (saveNavigation) session.set(ORIGIN, this);
-            plugin.getMenuRegistry().onOpen(who, this, session);
-            settings.callListeners(who, session, false);
-            if (ready != null) ready.accept(session);
-        });
     }
 
     @Override
     public void tick() {
         if (titleAnimatable && titleUpdateTick-- == 0) {
-            titleUpdateTick = titleUpdateDelay;
             title.next();
-            plugin.post(() -> forEachSession((player, session) -> {
-                String title = this.title.get().toString(player);
-                session.updateTitle(title.length() > 32 ? title.substring(0, 32) : title);
-            }), PipelineContext.SYNC);
+            if ((titleUpdateTick = titleUpdateDelay) >= 0) {
+                plugin.post(() -> forEachSession(session -> {
+                    String title = this.title.get().toString(session.getPlayer());
+                    session.setTitle(title.length() > 32 ? title.substring(0, 32) : title);
+                }), PipelineContext.SYNC);
+            }
         }
         super.tick();
     }

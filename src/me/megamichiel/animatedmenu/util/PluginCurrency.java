@@ -1,11 +1,11 @@
 package me.megamichiel.animatedmenu.util;
 
+import me.JohnCrafted.gemseconomy.economy.GemMethods;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
 public abstract class PluginCurrency<N extends Number & Comparable<N>> {
@@ -49,8 +49,7 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
         @Override
         public boolean init() {
             try {
-                Plugin plugin = Bukkit.getPluginManager().getPlugin("PlayerPoints");
-                return (api = ((PlayerPoints) plugin).getAPI()) != null;
+                return (api = ((PlayerPoints) Bukkit.getPluginManager().getPlugin("PlayerPoints")).getAPI()) != null;
             } catch (NoClassDefFoundError | ClassCastException ex) {
                 return false;
             }
@@ -63,18 +62,62 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
 
         @Override
         public void give(Player player, Integer amount) {
-            if (isAvailable()) api.give(player.getUniqueId(), amount);
+            if (isAvailable()) {
+                api.give(player.getUniqueId(), amount);
+            }
         }
 
         @Override
         public boolean take(Player player, Integer amount) {
             return isAvailable() && api.take(player.getUniqueId(), amount);
         }
+
+        @Override
+        public boolean has(Player player, Integer amount) {
+            return isAvailable() && api.look(player.getUniqueId()) >= amount;
+        }
+    };
+    public static final PluginCurrency<Integer> GEMS = new PluginCurrency<Integer>() {
+        GemMethods methods;
+
+        @Override
+        boolean init() {
+            try {
+                methods = new GemMethods();
+                return true;
+            } catch (NoClassDefFoundError err) {
+                return false;
+            }
+        }
+
+        @Override
+        public Integer get(Player player) {
+            return isAvailable() ? methods.getGems(player.getUniqueId()) : 0;
+        }
+
+        @Override
+        public void give(Player player, Integer amount) {
+            if (isAvailable()) {
+                methods.addGems(player.getUniqueId(), amount);
+            }
+        }
+
+        @Override
+        public boolean take(Player player, Integer amount) {
+            if (isAvailable() && methods.getGems(player.getUniqueId()) >= amount) {
+                methods.takeGems(player.getUniqueId(), amount);
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean has(Player player, Integer amount) {
+            return methods.getGems(player.getUniqueId()) >= amount;
+        }
     };
 
     private boolean init, available;
-
-    private PluginCurrency() {}
 
     abstract boolean init();
     public boolean isAvailable() {

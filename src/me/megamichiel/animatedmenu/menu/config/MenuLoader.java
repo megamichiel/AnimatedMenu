@@ -1,6 +1,7 @@
 package me.megamichiel.animatedmenu.menu.config;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.command.SoundCommand;
 import me.megamichiel.animatedmenu.menu.*;
 import me.megamichiel.animatedmenu.menu.item.ItemInfo;
@@ -9,6 +10,7 @@ import me.megamichiel.animatedmenu.util.DirectoryListener.FileAction;
 import me.megamichiel.animatedmenu.util.Flag;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.config.AbstractConfig;
+import me.megamichiel.animationlib.config.ConfigException;
 import me.megamichiel.animationlib.config.ConfigManager;
 import me.megamichiel.animationlib.config.type.YamlConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
@@ -103,20 +105,26 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 loadMenus(menus, file);
                 continue;
             }
-            String name = file.getName(), extension;
+            String name = file.getName();
             int index = name.lastIndexOf('.');
             if (index == -1) continue;
-            extension = name.substring(index + 1);
-            if (extension.equalsIgnoreCase("yml")) {
-                menus.add(loadMenu(name.substring(0, index).replace(' ', '-'),
-                        ConfigManager.quickLoad(YamlConfig::new, file)));
+            if (name.substring(index + 1).equalsIgnoreCase("yml")) {
+                YamlConfig config;
+                try {
+                    config = ConfigManager.quickLoad(YamlConfig::new, file);
+                } catch (ConfigException ex) {
+                    plugin.nag("Failed to load menu file " + file.getName() + "!");
+                    plugin.nag(ex);
+                    continue;
+                }
+                menus.add(loadMenu(name.substring(0, index).replace(' ', '-'), config));
             }
         }
     }
 
-    protected AnimatedMenu createMenu(AnimatedMenuPlugin plugin, String name,
+    protected AnimatedMenu createMenu(String name, AbstractConfig config,
                                       AnimatedText title, int titleUpdateDelay, MenuType type) {
-        return new AnimatedMenu(plugin, name, title, titleUpdateDelay, type);
+        return new AnimatedMenu(name, title, titleUpdateDelay, type);
     }
 
     public AnimatedMenu loadMenu(String name, AbstractConfig config) {
@@ -130,7 +138,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 type = MenuType.chest(6);
             }
         } else type = MenuType.chest(config.getInt("rows", 6));
-        AnimatedMenu menu = createMenu(plugin, name, title, plugin.parseTime(config, "title-update-delay", 20), type);
+        AnimatedMenu menu = createMenu(name, config, title, plugin.parseTime(config, "title-update-delay", 20), type);
 
         StringBundle permission = StringBundle.parse(plugin, config.getString("permission"));
         if (permission != null) {
@@ -147,7 +155,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
 
     protected void loadMenu(AnimatedMenu menu, AbstractConfig config) {
         loadSettings(menu.getSettings(), config);
-        menu.setClickDelay(config.getString("delay-message"), config.getLong("click-delay") * 50L);
+        menu.setClickDelay(config.getString("delay-message"), plugin.parseTime(config, "click-delay", 0) * 50L);
         Map<String, AbstractConfig> items = new HashMap<>();
         if (config.isSection("items")) {
             AbstractConfig cfg = config.getSection("items");
@@ -230,7 +238,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
     public void loadItem(AbstractMenu menu, String name, AbstractConfig section,
                          boolean withSlot, Consumer<ItemInfo> action) {
         try {
-            action.accept(new ConfigItemInfo(plugin, menu, name, section));
+            action.accept(new ConfigItemInfo(plugin, this, menu, name, section));
         } catch (IllegalArgumentException ex) {
             plugin.nag(ex.getMessage());
         }
@@ -241,6 +249,14 @@ public class MenuLoader implements DirectoryListener.FileListener {
             return new ClickHandler.Entry(path, plugin, section);
         } catch (IllegalArgumentException ex) {
             plugin.nag(ex.getMessage() + " in " + path);
+            return null;
+        }
+    }
+
+    public OpenAnimation.Type resolveAnimationType(String name) {
+        try {
+            return OpenAnimation.DefaultType.valueOf(name);
+        } catch (IllegalArgumentException ex) {
             return null;
         }
     }

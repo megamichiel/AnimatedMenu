@@ -1,4 +1,4 @@
-package me.megamichiel.animatedmenu.util;
+package me.megamichiel.animatedmenu.util.item;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -44,7 +44,7 @@ public class MaterialParser {
     }
     
     public static Material parse(String value) {
-        return cache.computeIfAbsent(value.toLowerCase(Locale.ENGLISH).replace("-", "_"), id -> {
+        return cache.computeIfAbsent(value.toLowerCase(Locale.ENGLISH).replace('-', '_'), id -> {
             try {
                 Object o = ITEM_BY_NAME.invoke(null, id);
                 if (o != null && o != Material.AIR) {

@@ -138,7 +138,7 @@ public class AnimatedMenuCommand implements TabExecutor {
         executors.put(arg, exec);
         if (tab != null) tabCompleters.put(arg, tab);
         permissions.put(arg, permission);
-        usages.put(arg, GREEN + "$command " + usage + ": " + YELLOW + description);
+        usages.put(arg, ' ' + usage + ": " + YELLOW + description);
     }
 
     public void removeHandler(String arg) {
@@ -151,23 +151,31 @@ public class AnimatedMenuCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String type = args.length == 0 ? "help" : args[0].toLowerCase(ENGLISH);
-        if("help".equals(type)) {
-            if (!COMMAND_HELP.test(sender))
+        if ("help".equals(type)) {
+            if (!COMMAND_HELP.test(sender)) {
                 return invalid(sender, "You don't have permission for that!");
+            }
             sender.sendMessage(messages);
             permissions.forEach((arg, perm) -> {
-                if (perm.test(sender))
-                    sender.sendMessage(usages.get(arg).replace("$command", '/' + label));
+                if (perm.test(sender)) {
+                    sender.sendMessage(ChatColor.GREEN + label + usages.get(arg));
+                }
             });
             return true;
         }
         PluginPermission perm = permissions.get(type);
         if (perm != null) {
-            if (!perm.test(sender))
+            if (!perm.test(sender)) {
                 return invalid(sender, "You don't have permission for that!");
+            }
             Object result = executors.get(type).apply(sender, args);
-            if (result instanceof String)
-                sender.sendMessage(((String) result).replace("$command", '/' + label));
+            if (result instanceof String) {
+                if ("usage".equals(result)) {
+                    sender.sendMessage(ChatColor.RED + label + usages.get(type));
+                } else {
+                    sender.sendMessage(((String) result).replace("$command", '/' + label));
+                }
+            }
             return true;
         }
         return invalid(sender, "Unknown arguments, type \"/" + label + "\" for help");

@@ -20,8 +20,7 @@ public class ItemPopup {
 
     public void init(Plugin plugin, MenuItem item) {
         this.plugin = plugin;
-        this.item = item;
-        this.info = item.getInfo();
+        this.info = (this.item = item).getInfo();
     }
 
     public ItemStack apply(MenuSession session, ItemStack item, Function<ItemStack, ItemStack> func) {
@@ -53,15 +52,10 @@ public class ItemPopup {
 
     public void show(MenuSession session, Material type, int data, String message, long time) {
         State state = session.compute(property, State::new);
-        state.type = type;
-        state.data = (short) data;
-        state.message = message;
-        state.changed = true;
+        state.update(type, (short) data, message);
         item.requestUpdate(ItemInfo.DelayType.REFRESH);
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            state.type = null;
-            state.message = null;
-            state.changed = true;
+            state.update(null, (short) 0, null);
             item.requestUpdate(ItemInfo.DelayType.REFRESH);
         }, time);
     }
@@ -71,7 +65,7 @@ public class ItemPopup {
         return state == null || state.type == null;
     }
 
-    private static class State {
+    private class State {
 
         private Material type;
         private short data;

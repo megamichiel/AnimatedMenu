@@ -10,10 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 
 import static java.util.Locale.ENGLISH;
 
-public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlugin, Player>>> {
+public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlugin, Player>>> implements Consumer<Player> {
 
     private final AnimatedMenuPlugin plugin;
     
@@ -79,11 +80,15 @@ public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlu
         return section.getList(key);
     }
 
-    public void execute(Player p) {
+    @Override
+    public void accept(Player player) {
         List<BiPredicate<AnimatedMenuPlugin, Player>> commands = next();
-        if (commands != null)
-            for (BiPredicate<AnimatedMenuPlugin, Player> predicate : commands)
-                if (!predicate.test(plugin, p))
+        if (commands != null) {
+            for (BiPredicate<AnimatedMenuPlugin, Player> predicate : commands) {
+                if (!predicate.test(plugin, player)) {
                     break;
+                }
+            }
+        }
     }
 }

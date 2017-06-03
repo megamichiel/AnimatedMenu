@@ -6,7 +6,6 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.menu.item.ItemInfo;
 import me.megamichiel.animatedmenu.util.Delay;
-import me.megamichiel.animationlib.animation.Animatable;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
@@ -15,8 +14,9 @@ import org.bukkit.inventory.ItemStack;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public abstract class AbstractMenu {
 
@@ -25,7 +25,7 @@ public abstract class AbstractMenu {
     private final MenuType menuType;
     private final MenuGrid menuGrid;
 
-    private final Animatable<OpenAnimation> openAnimation;
+    private Function<Player, OpenAnimation> openAnimation;
 
     private MenuItem emptyItem;
     private boolean singleEmptyItem;
@@ -35,17 +35,15 @@ public abstract class AbstractMenu {
     private final Map<Player, MenuSession> sessions = new ConcurrentHashMap<>();
     private final MenuItem.SlotContext slotContext;
 
-    protected AbstractMenu(AnimatedMenuPlugin plugin, String name, MenuType menuType) {
-        this.plugin = plugin;
+    protected AbstractMenu(String name, MenuType menuType) {
         this.name = name;
         this.menuType = menuType;
         menuGrid = new MenuGrid(this);
-        openAnimation = Animatable.of(null, plugin::parseOpenAnimation);
-        slotContext = new MenuItem.SlotContext(plugin, menuType.getSize(), null);
+        slotContext = new MenuItem.SlotContext(plugin = AnimatedMenuPlugin.get(), menuType.getSize(), null);
     }
 
-    public Animatable<OpenAnimation> getOpenAnimation() {
-        return openAnimation;
+    public void setOpenAnimation(Function<Player, OpenAnimation> openAnimation) {
+        this.openAnimation = openAnimation;
     }
 
     public void setClickDelay(String delayMessage, long delay) {
@@ -88,16 +86,15 @@ public abstract class AbstractMenu {
         ItemStack[] contents = new ItemStack[inv.getSize()];
         BiMap<Integer, MenuItem> items = HashBiMap.create();
 
-        OpenAnimation anim = openAnimation.next();
-        OpenAnimation.Animation opening = anim != null ? anim.newAnimation(menuType, update -> {
-            for (int i : update) {
-                if (i >= 0 && contents[i] != null) {
-                    inv.setItem(i, contents[i]);
-                }
+        BooleanSupplier animation = null;
+        if (openAnimation != null) {
+            OpenAnimation anim = openAnimation.apply(who);
+            if (anim != null) {
+                animation = () -> anim.tick(i -> inv.setItem(i, contents[i]));
             }
-        }) : null;
+        }
 
-        MenuSession session = new MenuSession(plugin, this, who, inv, items.inverse(), opening);
+        MenuSession session = new MenuSession(this, who, inv, items.inverse(), animation);
 
         action.accept(session);
 
@@ -107,7 +104,9 @@ public abstract class AbstractMenu {
         for (MenuItem item : menuGrid) {
             ItemInfo info = item.getInfo();
             ItemStack stack = info.load(who, session);
-            if (stack == null || (slot = ctx.getSlot(who, session, info, stack)) < 0) continue; // Hidden or whatever
+            if (stack == null || (slot = ctx.getSlot(who, session, info, stack)) < 0) {
+                continue; // Hidden or whatever
+            }
             items.forcePut(slot, item);
             contents[slot] = stack;
         }
@@ -115,12 +114,14 @@ public abstract class AbstractMenu {
             ItemInfo info = emptyItem.getInfo();
             boolean single = singleEmptyItem;
             ItemStack item = single ? info.load(who, session) : null;
-            for (int i = 0; i < contents.length; i++) {
-                if (contents[i] == null) contents[i] = single ? item : info.load(who, session);
+            for (int i = 0; i < contents.length; ++i) {
+                if (contents[i] == null) {
+                    contents[i] = single ? item : info.load(who, session);
+                }
             }
         }
 
-        if (anim == null) {
+        if (animation == null) {
             inv.setContents(contents);
         }
 
@@ -129,8 +130,8 @@ public abstract class AbstractMenu {
 
     public void click(Player player, int slot, ClickType type) {
         MenuSession session = sessions.get(player);
-        if (session != null && session.opening == null) {
-            MenuItem item = session.items.inverse().get(slot);
+        if (session != null && !session.isOpening()) {
+            MenuItem item = session.getItem(slot);
             if (item == null && (item = emptyItem) == null) return;
 
             Delay delay = clickDelay;
@@ -146,9 +147,9 @@ public abstract class AbstractMenu {
 
     void itemRemoved(MenuItem item) {
         sessions.forEach((player, session) -> {
-            Integer slot = session.items.remove(item);
+            Integer slot = session.getItems().remove(item);
             if (slot != null) {
-                session.inventory.setItem(slot, emptyItem != null ? emptyItem.getInfo().load(player, session) : null);
+                session.getInventory().setItem(slot, emptyItem != null ? emptyItem.getInfo().load(player, session) : null);
             }
         });
     }
@@ -161,16 +162,12 @@ public abstract class AbstractMenu {
         return sessions.containsKey(player);
     }
 
-    public void forEachSession(BiConsumer<? super Player, ? super MenuSession> action) {
-        sessions.forEach(action);
+    public void forEachSession(Consumer<? super MenuSession> action) {
+        sessions.values().forEach(action);
     }
 
     public void forEachViewer(Consumer<? super Player> action) {
         sessions.keySet().forEach(action);
-    }
-
-    public void forEach(BiConsumer<? super Player, ? super Inventory> action) {
-        sessions.forEach((p, session) -> action.accept(p, session.inventory));
     }
 
     public void closeAll() {
@@ -184,31 +181,25 @@ public abstract class AbstractMenu {
                      changed = menuGrid.tick(emptyChanged);
 
         if (!changed) { // Nothing's changed, only update open animations
-            for (MenuSession session : sessions.values()) {
-                if (session.opening != null && session.opening.tick()) {
-                    session.opening = null;
-                }
-            }
+            sessions.values().forEach(MenuSession::tick);
             return;
         }
 
         MenuItem.SlotContext ctx = slotContext;
         sessions.forEach((player, session) -> {
-            if (session.opening != null) {
-                if (session.opening.tick()) session.opening = null;
-                else return;
+            if (session.tick()) {
+                return;
             }
-            BiMap<MenuItem, Integer> itemToSlot = session.items;
+            BiMap<MenuItem, Integer> itemToSlot = session.getItems();
             ctx.setItems(itemToSlot.inverse());
-            Inventory inv = session.inventory;
+            Inventory inv = session.getInventory();
             ItemInfo info;
             ItemStack stack, newStack;
             int slot;
             for (MenuItem item : menuGrid) {
                 info = item.getInfo();
                 Integer old = itemToSlot.get(item);
-                if (old != null) { // Item exists in the inventory
-                    stack = inv.getItem(slot = old);
+                if (old != null && (stack = inv.getItem(slot = old)) != null) { // Item exists in the inventory
                     try {
                         newStack = item.canRefresh() ? info.apply(player, session, stack) : stack;
                     } catch (Exception ex) {

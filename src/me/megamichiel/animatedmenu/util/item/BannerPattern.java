@@ -1,4 +1,4 @@
-package me.megamichiel.animatedmenu.util;
+package me.megamichiel.animatedmenu.util.item;
 
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.bukkit.nbt.NBTModifiers;
@@ -6,6 +6,7 @@ import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
 import org.bukkit.DyeColor;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.BannerMeta;
 
 import java.util.ArrayList;
@@ -15,7 +16,7 @@ import java.util.Map;
 
 
 @SuppressWarnings("deprecation")
-public class BannerPattern {
+public class BannerPattern implements MaterialSpecific.Action<BannerMeta> {
 
     public static final BannerPattern EMPTY = new BannerPattern(null, "");
 
@@ -54,7 +55,8 @@ public class BannerPattern {
         } else baseColor = null;
     }
 
-    public void apply(BannerMeta meta) {
+    @Override
+    public void apply(Player player, BannerMeta meta) {
         if (baseColor != null) {
             meta.setBaseColor(baseColor.getColor());
             meta.setPatterns(patterns);

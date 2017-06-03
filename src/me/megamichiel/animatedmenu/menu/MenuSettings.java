@@ -58,23 +58,24 @@ public class MenuSettings {
 
     public boolean giveOpener(PlayerInventory inv, boolean add) {
         if (opener != null) {
-            if (add) inv.addItem(opener);
-            else if (openerJoinSlot != -1) inv.setItem(openerJoinSlot, opener);
+            if (add) {
+                inv.addItem(opener);
+            } else if (openerJoinSlot >= 0) {
+                inv.setItem(openerJoinSlot, opener);
+            }
             return true;
         }
         return false;
     }
 
     public boolean canOpenWith(MaterialData data, int amount, ItemMeta meta) {
-        if (opener == null) return false;
-        if (!data.equals(opener.getData()) || amount < opener.getAmount())
+        if (opener == null || !data.equals(opener.getData()) || amount < opener.getAmount()) {
             return false;
+        }
         if (openerName || openerLore) {
             ItemMeta im = opener.getItemMeta();
-            if (openerName && !im.getDisplayName().equals(meta.getDisplayName()))
-                return false;
-            if (openerLore && !im.getLore().equals(meta.getLore()))
-                return false;
+            return (!openerName || im.getDisplayName().equals(meta.getDisplayName())) &&
+                   (!openerLore || im.getLore().equals(meta.getLore()));
         }
         return true;
     }

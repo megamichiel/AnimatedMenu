@@ -30,6 +30,7 @@ Menus are where it all starts in the plugin
 - [Admin](#user-content-admin)
 - [Require-Other](#user-content-require-other)
 - [Save-Navigation](#user-content-save-navigation)
+- [Auto-Close](#user-content-auto-close)
 
 ### Standard features ###
 - #### Menu-Name ####
@@ -177,4 +178,17 @@ Empty-Item:
   When set to 'true', any navigation to other menus will be saved  
   This will make a player open the last opened menu when opening this menu  
   If you have some sort of paged shop, this can be quite useful  
+
+- #### Auto-Close ####
+  Specify a time after which to automatically close the menu.  
+  You can use placeholders in items and whatnot to get the time left:  
+    - {autoclose_hoursleft}
+    - {autoclose_minutesleft}
+    - {autoclose_secondsleft}
+    - {autoclose_ticksleft}
+
+  You can either specify the amount of ticks, or a time:  
+    - 1200 equates to 20 * 60 ticks = 1 minute
+    - 3h6m5s equates to 3 hours, 6 minutes and 5 seconds
+
 

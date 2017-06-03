@@ -1,11 +1,11 @@
 package me.megamichiel.animatedmenu;
 
-import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.command.*;
 import me.megamichiel.animatedmenu.menu.AnimatedMenu;
 import me.megamichiel.animatedmenu.menu.MenuRegistry;
 import me.megamichiel.animatedmenu.menu.config.MenuLoader;
 import me.megamichiel.animatedmenu.util.*;
+import me.megamichiel.animatedmenu.util.item.MaterialParser;
 import me.megamichiel.animationlib.AnimLib;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
@@ -52,22 +52,25 @@ import static org.bukkit.ChatColor.*;
 
 public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNagger, PipelineContext {
 
-    protected final Map<String, Command<?, ?>> commands = new HashMap<>();
+    private static AnimatedMenuPlugin instance;
 
-    private final AnimatedMenuCommand command = new AnimatedMenuCommand(this);
+    public static AnimatedMenuPlugin get() {
+        return instance;
+    }
+
+    protected final Map<String, Command<?, ?>> commands = new HashMap<>();
+    protected final AnimatedMenuCommand command = new AnimatedMenuCommand(this);
+    protected final MenuLoader menuLoader;
+
     private final MenuRegistry menuRegistry;
-    private final MenuLoader menuLoader;
     private final Set<Delay> delays = Collections.newSetFromMap(new WeakHashMap<>());
     private final Map<String, Map<UUID, Long>> loadedDelays = new HashMap<>();
-
-    private final RemoteConnections connections = new RemoteConnections(this);
-    private boolean warnOfflineServers = false;
-    
     private final List<BukkitTask> asyncTasks = new ArrayList<>();
-    
-    private String update;
-
     private final ConfigManager<YamlConfig> config = ConfigManager.of(YamlConfig::new);
+    private final RemoteConnections connections = new RemoteConnections(this);
+
+    private boolean warnOfflineServers = false;
+    private String update;
     private boolean runningSync;
 
     public AnimatedMenuPlugin() {
@@ -75,6 +78,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     }
 
     protected AnimatedMenuPlugin(Function<AnimatedMenuPlugin, MenuRegistry> registry, Function<AnimatedMenuPlugin, MenuLoader> loader) {
+        instance = this;
+
         menuRegistry = registry.apply(this);
         menuLoader = loader.apply(this);
 
@@ -122,7 +127,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         } else asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
     }
 
-    private static final String ANIMLIB_VERSION = "1.6.1";
+    private static final String ANIMLIB_VERSION = "1.6.2";
 
     private boolean checkAnimationLib() {
         Plugin plugin = getServer().getPluginManager().getPlugin("AnimationLib");
@@ -283,8 +288,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 if (ip != null) {
                     int index = ip.indexOf(':');
                     int port;
-                    if (index == -1) port = 25565;
-                    else {
+                    if (index == -1) {
+                        port = 25565;
+                    } else {
                         port = Integer.parseInt(ip.substring(index + 1));
                         ip = ip.substring(0, index);
                     }
@@ -307,7 +313,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         saveDefaultConfig();
         reloadConfig();
 
-        connections.clear();
         connections.cancel();
         loadConfig();
         
@@ -402,8 +407,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             ItemMeta meta = e.getItem().getItemMeta();
             for (AnimatedMenu menu : menuRegistry) {
                 if (menu.getSettings().canOpenWith(data, amount, meta)) {
-                    menu.open(p);
                     e.setCancelled(true);
+                    post(() -> menu.open(p), SYNC);
                     return;
                 }
             }
@@ -433,46 +438,15 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     public Delay addPlayerDelay(String id, String delayMessage, long time) {
         Delay delay = new Delay(this, id, delayMessage, time);
         Map<UUID, Long> map = loadedDelays.remove(id);
-        if (map != null) delay.load(map);
+        if (map != null) {
+            delay.load(map);
+        }
         delays.add(delay);
         return delay;
     }
 
-    public OpenAnimation.Type resolveAnimationType(String name) {
-        try {
-            return OpenAnimation.DefaultType.valueOf(name);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
-
-    public OpenAnimation parseOpenAnimation(Nagger nagger, String str) {
-        try {
-            String type;
-            double speed;
-
-            int i = str.indexOf(':');
-            if (i == -1) {
-                type = str;
-                speed = 1;
-            } else {
-                type = str.substring(0, i);
-                speed = Double.parseDouble(str.substring(i + 1));
-                if (speed <= 0) speed = 1;
-            }
-            OpenAnimation.Type animationType = resolveAnimationType(type.toUpperCase(Locale.ENGLISH).replace('-', '_'));
-            if (animationType == null) {
-                nagger.nag("Unknown animation type: " + type);
-                return null;
-            }
-            return animationType.newAnimation(speed);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
-
     public int parseTime(AbstractConfig config, String key, int def) {
-        return parseTime(this, config.getInt(key, def));
+        return parseTime(this, config.get(key, def));
     }
 
     public int parseTime(Nagger nagger, Object o) {
@@ -532,16 +506,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         commands.put(command.getPrefix(), command);
     }
 
-    public AnimatedMenuCommand getCommand() {
-        return command;
-    }
-
     public MenuRegistry getMenuRegistry() {
         return menuRegistry;
-    }
-
-    public MenuLoader getMenuLoader() {
-        return menuLoader;
     }
 
     RemoteConnections getConnections() {

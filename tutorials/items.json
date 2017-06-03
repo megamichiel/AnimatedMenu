@@ -18,7 +18,7 @@
       "values": [
         {
           "name": "Slot",
-          "options": "!/{",
+          "options": "!/{@",
           "description": [
             "The slot to put this item in, between 1 and the menu's size.",
             "Instead of a slot, format '<X>, <Y>' is also supported. See #X and #Y for info on those values",
@@ -144,6 +144,16 @@
             "Whether this item should be unbreakable or not",
             "Could be useful for custom item textures per durability",
             "NOTE: When you have the Plus version, you should use #NBT instead (this won't even work)"
+          ]
+        }, {
+          "name": "Fireworks-Color",
+          "options": "+",
+          "description": [
+            "Firework charge color, can be either:",
+            [
+              "*<red>, <green>, <blue>* where each color is from 0 to 255",
+              "*RRGGBB* where each position ranges from 0-9 and A-F"
+            ]
           ]
         }, {
           "name": "Click-Handlers",

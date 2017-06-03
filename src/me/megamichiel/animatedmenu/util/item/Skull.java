@@ -1,4 +1,4 @@
-package me.megamichiel.animatedmenu.util;
+package me.megamichiel.animatedmenu.util.item;
 
 import com.google.common.base.Predicate;
 import com.google.common.io.ByteStreams;
@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
-public class Skull {
+public class Skull implements MaterialSpecific.Action<SkullMeta> {
     
     private static final Field skullProfile;
     private static final Method fillProfile, serializeProfile;
@@ -83,7 +83,8 @@ public class Skull {
     public Skull(Nagger nagger, String name) {
         this.name = StringBundle.parse(nagger, name);
     }
-    
+
+    @Override
     public void apply(Player player, SkullMeta meta) {
         String name = this.name.toString(player);
         GameProfile profile = cachedProfiles.get(name);

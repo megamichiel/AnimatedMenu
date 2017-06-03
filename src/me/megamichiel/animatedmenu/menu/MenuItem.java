@@ -147,6 +147,10 @@ public final class MenuItem {
             return items.get(slot);
         }
 
+        public int getSize() {
+            return amounts.length;
+        }
+
         public int[] getAmounts() {
             return amounts;
         }
@@ -170,7 +174,7 @@ public final class MenuItem {
                 weight = item.getWeight(player, session, this);
                 slot = item.getSlot(player, session, this);
             } catch (Exception ex) {
-                session.getPlugin().nag("Failed to update slot of " + item + " in menu " + session.getMenu().getName() + "!");
+                nagger.nag("Failed to update slot of " + item + " in menu " + session.getMenu().getName() + "!");
                 ex.printStackTrace();
                 return -1;
             }
@@ -188,7 +192,7 @@ public final class MenuItem {
             try {
                 weights[slot] = info.getWeight(player, session, this);
             } catch (Exception ex) {
-                session.getPlugin().nag("Failed to update weight of " + info + " in menu " + session.getMenu().getName() + "!");
+                nagger.nag("Failed to update weight of " + info + " in menu " + session.getMenu().getName() + "!");
                 ex.printStackTrace();
             }
         }

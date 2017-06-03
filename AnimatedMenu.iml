@@ -20,12 +20,11 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="BungeeCord" level="project" />
-    <orderEntry type="library" name="PlaceholderAPI" level="project" />
     <orderEntry type="library" name="PlayerPoints" level="project" />
     <orderEntry type="library" name="Vault" level="project" />
     <orderEntry type="library" name="AnimationLib" level="project" />
     <orderEntry type="library" name="craftbukkit-1.11" level="project" />
     <orderEntry type="library" name="Essentials-2.x-SNAPSHOT" level="project" />
-    <orderEntry type="library" name="MVdWPlaceholderAPI" level="project" />
+    <orderEntry type="library" name="GemsEconomy" level="project" />
   </component>
 </module>

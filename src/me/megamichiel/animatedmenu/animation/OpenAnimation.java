@@ -1,65 +1,59 @@
 package me.megamichiel.animatedmenu.animation;
 
 import me.megamichiel.animatedmenu.menu.MenuType;
-import org.bukkit.util.NumberConversions;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
 
 import static me.megamichiel.animationlib.util.ArrayUtils.flip;
+import static org.bukkit.util.NumberConversions.floor;
 
 public class OpenAnimation {
 
-    private final Type type;
+    private final int[][] frames;
     private final double speed;
 
-    OpenAnimation(Type type, double speed) {
-        this.type = type;
+    private double frame = 0;
+
+    private OpenAnimation(int[][] frames, double speed) {
+        this.frames = frames;
         this.speed = speed;
     }
 
-    OpenAnimation(Type type) {
-        this(type, 1.0);
+    OpenAnimation(Type type, MenuType menuType, double speed) {
+        this(type.sort(menuType), speed);
     }
 
-    public Animation newAnimation(MenuType menuType, Consumer<int[]> action) {
-        return type == null ? null : new Animation(menuType, action);
+    public OpenAnimation copy() {
+        return new OpenAnimation(frames, speed);
     }
 
-    public class Animation {
-
-        private final int[][] frames;
-        private final Consumer<int[]> action;
-        private double frame = 0;
-
-        private Animation(MenuType menuType, Consumer<int[]> action) {
-            frames = type.sort(menuType);
-            this.action = action;
+    public boolean tick(IntConsumer action) {
+        int i = floor(frame),
+           to = Math.min(floor(frame += speed), frames.length);
+        while (i < to) {
+            for (int j : frames[i++]) {
+                if (j >= 0) {
+                    action.accept(j);
+                }
+            }
         }
-
-        public boolean tick() {
-            int i = NumberConversions.ceil(frame);
-            frame += speed;
-            do {
-                if (i == frames.length) return true;
-                action.accept(frames[i]);
-            } while (++i <= frame);
-            return i == frames.length;
-        }
+        return i == frames.length;
     }
 
     public interface Type {
+
         int[][] sort(MenuType type);
 
-        default OpenAnimation newAnimation() {
-            return new OpenAnimation(this);
+        default OpenAnimation newAnimation(MenuType menuType) {
+            return new OpenAnimation(this, menuType, 1.0);
         }
 
-        default OpenAnimation newAnimation(double speed) {
-            return new OpenAnimation(this, speed);
+        default OpenAnimation newAnimation(MenuType menuType, double speed) {
+            return new OpenAnimation(this, menuType, speed);
         }
     }
 

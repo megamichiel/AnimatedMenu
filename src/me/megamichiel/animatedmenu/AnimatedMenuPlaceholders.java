@@ -3,9 +3,9 @@ package me.megamichiel.animatedmenu;
 import com.earth2me.essentials.IEssentials;
 import com.earth2me.essentials.PlayerList;
 import com.earth2me.essentials.User;
-import me.clip.placeholderapi.PlaceholderAPI;
-import me.clip.placeholderapi.PlaceholderHook;
 import me.megamichiel.animatedmenu.util.RemoteConnections.ServerInfo;
+import me.megamichiel.animationlib.bukkit.placeholder.MVdWPlaceholder;
+import me.megamichiel.animationlib.bukkit.placeholder.PapiPlaceholder;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -21,24 +21,8 @@ public class AnimatedMenuPlaceholders implements BiFunction<Player, String, Stri
     
     static void register(AnimatedMenuPlugin plugin) {
         AnimatedMenuPlaceholders placeholders = new AnimatedMenuPlaceholders(plugin);
-        try {
-            PlaceholderAPI.registerPlaceholderHook("animatedmenu", new PlaceholderHook() {
-                @Override
-                public String onPlaceholderRequest(Player player, String arg) {
-                    return placeholders.apply(player, arg);
-                }
-            });
-        } catch (NoClassDefFoundError err) {
-            // No PlaceholderAPI, but that's okay
-        }
-        if (plugin.getServer().getPluginManager().isPluginEnabled("MVdWPlaceholderAPI")) {
-            try {
-                be.maximvdw.placeholderapi.PlaceholderAPI.registerPlaceholder(plugin, "animatedmenu",
-                        event -> placeholders.apply(event.getPlayer(), event.getPlaceholder()));
-            } catch (NoClassDefFoundError err) {
-                // No MVdWPlaceholderAPI, but that is also okay
-            }
-        }
+        PapiPlaceholder.register(plugin, "animatedmenu", placeholders);
+        MVdWPlaceholder.register(plugin, "animatedmenu", placeholders);
     }
     
     private final AnimatedMenuPlugin plugin;

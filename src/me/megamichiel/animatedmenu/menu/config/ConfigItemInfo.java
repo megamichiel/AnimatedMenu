@@ -2,12 +2,16 @@ package me.megamichiel.animatedmenu.menu.config;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
-import me.megamichiel.animatedmenu.menu.*;
+import me.megamichiel.animatedmenu.menu.AbstractMenu;
+import me.megamichiel.animatedmenu.menu.MenuItem;
+import me.megamichiel.animatedmenu.menu.MenuSession;
+import me.megamichiel.animatedmenu.menu.MenuType;
 import me.megamichiel.animatedmenu.menu.item.ItemInfo;
-import me.megamichiel.animatedmenu.util.BannerPattern;
 import me.megamichiel.animatedmenu.util.Flag;
-import me.megamichiel.animatedmenu.util.MaterialParser;
-import me.megamichiel.animatedmenu.util.Skull;
+import me.megamichiel.animatedmenu.util.item.BannerPattern;
+import me.megamichiel.animatedmenu.util.item.MaterialParser;
+import me.megamichiel.animatedmenu.util.item.MaterialSpecific;
+import me.megamichiel.animatedmenu.util.item.Skull;
 import me.megamichiel.animationlib.animation.Animatable;
 import me.megamichiel.animationlib.animation.AnimatedText;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
@@ -16,6 +20,7 @@ import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.FireworkEffect;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
@@ -55,7 +60,7 @@ public class ConfigItemInfo implements ItemInfo {
             try {
                 Class<?> spigot = Class.forName("org.bukkit.inventory.meta.ItemMeta$Spigot");
                 Method method = spigot.getDeclaredMethod("setUnbreakable", boolean.class),
-                       getSpigot = spigot.getEnclosingClass().getDeclaredMethod("spigot", spigot);
+                    getSpigot = spigot.getEnclosingClass().getDeclaredMethod("spigot", spigot);
                 action = meta -> {
                     try {
                         method.invoke(getSpigot.invoke(meta), true);
@@ -82,16 +87,13 @@ public class ConfigItemInfo implements ItemInfo {
     private final AnimatedLore lore = new AnimatedLore();
 
     private final Map<Enchantment, Integer> enchantments = new HashMap<>();
-    private final Color leatherArmorColor;
-    private final Skull skull;
-    private final EntityType eggType;
-    private final BannerPattern bannerPattern;
+    private final MaterialSpecific specific = new MaterialSpecific();
     private final ItemFlag[] itemFlags;
     private final boolean unbreakable;
 
     private final ClickHandler clickListener;
 
-    ConfigItemInfo(AnimatedMenuPlugin plugin, AbstractMenu menu, String name, AbstractConfig section) {
+    ConfigItemInfo(AnimatedMenuPlugin plugin, MenuLoader loader, AbstractMenu menu, String name, AbstractConfig section) {
         this.plugin = plugin;
         this.name = name;
 
@@ -133,32 +135,51 @@ public class ConfigItemInfo implements ItemInfo {
             }
             int level = 1;
             try {
-                if(split.length == 2) level = parseInt(split[1]);
+                if (split.length == 2) {
+                    level = parseInt(split[1]);
+                }
             } catch (NumberFormatException ex) {
                 plugin.nag("Invalid enchantment level in " + str + "!");
             }
             enchantments.put(ench, level);
         }
-        leatherArmorColor = getColor(section.getString("color"));
+        Color leatherArmorColor = getColor(section.getString("color"));
+        if (leatherArmorColor != null) {
+            specific.add(LeatherArmorMeta.class, (player, meta) -> meta.setColor(leatherArmorColor));
+        }
         String skullOwner = section.getString("skull-owner", section.getString("skullowner"));
-        skull = skullOwner == null ? null : new Skull(plugin, skullOwner);
-        EntityType eggType;
+        if (skullOwner != null) {
+            specific.add(SkullMeta.class, new Skull(plugin, skullOwner));
+        }
         try {
             Class.forName("org.bukkit.inventory.meta.SpawnEggMeta");
-            eggType = EntityType.valueOf(section.getString("egg-type").toUpperCase(Locale.ENGLISH).replace('-', '_'));
-        } catch (NullPointerException | IllegalArgumentException | ClassNotFoundException ex) {
-            eggType = null;
+            EntityType eggType = EntityType.valueOf(section.getString("egg-type").toUpperCase(Locale.ENGLISH).replace('-', '_'));
+            specific.add(SpawnEggMeta.class, (player, meta) -> meta.setSpawnedType(eggType));
+        } catch (NullPointerException | ClassNotFoundException ex) {
+            // No egg type ;c
+        } catch (IllegalArgumentException ex) {
+            plugin.nag("Unknown egg type: " + section.getStringList("egg-type"));
         }
-        this.eggType = eggType;
-        BannerPattern pattern = BannerPattern.EMPTY;
+
         try {
             String s = section.getString("banner-pattern", section.getString("bannerpattern"));
-            if (s != null) pattern = new BannerPattern(plugin, s);
+            if (s != null) {
+                specific.add(BannerMeta.class, new BannerPattern(plugin, s));
+            }
         } catch (IllegalArgumentException ex) {
             plugin.nag("Failed to parse banner pattern '" + section.getString("banner-pattern", section.getString("bannerpattern")) + "'!");
             plugin.nag(ex.getMessage());
         }
-        bannerPattern = pattern;
+
+        String fireworks = section.getString("fireworks-color");
+        if (fireworks != null) {
+            Color color = getColor(fireworks);
+            if (color != null) {
+                FireworkEffect effect = FireworkEffect.builder().withColor(color).build();
+                specific.add(FireworkEffectMeta.class, (player, meta) -> meta.setEffect(effect));
+            }
+        }
+
         int hideFlags = 0;
         if (section.isInt("hide-flags")) {
             hideFlags = section.getInt("hide-flags");
@@ -190,7 +211,7 @@ public class ConfigItemInfo implements ItemInfo {
         }
         unbreakable = Flag.parseBoolean(section.getString("unbreakable"));
 
-        clickListener = new ClickHandler(plugin, menu.getName(), name, section);
+        clickListener = new ClickHandler(loader, menu.getName(), name, section);
     }
 
     @Override
@@ -221,30 +242,32 @@ public class ConfigItemInfo implements ItemInfo {
 
     @Override
     public ItemStack load(Player player, MenuSession session) {
-        if (!viewPredicate.test(player)) return null;
+        if (!viewPredicate.test(player)) {
+            return null;
+        }
         ItemStack item = this.material.get().invoke(plugin, player).clone();
-        if (item.getType() == Material.AIR) return null;
+        if (item.getType() == Material.AIR) {
+            return null;
+        }
 
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return item; // Safety, for air
+        if (meta == null) {
+            return item; // Safety, for air
+        }
 
         meta.setDisplayName(displayName.get().toString(player));
-        if (!lore.isEmpty()) meta.setLore(lore.get().stream(plugin, player).collect(Collectors.toList()));
-
-        if (meta instanceof LeatherArmorMeta && leatherArmorColor != null) {
-            ((LeatherArmorMeta) meta).setColor(leatherArmorColor);
-        } else if (meta instanceof SkullMeta && skull != null) {
-            skull.apply(player, (SkullMeta) meta);
-        } else if (eggType != null && meta instanceof SpawnEggMeta) {
-            ((SpawnEggMeta) meta).setSpawnedType(eggType);
-        } else if (meta instanceof BannerMeta) {
-            bannerPattern.apply((BannerMeta) meta);
+        if (!lore.isEmpty()) {
+            meta.setLore(lore.get().stream(plugin, player).collect(Collectors.toList()));
         }
+
+        specific.apply(player, meta);
         meta.addItemFlags(itemFlags);
 
         this.enchantments.forEach((ench, lvl) -> meta.addEnchant(ench, lvl, true));
 
-        if (unbreakable) UNBREAKABLE.accept(meta);
+        if (unbreakable) {
+            UNBREAKABLE.accept(meta);
+        }
 
         item.setItemMeta(meta);
 
@@ -265,15 +288,7 @@ public class ConfigItemInfo implements ItemInfo {
 
         meta.setDisplayName(displayName.get().toString(player));
         meta.setLore(lore.get().stream(plugin, player).collect(Collectors.toList()));
-        if (meta instanceof LeatherArmorMeta && leatherArmorColor != null) {
-            ((LeatherArmorMeta) meta).setColor(leatherArmorColor);
-        } else if (meta instanceof SkullMeta && skull != null) {
-            skull.apply(player, (SkullMeta) meta);
-        } else if (eggType != null && meta instanceof SpawnEggMeta) {
-            ((SpawnEggMeta) meta).setSpawnedType(eggType);
-        } else if (meta instanceof BannerMeta) {
-            bannerPattern.apply((BannerMeta) meta);
-        }
+        specific.apply(player, meta);
 
         item.setItemMeta(meta);
 
@@ -296,16 +311,22 @@ public class ConfigItemInfo implements ItemInfo {
 
     private static final Pattern COLOR_PATTERN = Pattern.compile("([0-9]+),\\s*([0-9]+),\\s*([0-9]+)");
 
-    private static Color getColor(String val) {
-        if(val == null) return null;
+    public static Color getColor(String val) {
+        if(val == null) {
+            return null;
+        }
         Matcher matcher = COLOR_PATTERN.matcher(val);
         Color color;
         if (matcher.matches()) {
-            color = Color.fromRGB(parseInt(matcher.group(1)), parseInt(matcher.group(2)), parseInt(matcher.group(3)));
-        } else try {
-            color = Color.fromRGB(parseInt(val, 16));
-        } catch (NumberFormatException ex) {
-            return null;
+            color = Color.fromRGB(parseInt(matcher.group(1)),
+                                  parseInt(matcher.group(2)),
+                                  parseInt(matcher.group(3)));
+        } else {
+            try {
+                color = Color.fromRGB(parseInt(val, 16));
+            } catch (NumberFormatException ex) {
+                return null;
+            }
         }
         return color.equals(Bukkit.getItemFactory().getDefaultLeatherColor()) ? null : color;
     }

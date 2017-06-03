@@ -36,6 +36,8 @@ Click-Handlers:
 - [Price-Message](#user-content-price-message)
 - [Points](#user-content-points)
 - [Points-Message](#user-content-points-message)
+- [Gems](#user-content-gems)
+- [Gems-Message](#user-content-gems-message)
 - [Exp](#user-content-exp)
 - [Exp-Message](#user-content-exp-message)
 - [Permission](#user-content-permission)
@@ -86,6 +88,16 @@ Click-Handlers:
   Default value: '&cYou don't have enough points for that!'  
   \------------------------------  
   The message to send when the player does not have [Points](#user-content-points)  
+
+- #### Gems ####
+  The amount of gems required for this handler  
+  GemsEconomy is needed for this  
+
+- #### Gems-Message ####
+  Supports placeholders  
+  Default value: '&cYou don't have enough gems for that!'  
+  \------------------------------  
+  The message to send when the player does not have [Gems](#user-content-gems)  
 
 - #### Exp ####
   The amount of exp required to use this item.  

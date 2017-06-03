@@ -39,7 +39,8 @@ public class ClickHandler {
                 protected void take(AnimatedMenuPlugin plugin, Player player, Double value) {
                     PluginCurrency.VAULT.take(player, value);
                 }
-            }, new Purchase<Integer>("points", "&cYou don't have enough points for that!") {
+            },
+            new Purchase<Integer>("points", "&cYou don't have enough points for that!") {
                 @Override
                 protected Integer parse(AnimatedMenuPlugin plugin, String value) {
                     if (!PluginCurrency.PLAYER_POINTS.isAvailable()) return null;
@@ -60,7 +61,30 @@ public class ClickHandler {
                 protected void take(AnimatedMenuPlugin plugin, Player player, Integer value) {
                     PluginCurrency.PLAYER_POINTS.take(player, value);
                 }
-            }, new ClickHandler.Purchase<Number>("exp", "&cYou don't have enough exp for that!") {
+            },
+            new Purchase<Integer>("gems", "&cYou don't have enough gems for that!") {
+                @Override
+                protected Integer parse(AnimatedMenuPlugin plugin, String value) {
+                    if (!PluginCurrency.GEMS.isAvailable()) return null;
+                    try {
+                        int i = Integer.parseInt(value);
+                        return i > 0 ? i : null;
+                    } catch (NumberFormatException ex) {
+                        return null;
+                    }
+                }
+
+                @Override
+                protected boolean test(AnimatedMenuPlugin plugin, Player player, Integer value) {
+                    return PluginCurrency.GEMS.has(player, value);
+                }
+
+                @Override
+                protected void take(AnimatedMenuPlugin plugin, Player player, Integer value) {
+                    PluginCurrency.GEMS.take(player, value);
+                }
+            },
+            new ClickHandler.Purchase<Number>("exp", "&cYou don't have enough exp for that!") {
                 @Override
                 protected Number parse(AnimatedMenuPlugin plugin, String value) {
                     try {
@@ -91,29 +115,34 @@ public class ClickHandler {
 
     private final List<Entry> entries = new ArrayList<>();
 
-    public ClickHandler(AnimatedMenuPlugin plugin, String menu,
-                        String item, AbstractConfig section) {
+    public ClickHandler(MenuLoader loader, String menu, String item, AbstractConfig section) {
         Map<String, Object> values = null;
         Object o = section.get("click-handlers");
         if (o != null) {
-            if (o instanceof AbstractConfig) values = ((AbstractConfig) o).values();
-            else if (o instanceof Collection) {
+            if (o instanceof AbstractConfig) {
+                values = ((AbstractConfig) o).values();
+            } else if (o instanceof Collection) {
                 int i = 0;
                 values = new HashMap<>();
-                for (Object obj : ((Collection) o))
+                for (Object obj : ((Collection) o)) {
                     values.put(Integer.toString(++i), obj);
+                }
             }
         } else if ((o = section.get("commands")) != null) {
-            if (o instanceof AbstractConfig) values = ((AbstractConfig) o).values();
-            else if (o instanceof List)
+            if (o instanceof AbstractConfig) {
+                values = ((AbstractConfig) o).values();
+            } else if (o instanceof List) {
                 (values = new HashMap<>()).put("(self)", section);
+            }
         }
         if (values != null) {
             values.forEach((key, value) -> {
                 if (value instanceof AbstractConfig) {
                     String path = key + "_" + item + "_" + menu;
-                    Entry entry = plugin.getMenuLoader().parseClickHandler(path, (AbstractConfig) value);
-                    if (entry != null) entries.add(entry);
+                    Entry entry = loader.parseClickHandler(path, (AbstractConfig) value);
+                    if (entry != null) {
+                        entries.add(entry);
+                    }
                 }
             });
         }
@@ -162,18 +191,26 @@ public class ClickHandler {
             }
             this.closeAction = closeAction;
 
-            long clickDelay = section.getInt("click-delay") * 50L;
+            long clickDelay = plugin.parseTime(section, "click-delay", 0) * 50L;
             if (clickDelay > 0) {
                 delay = plugin.addPlayerDelay("item_" + path, section.getString("delay-message"), clickDelay);
-            } else delay = null;
+            } else {
+                delay = null;
+            }
         }
 
         void click(Player player, ClickType type) {
-            if (!click.test(type)) return;
+            if (!click.test(type)) {
+                return;
+            }
             if (canClick(player)) {
-                clickExecutor.execute(player);
-                if (closeAction.onSuccess) player.closeInventory();
-            } else if (closeAction.onFailure) player.closeInventory();
+                clickExecutor.accept(player);
+                if (closeAction.onSuccess) {
+                    player.closeInventory();
+                }
+            } else if (closeAction.onFailure) {
+                player.closeInventory();
+            }
         }
 
         protected boolean canClick(Player player) {

@@ -36,7 +36,7 @@ Command: bemyadmin
 
 Open-Commands:
 - 'message: &aNow managing %menuadmin_player_name%'
-Close-Commands;
+Close-Commands:
 - 'message: &aNo longer managing %menuadmin_player_name%'
 
 #Item that should fill up all empty slots

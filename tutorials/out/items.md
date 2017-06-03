@@ -18,6 +18,7 @@ What are menus without items?
 - [Hide-Flags](#user-content-hide-flags)
 - [View-Permission](#user-content-view-permission)
 - [Unbreakable](#user-content-unbreakable)
+- [Fireworks-Color](#user-content-fireworks-color)
 - [Click-Handlers](#user-content-click-handlers)
 
 #### Plus features ####
@@ -33,7 +34,7 @@ What are menus without items?
 
 ### Standard features ###
 - #### Slot ####
-  Formula, Required, Supports special placeholders  
+  Animatable, Formula, Required, Supports special placeholders  
   \------------------------------  
   The slot to put this item in, between 1 and the menu's size.  
   Instead of a slot, format '&lt;X&gt;, &lt;Y&gt;' is also supported. See [X](#user-content-x) and [Y](#user-content-y) for info on those values  
@@ -149,6 +150,14 @@ What are menus without items?
   Whether this item should be unbreakable or not  
   Could be useful for custom item textures per durability  
   NOTE: When you have the Plus version, you should use [NBT](#user-content-nbt) instead (this won't even work)  
+
+- #### Fireworks-Color ####
+  Animatable with Plus version  
+  \------------------------------  
+  Firework charge color, can be either:  
+    - **&lt;red&gt;, &lt;green&gt;, &lt;blue&gt;** where each color is from 0 to 255
+    - **RRGGBB** where each position ranges from 0-9 and A-F
+
 
 - #### Click-Handlers ####
   Section of Key-Section pairs  
