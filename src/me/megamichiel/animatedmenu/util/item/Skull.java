@@ -161,7 +161,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
             } else if (length == 36) { // hyphen uuid
                 profile = new GameProfile(UUID.fromString(name), null);
             } else { // idk D:
-                cachedProfiles.put(name, new GameProfile(null, null));
+                cachedProfiles.put(name, new GameProfile(UUID.randomUUID(), null));
                 return;
             }
             cachedProfiles.put(name, profile);

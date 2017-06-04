@@ -6,6 +6,7 @@ import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.menu.item.ItemInfo;
 import me.megamichiel.animatedmenu.util.Delay;
+import me.megamichiel.animationlib.Nagger;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
@@ -33,13 +34,13 @@ public abstract class AbstractMenu {
     private Delay clickDelay;
 
     private final Map<Player, MenuSession> sessions = new ConcurrentHashMap<>();
-    private final MenuItem.SlotContext slotContext;
+    private final SlotContext slotContext;
 
     protected AbstractMenu(String name, MenuType menuType) {
         this.name = name;
         this.menuType = menuType;
         menuGrid = new MenuGrid(this);
-        slotContext = new MenuItem.SlotContext(plugin = AnimatedMenuPlugin.get(), menuType.getSize(), null);
+        slotContext = new SlotContext(plugin = AnimatedMenuPlugin.get(), menuType.getSize(), null);
     }
 
     public void setOpenAnimation(Function<Player, OpenAnimation> openAnimation) {
@@ -98,7 +99,12 @@ public abstract class AbstractMenu {
 
         action.accept(session);
 
-        MenuItem.SlotContext ctx = new MenuItem.SlotContext(plugin, inv.getSize(), items);
+        MenuItem.SlotContext ctx = new MenuItem.SlotContext(plugin, inv.getSize(), items) {
+            @Override
+            protected void moveItem(int from, int to) {
+                contents[to] = from == -1 ? null : contents[from];
+            }
+        };
 
         int slot;
         for (MenuItem item : menuGrid) {
@@ -185,14 +191,14 @@ public abstract class AbstractMenu {
             return;
         }
 
-        MenuItem.SlotContext ctx = slotContext;
+        SlotContext ctx = slotContext;
         sessions.forEach((player, session) -> {
             if (session.tick()) {
                 return;
             }
             BiMap<MenuItem, Integer> itemToSlot = session.getItems();
-            ctx.setItems(itemToSlot.inverse());
             Inventory inv = session.getInventory();
+            ctx.setItems(inv, itemToSlot.inverse());
             ItemInfo info;
             ItemStack stack, newStack;
             int slot;
@@ -269,5 +275,30 @@ public abstract class AbstractMenu {
         });
         menuGrid.forEach(MenuItem::postTick);
         if (emptyItem != null) emptyItem.postTick();
+    }
+
+    private static class SlotContext extends MenuItem.SlotContext {
+
+        private Inventory inv;
+
+        SlotContext(Nagger nagger, int length, BiMap<Integer, MenuItem> items) {
+            super(nagger, length, items);
+        }
+
+        @Override
+        void reset() {
+            super.reset();
+            inv = null;
+        }
+
+        void setItems(Inventory inv, BiMap<Integer, MenuItem> items) {
+            setItems(items);
+            this.inv = inv;
+        }
+
+        @Override
+        protected void moveItem(int from, int to) {
+            inv.setItem(to, from == -1 ? null : inv.getItem(from));
+        }
     }
 }

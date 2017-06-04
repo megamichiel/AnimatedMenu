@@ -82,7 +82,7 @@ public final class MenuItem {
         return obj == this || (obj instanceof MenuItem && ((MenuItem) obj).info == info);
     }
 
-    public static class SlotContext implements Nagger {
+    public static abstract class SlotContext implements Nagger {
 
         private static int[] AMOUNT_DEFAULTS = new int[54];
         private static double[] WEIGHT_DEFAULTS = new double[54];
@@ -132,19 +132,20 @@ public final class MenuItem {
             /* Update items map */
             while (end > slot) {
                 MenuItem left = items.get(end - 1);
-                if (left != null) items.forcePut(end, left);
-                else break;
-                --end;
+                if (left == null) {
+                    break;
+                }
+                moveItem(end - 1, end);
+                items.forcePut(end--, left);
             }
             items.remove(slot);
+            moveItem(slot, -1);
         }
+
+        protected abstract void moveItem(int from, int to);
 
         public BiMap<Integer, MenuItem> getItems() {
             return items;
-        }
-
-        public MenuItem getItem(int slot) {
-            return items.get(slot);
         }
 
         public int getSize() {
