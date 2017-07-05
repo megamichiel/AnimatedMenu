@@ -8,10 +8,10 @@ import me.megamichiel.animatedmenu.menu.item.ItemInfo;
 import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animationlib.Nagger;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +26,7 @@ public abstract class AbstractMenu {
     private final MenuType menuType;
     private final MenuGrid menuGrid;
 
-    private Function<Player, OpenAnimation> openAnimation;
+    private Function<? super Player, ? extends OpenAnimation> openAnimation;
 
     private MenuItem emptyItem;
     private boolean singleEmptyItem;
@@ -43,16 +43,20 @@ public abstract class AbstractMenu {
         slotContext = new SlotContext(plugin = AnimatedMenuPlugin.get(), menuType.getSize(), null);
     }
 
-    public void setOpenAnimation(Function<Player, OpenAnimation> openAnimation) {
+    public void setOpenAnimation(Function<? super Player, ? extends OpenAnimation> openAnimation) {
         this.openAnimation = openAnimation;
     }
 
-    public void setClickDelay(String delayMessage, long delay) {
+    public void setClickDelay(long delay, String delayMessage) {
         clickDelay = delay <= 0 ? null : plugin.addPlayerDelay("menu_" + name, delayMessage, delay);
     }
 
-    public boolean hasEmptyItem() {
-        return emptyItem != null;
+    public Delay getClickDelay() {
+        return clickDelay;
+    }
+
+    public MenuItem getEmptyItem() {
+        return emptyItem;
     }
 
     public void setEmptyItem(ItemInfo info) {
@@ -79,6 +83,10 @@ public abstract class AbstractMenu {
         return plugin;
     }
 
+    public void remove() {
+        plugin.getMenuRegistry().remove(this);
+    }
+
     protected MenuSession removeViewer(Player player) {
         return sessions.remove(player);
     }
@@ -97,7 +105,9 @@ public abstract class AbstractMenu {
 
         MenuSession session = new MenuSession(this, who, inv, items.inverse(), animation);
 
-        action.accept(session);
+        if (action != null) {
+            action.accept(session);
+        }
 
         MenuItem.SlotContext ctx = new MenuItem.SlotContext(plugin, inv.getSize(), items) {
             @Override
@@ -110,7 +120,7 @@ public abstract class AbstractMenu {
         for (MenuItem item : menuGrid) {
             ItemInfo info = item.getInfo();
             ItemStack stack = info.load(who, session);
-            if (stack == null || (slot = ctx.getSlot(who, session, info, stack)) < 0) {
+            if (stack == null || (slot = ctx.getSlot(who, session, info, stack)) < 0 || slot >= contents.length) {
                 continue; // Hidden or whatever
             }
             items.forcePut(slot, item);
@@ -128,23 +138,15 @@ public abstract class AbstractMenu {
         }
 
         if (animation == null) {
-            inv.setContents(contents);
+            ItemStack item;
+            for (int i = contents.length; --i >= 0; ) {
+                if ((item = contents[i]) != null) {
+                    inv.setItem(i, item);
+                }
+            }
         }
 
         sessions.put(who, session);
-    }
-
-    public void click(Player player, int slot, ClickType type) {
-        MenuSession session = sessions.get(player);
-        if (session != null && !session.isOpening()) {
-            MenuItem item = session.getItem(slot);
-            if (item == null && (item = emptyItem) == null) return;
-
-            Delay delay = clickDelay;
-            if (delay == null || delay.test(player)) {
-                item.getInfo().click(player, session, type);
-            }
-        }
     }
 
     public MenuSession getSession(Player player) {
@@ -161,7 +163,7 @@ public abstract class AbstractMenu {
     }
 
     public Set<Player> getViewers() {
-        return sessions.keySet();
+        return new HashSet<>(sessions.keySet());
     }
 
     public boolean isViewing(Player player) {

@@ -139,7 +139,7 @@ public final class MenuItem {
                 items.forcePut(end--, left);
             }
             items.remove(slot);
-            moveItem(slot, -1);
+            moveItem(-1, slot);
         }
 
         protected abstract void moveItem(int from, int to);

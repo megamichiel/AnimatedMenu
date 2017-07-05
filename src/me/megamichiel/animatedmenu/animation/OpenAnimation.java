@@ -41,7 +41,7 @@ public class OpenAnimation {
                 }
             }
         }
-        return i == frames.length;
+        return i >= frames.length;
     }
 
     public interface Type {

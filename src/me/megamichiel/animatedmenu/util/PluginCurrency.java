@@ -1,6 +1,7 @@
 package me.megamichiel.animatedmenu.util;
 
 import me.JohnCrafted.gemseconomy.economy.GemMethods;
+import me.realized.tm.api.TMAPI;
 import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
@@ -114,6 +115,37 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
         @Override
         public boolean has(Player player, Integer amount) {
             return methods.getGems(player.getUniqueId()) >= amount;
+        }
+    };
+    public static final PluginCurrency<Integer> TOKENS = new PluginCurrency<Integer>() {
+
+        @Override
+        boolean init() {
+            try {
+                Class.forName("me.realized.tm.api.TMAPI");
+                return true;
+            } catch (ClassNotFoundException ex) {
+                return false;
+            }
+        }
+
+        @Override
+        public Integer get(Player player) {
+            return (int) TMAPI.getTokens(player); // Method returns a long, but it's internally an int. Get your stuff together man
+        }
+
+        @Override
+        public void give(Player player, Integer amount) {
+            TMAPI.addTokens(player, amount);
+        }
+
+        @Override
+        public boolean take(Player player, Integer amount) {
+            if (TMAPI.getTokens(player) >= amount) {
+                TMAPI.removeTokens(player, amount);
+                return true;
+            }
+            return false;
         }
     };
 

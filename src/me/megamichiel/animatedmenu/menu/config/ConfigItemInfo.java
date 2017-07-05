@@ -257,7 +257,7 @@ public class ConfigItemInfo implements ItemInfo {
 
         meta.setDisplayName(displayName.get().toString(player));
         if (!lore.isEmpty()) {
-            meta.setLore(lore.get().stream(plugin, player).collect(Collectors.toList()));
+            meta.setLore(lore.stream(player).collect(Collectors.toList()));
         }
 
         specific.apply(player, meta);
@@ -287,7 +287,7 @@ public class ConfigItemInfo implements ItemInfo {
         ItemMeta meta = item.getItemMeta();
 
         meta.setDisplayName(displayName.get().toString(player));
-        meta.setLore(lore.get().stream(plugin, player).collect(Collectors.toList()));
+        meta.setLore(lore.stream(player).collect(Collectors.toList()));
         specific.apply(player, meta);
 
         item.setItemMeta(meta);

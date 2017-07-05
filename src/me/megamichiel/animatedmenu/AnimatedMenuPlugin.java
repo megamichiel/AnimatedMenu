@@ -1,8 +1,10 @@
 package me.megamichiel.animatedmenu;
 
 import me.megamichiel.animatedmenu.command.*;
-import me.megamichiel.animatedmenu.menu.AnimatedMenu;
+import me.megamichiel.animatedmenu.menu.AbstractMenu;
+import me.megamichiel.animatedmenu.menu.Menu;
 import me.megamichiel.animatedmenu.menu.MenuRegistry;
+import me.megamichiel.animatedmenu.menu.MenuSession;
 import me.megamichiel.animatedmenu.menu.config.MenuLoader;
 import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animatedmenu.util.Flag;
@@ -35,7 +37,6 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.ServicePriority;
@@ -232,9 +233,12 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 TextCommand.of("broadcast", true, getServer()::broadcastMessage),
                 TextCommand.ofPlayer("menu", false, (p, value) -> {
                     MenuRegistry registry = getMenuRegistry();
-                    AnimatedMenu menu = registry.getMenu(value);
-                    if (menu != null) menu.open(p);
-                    else nag("No menu with name " + value + " found!");
+                    AbstractMenu menu = registry.getMenu(value);
+                    if (menu instanceof Menu) {
+                        ((Menu) menu).open(p);
+                    } else {
+                        nag("No menu with name " + value + " found!");
+                    }
                 }),
                 new Command<StringBundle, ItemStack>("give") {
 
@@ -308,8 +312,11 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     void reload() {
         for (Delay delay : delays) {
             Map<UUID, Long> map = delay.save();
-            if (map.isEmpty()) continue;
-            loadedDelays.put(delay.getId(), map);
+            if (map.isEmpty()) {
+                loadedDelays.remove(delay.getId());
+            } else {
+                loadedDelays.put(delay.getId(), map);
+            }
         }
 
         menuLoader.onDisable();
@@ -324,7 +331,14 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     }
 
     private void saveDelays() {
-        delays.forEach(delay -> loadedDelays.put(delay.getId(), delay.save()));
+        delays.forEach(delay -> {
+            Map<UUID, Long> map = delay.save();
+            if (map.isEmpty()) {
+                loadedDelays.remove(delay.getId());
+            } else {
+                loadedDelays.put(delay.getId(), map);
+            }
+        });
         try (FileOutputStream fos = new FileOutputStream(new File(getDataFolder(), "delays.dat"));
              DataOutputStream dos = new DataOutputStream(fos)) {
 
@@ -379,10 +393,13 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             player.sendMessage(update);
         }
         PlayerInventory inv = player.getInventory();
-        for (AnimatedMenu menu : menuRegistry) {
-            menu.getSettings().giveOpener(inv, false);
-            if (menu.getSettings().shouldOpenOnJoin()) {
-                post(() -> menu.open(player), SYNC);
+        for (AbstractMenu absMenu : menuRegistry) {
+            if (absMenu instanceof Menu) {
+                Menu menu = (Menu) absMenu;
+                menu.getSettings().giveOpener(inv, false);
+                if (menu.getSettings().shouldOpenOnJoin()) {
+                    post(() -> menu.open(player), SYNC);
+                }
             }
         }
     }
@@ -404,14 +421,13 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     public void on(PlayerInteractEvent e) {
         Player p = e.getPlayer();
         if (isOffHand.test(e)) return;
-        if (PluginPermission.OPEN_WITH_ITEM.test(p) && e.getItem() != null) {
-            MaterialData data = e.getItem().getData();
-            int amount = e.getItem().getAmount();
-            ItemMeta meta = e.getItem().getItemMeta();
-            for (AnimatedMenu menu : menuRegistry) {
-                if (menu.getSettings().canOpenWith(data, amount, meta)) {
+        ItemStack item = e.getItem();
+        if (PluginPermission.OPEN_WITH_ITEM.test(p) && item != null) {
+            ItemMeta meta = item.getItemMeta();
+            for (AbstractMenu menu : menuRegistry) {
+                if (menu instanceof Menu && ((Menu) menu).getSettings().canOpenWith(item, meta)) {
                     e.setCancelled(true);
-                    post(() -> menu.open(p), SYNC);
+                    ((Menu) menu).open(p);
                     return;
                 }
             }
@@ -420,21 +436,27 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     
     @EventHandler//(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void on(InventoryCloseEvent e) {
-        if (!(e.getPlayer() instanceof Player)) return;
+        if (!(e.getPlayer() instanceof Player)) {
+            return;
+        }
         menuRegistry.handleMenuClose((Player) e.getPlayer());
     }
     
     @EventHandler
     public void on(InventoryClickEvent e) {
-        if (!(e.getWhoClicked() instanceof Player)) return;
+        if (!(e.getWhoClicked() instanceof Player)) {
+            return;
+        }
         Player p = (Player) e.getWhoClicked();
-        AnimatedMenu open = menuRegistry.getOpenedMenu(p);
-        if (open == null) return;
+        MenuSession session = menuRegistry.getSession(p);
+        if (session == null) {
+            return;
+        }
         e.setCancelled(true);
         int slot = e.getRawSlot();
         InventoryView view = e.getView();
         if (view.getTopInventory() != null && slot >= 0 && slot < view.getTopInventory().getSize()) {
-            open.click(p, e.getSlot(), e.getClick());
+            session.click(e.getSlot(), e.getClick());
         }
     }
 

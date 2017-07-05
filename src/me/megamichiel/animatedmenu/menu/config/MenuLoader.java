@@ -1,7 +1,6 @@
 package me.megamichiel.animatedmenu.menu.config;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.command.SoundCommand;
 import me.megamichiel.animatedmenu.menu.*;
 import me.megamichiel.animatedmenu.menu.item.ItemInfo;
@@ -14,7 +13,6 @@ import me.megamichiel.animationlib.config.ConfigException;
 import me.megamichiel.animationlib.config.ConfigManager;
 import me.megamichiel.animationlib.config.type.YamlConfig;
 import me.megamichiel.animationlib.placeholder.StringBundle;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -32,7 +30,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
     protected final AnimatedMenuPlugin plugin;
     private final File directory;
 
-    private List<AnimatedMenu> customMenus;
+    private List<Menu> customMenus;
 
     public MenuLoader(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
@@ -67,7 +65,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
             logger.warning("Failed to create images folder!");
         }
 
-        List<AnimatedMenu> list = customMenus = loadMenus();
+        List<Menu> list = customMenus = loadMenus();
         if (list != null) {
             list.forEach(menuRegistry::add);
         }
@@ -75,8 +73,8 @@ public class MenuLoader implements DirectoryListener.FileListener {
         logger.info(size + " menu" + (size == 1 ? "" : "s") + " loaded");
     }
 
-    public List<AnimatedMenu> loadMenus() {
-        List<AnimatedMenu> list = new ArrayList<>();
+    public List<Menu> loadMenus() {
+        List<Menu> list = new ArrayList<>();
 
         loadMenus(list, directory);
 
@@ -97,7 +95,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
         return list;
     }
 
-    private void loadMenus(List<AnimatedMenu> menus, File dir) {
+    private void loadMenus(List<Menu> menus, File dir) {
         File[] files = dir.listFiles();
         if (files == null) return;
         for (File file : files) {
@@ -122,14 +120,17 @@ public class MenuLoader implements DirectoryListener.FileListener {
         }
     }
 
-    protected AnimatedMenu createMenu(String name, AbstractConfig config,
-                                      AnimatedText title, int titleUpdateDelay, MenuType type) {
-        return new AnimatedMenu(name, title, titleUpdateDelay, type);
+    protected Menu createMenu(String name, AbstractConfig config,
+                              AnimatedText title, int titleUpdateDelay, MenuType type) {
+        return new Menu(name, title, titleUpdateDelay, type);
     }
 
-    public AnimatedMenu loadMenu(String name, AbstractConfig config) {
+    public Menu loadMenu(String name, AbstractConfig config) {
         AnimatedText title = new AnimatedText();
-        title.load(plugin, config, "menu-name", new StringBundle(plugin, name));
+        StringBundle defaultTitle = new StringBundle(plugin, name);
+        if (!title.load(plugin, config, "title", defaultTitle)) {
+            title.load(plugin, config, "menu-name", defaultTitle);
+        }
         MenuType type;
         if (config.isSet("menu-type") && !"chest".equalsIgnoreCase(config.getString("menu-type"))) {
             type = MenuType.fromName(config.getString("menu-type").toUpperCase());
@@ -138,7 +139,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 type = MenuType.chest(6);
             }
         } else type = MenuType.chest(config.getInt("rows", 6));
-        AnimatedMenu menu = createMenu(name, config, title, plugin.parseTime(config, "title-update-delay", 20), type);
+        Menu menu = createMenu(name, config, title, plugin.parseTime(config, "title-update-delay", 20), type);
 
         StringBundle permission = StringBundle.parse(plugin, config.getString("permission"));
         if (permission != null) {
@@ -153,9 +154,9 @@ public class MenuLoader implements DirectoryListener.FileListener {
         return menu;
     }
 
-    protected void loadMenu(AnimatedMenu menu, AbstractConfig config) {
+    protected void loadMenu(Menu menu, AbstractConfig config) {
         loadSettings(menu.getSettings(), config);
-        menu.setClickDelay(config.getString("delay-message"), plugin.parseTime(config, "click-delay", 0) * 50L);
+        menu.setClickDelay(plugin.parseTime(config, "click-delay", 0) * 50L, config.getString("delay-message"));
         Map<String, AbstractConfig> items = new HashMap<>();
         if (config.isSection("items")) {
             AbstractConfig cfg = config.getSection("items");
@@ -170,7 +171,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 items.put(Integer.toString(i + 1), list.get(i));
             }
         }
-        if (items.isEmpty() && !menu.hasEmptyItem()) {
+        if (items.isEmpty() && menu.getEmptyItem() == null) {
             plugin.nag("No items specified for " + menu.getName() + "!");
             return;
         }
@@ -185,7 +186,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
             if (openerName || openerLore) {
                 ItemMeta meta = opener.getItemMeta();
                 if (openerName)
-                    meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', section.getString("menu-opener-name")));
+                    meta.setDisplayName(StringBundle.colorAmpersands(section.getString("menu-opener-name")));
                 if (openerLore) {
                     meta.setLore(section.getStringList("menu-opener-lore").stream()
                             .map(StringBundle::colorAmpersands).collect(Collectors.toList()));
@@ -203,7 +204,7 @@ public class MenuLoader implements DirectoryListener.FileListener {
 
         Object command = section.get("command");
         if (command != null) {
-            AnimatedMenu menu = settings.getMenu();
+            Menu menu = settings.getMenu();
             String name, usage = menu.getDefaultUsage(), description = "Opens menu " + menu.getName();
             String fallbackCommand = null;
             if (command instanceof AbstractConfig) {
@@ -244,19 +245,11 @@ public class MenuLoader implements DirectoryListener.FileListener {
         }
     }
 
-    public ClickHandler.Entry parseClickHandler(String path, AbstractConfig section) {
+    protected ClickHandler.Entry parseClickHandler(String path, AbstractConfig section) {
         try {
             return new ClickHandler.Entry(path, plugin, section);
         } catch (IllegalArgumentException ex) {
             plugin.nag(ex.getMessage() + " in " + path);
-            return null;
-        }
-    }
-
-    public OpenAnimation.Type resolveAnimationType(String name) {
-        try {
-            return OpenAnimation.DefaultType.valueOf(name);
-        } catch (IllegalArgumentException ex) {
             return null;
         }
     }
@@ -273,10 +266,9 @@ public class MenuLoader implements DirectoryListener.FileListener {
                 MenuRegistry registry = plugin.getMenuRegistry();
                 switch (action) {
                     case CREATE:
-                        AnimatedMenu menu = registry.getMenu(name);
+                        AbstractMenu menu = registry.getMenu(name);
                         if (menu != null) {
-                            plugin.getLogger().warning("A new menu file was created," +
-                                    " but a menu already existed with its name!");
+                            plugin.getLogger().warning("A new menu file was created, but a menu already existed with its name! Beware!");
 
                             menu.closeAll();
                             registry.remove(menu);
@@ -286,23 +278,24 @@ public class MenuLoader implements DirectoryListener.FileListener {
                         registry.add(menu);
                         break;
                     case MODIFY:
-                        if (file.length() == 0) return;
-                        menu = registry.getMenu(name);
-                        Set<Player> viewers;
-                        if (menu != null) {
-                            viewers = menu.getViewers();
-                            for (Object viewer : viewers)
+                        if (file.length() == 0) {
+                            return;
+                        }
+                        Set<Player> viewers = null;
+                        if ((menu = registry.getMenu(name)) != null) {
+                            for (Object viewer : (viewers = menu.getViewers())) {
                                 ((Player) viewer).closeInventory();
+                            }
                             registry.remove(menu);
-                        } else viewers = Collections.emptySet();
-                        menu = loadMenu(name, ConfigManager.quickLoad(YamlConfig::new, file));
-                        registry.add(menu);
-                        viewers.forEach(menu::open);
+                        }
+                        registry.add(menu = loadMenu(name, ConfigManager.quickLoad(YamlConfig::new, file)));
+                        if (viewers != null) {
+                            viewers.forEach(((Menu) menu)::open);
+                        }
                         plugin.getLogger().info("Updated " + file.getName());
                         break;
                     case DELETE:
-                        menu = registry.getMenu(name);
-                        if (menu == null) {
+                        if ((menu = registry.getMenu(name)) == null) {
                             plugin.getLogger().warning("Failed to remove " + name + ": No menu by that name found!");
                             return;
                         }

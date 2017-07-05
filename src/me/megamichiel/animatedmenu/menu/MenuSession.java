@@ -1,9 +1,11 @@
 package me.megamichiel.animatedmenu.menu;
 
 import com.google.common.collect.BiMap;
+import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animatedmenu.util.InventoryTitleUpdater;
 import me.megamichiel.animationlib.util.ReflectClass;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 
 import java.util.Map;
@@ -80,6 +82,19 @@ public class MenuSession {
         return items.inverse().get(slot);
     }
 
+    public boolean click(int slot, ClickType type) {
+        MenuItem item = items.inverse().get(slot);
+        if (item == null && (item = menu.getEmptyItem()) == null) {
+            return false;
+        }
+
+        Delay delay = menu.getClickDelay();
+        if (delay == null || delay.test(player)) {
+            item.getInfo().click(player, this, type);
+        }
+        return true;
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T get(Property<T> property) {
         return (T) properties.getOrDefault(property, property.defaultValue);
@@ -133,9 +148,9 @@ public class MenuSession {
         tasks.removeIf(Task::tick);
         if (openAnimation != null) {
             if (openAnimation.getAsBoolean()) {
-                return true;
-            } else {
                 openAnimation = null;
+            } else {
+                return true;
             }
         }
         return false;

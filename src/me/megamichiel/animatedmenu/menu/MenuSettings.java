@@ -6,7 +6,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.material.MaterialData;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +15,7 @@ import java.util.function.Predicate;
 
 public class MenuSettings {
 
-    private final AnimatedMenu menu;
+    private final Menu menu;
 
     private ItemStack opener;
     private boolean openerName, openerLore;
@@ -35,7 +34,7 @@ public class MenuSettings {
     private final List<BiConsumer<? super Player, ? super MenuSession>> openListeners = new ArrayList<>();
     private final List<BiConsumer<? super Player, ? super MenuSession>> closeListeners = new ArrayList<>();
 
-    MenuSettings(AnimatedMenu menu) {
+    MenuSettings(Menu menu) {
         this.menu = menu;
     }
     
@@ -68,8 +67,10 @@ public class MenuSettings {
         return false;
     }
 
-    public boolean canOpenWith(MaterialData data, int amount, ItemMeta meta) {
-        if (opener == null || !data.equals(opener.getData()) || amount < opener.getAmount()) {
+    public boolean canOpenWith(ItemStack item, ItemMeta meta) {
+        ItemStack opener = this.opener;
+        if (opener == null || item.getType() != opener.getType() || item.getAmount() < opener.getAmount()
+                || (item.getDurability() != Short.MAX_VALUE && item.getDurability() != opener.getDurability())) {
             return false;
         }
         if (openerName || openerLore) {
@@ -158,7 +159,7 @@ public class MenuSettings {
         return waitMessage;
     }
 
-    public AnimatedMenu getMenu() {
+    public Menu getMenu() {
         return menu;
     }
 }

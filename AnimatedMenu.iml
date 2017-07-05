@@ -26,5 +26,7 @@
     <orderEntry type="library" name="craftbukkit-1.11" level="project" />
     <orderEntry type="library" name="Essentials-2.x-SNAPSHOT" level="project" />
     <orderEntry type="library" name="GemsEconomy" level="project" />
+    <orderEntry type="library" name="Slimefun v4.1.8" level="project" />
+    <orderEntry type="library" name="TokenManager" level="project" />
   </component>
 </module>

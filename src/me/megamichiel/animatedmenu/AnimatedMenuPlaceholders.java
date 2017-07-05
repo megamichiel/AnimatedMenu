@@ -46,10 +46,20 @@ public class AnimatedMenuPlaceholders implements BiFunction<Player, String, Stri
     public String apply(Player player, String arg) {
         int index = arg.indexOf('_');
         switch (index > 0 ? arg.substring(0, index++) : "") { // Increase index by 1 to align with later substrings
-            case "motd":
+            case "motd":case "motd1":case "motd2":
                 ServerInfo info = plugin.getConnections().get(arg.substring(index));
                 if (info == null) return "<invalid>";
-                return info.isOnline() ? info.getMotd() : info.get("offline", player);
+                if (info.isOnline()) {
+                    String motd = info.getMotd();
+                    if (index == 5) {
+                        return motd;
+                    }
+                    if (arg.charAt(4) == '1') {
+                        return (index = motd.indexOf('\n')) >= 0 ? motd.substring(0, index) : motd;
+                    }
+                    return (index = motd.indexOf('\n')) >= 0 ? motd.substring(index + 1) : "";
+                }
+                return info.get("offline", player);
             case "onlineplayers":
                 info = plugin.getConnections().get(arg.substring(index));
                 if (info == null) return "<invalid>";

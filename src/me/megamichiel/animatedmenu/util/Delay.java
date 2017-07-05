@@ -35,17 +35,21 @@ public class Delay implements Runnable {
         plugin.getServer().getScheduler().runTaskTimer(plugin, this, 1200L, 1200L);
     }
 
+    public long getDelay() {
+        return delay;
+    }
+
     public String getId() {
         return id;
     }
 
     public Map<UUID, Long> save() {
         if (delays.isEmpty()) return Collections.emptyMap();
-        long time = System.currentTimeMillis();
+        long time = System.currentTimeMillis(), delay;
         Map<UUID, Long> save = new HashMap<>();
         for (Map.Entry<UUID, AtomicLong> entry : delays.entrySet()) {
-            if (time < entry.getValue().get()) {
-                save.put(entry.getKey(), entry.getValue().get());
+            if (time < (delay = entry.getValue().get())) {
+                save.put(entry.getKey(), delay);
             }
         }
         return save;

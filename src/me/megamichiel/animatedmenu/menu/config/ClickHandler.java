@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 public class ClickHandler {
@@ -18,72 +19,11 @@ public class ClickHandler {
     public static final String PERMISSION_MESSAGE = "&cYou are not permitted to do that!";
 
     private static final Purchase<?>[] PURCHASES = {
-            new Purchase<Double>("price", "&cYou don't have enough money for that!") {
-                @Override
-                protected Double parse(AnimatedMenuPlugin plugin, String value) {
-                    if (!PluginCurrency.VAULT.isAvailable()) return null;
-                    try {
-                        double d = Double.parseDouble(value);
-                        return d > 0 ? d : null;
-                    } catch (NumberFormatException ex) {
-                        return null;
-                    }
-                }
+            Purchase.ofCurrency("price", "money", PluginCurrency.VAULT, Double::valueOf, 0D),
+            Purchase.ofCurrency("points", "points", PluginCurrency.PLAYER_POINTS, Integer::valueOf, 0),
+            Purchase.ofCurrency("gems", "gems", PluginCurrency.GEMS, Integer::valueOf, 0),
+            Purchase.ofCurrency("tokens", "tokens", PluginCurrency.TOKENS, Integer::valueOf, 0),
 
-                @Override
-                protected boolean test(AnimatedMenuPlugin plugin, Player player, Double value) {
-                    return PluginCurrency.VAULT.has(player, value);
-                }
-
-                @Override
-                protected void take(AnimatedMenuPlugin plugin, Player player, Double value) {
-                    PluginCurrency.VAULT.take(player, value);
-                }
-            },
-            new Purchase<Integer>("points", "&cYou don't have enough points for that!") {
-                @Override
-                protected Integer parse(AnimatedMenuPlugin plugin, String value) {
-                    if (!PluginCurrency.PLAYER_POINTS.isAvailable()) return null;
-                    try {
-                        int i = Integer.parseInt(value);
-                        return i > 0 ? i : null;
-                    } catch (NumberFormatException ex) {
-                        return null;
-                    }
-                }
-
-                @Override
-                protected boolean test(AnimatedMenuPlugin plugin, Player player, Integer value) {
-                    return PluginCurrency.PLAYER_POINTS.has(player, value);
-                }
-
-                @Override
-                protected void take(AnimatedMenuPlugin plugin, Player player, Integer value) {
-                    PluginCurrency.PLAYER_POINTS.take(player, value);
-                }
-            },
-            new Purchase<Integer>("gems", "&cYou don't have enough gems for that!") {
-                @Override
-                protected Integer parse(AnimatedMenuPlugin plugin, String value) {
-                    if (!PluginCurrency.GEMS.isAvailable()) return null;
-                    try {
-                        int i = Integer.parseInt(value);
-                        return i > 0 ? i : null;
-                    } catch (NumberFormatException ex) {
-                        return null;
-                    }
-                }
-
-                @Override
-                protected boolean test(AnimatedMenuPlugin plugin, Player player, Integer value) {
-                    return PluginCurrency.GEMS.has(player, value);
-                }
-
-                @Override
-                protected void take(AnimatedMenuPlugin plugin, Player player, Integer value) {
-                    PluginCurrency.GEMS.take(player, value);
-                }
-            },
             new ClickHandler.Purchase<Number>("exp", "&cYou don't have enough exp for that!") {
                 @Override
                 protected Number parse(AnimatedMenuPlugin plugin, String value) {
@@ -272,6 +212,31 @@ public class ClickHandler {
     }
 
     public static abstract class Purchase<T> {
+
+        static <N extends Number & Comparable<N>> Purchase<N> ofCurrency(String cfg, String name, PluginCurrency<N> currency, Function<String, N> parser, N zero) {
+            return new Purchase<N>(cfg, "&cYou don't have enough " + name + " for that!") {
+                @Override
+                protected N parse(AnimatedMenuPlugin plugin, String value) {
+                    if (!currency.isAvailable()) return null;
+                    try {
+                        N number = parser.apply(value);
+                        return number.compareTo(zero) > 0 ? number : null;
+                    } catch (NumberFormatException ex) {
+                        return null;
+                    }
+                }
+
+                @Override
+                protected boolean test(AnimatedMenuPlugin plugin, Player player, N value) {
+                    return currency.has(player, value);
+                }
+
+                @Override
+                protected void take(AnimatedMenuPlugin plugin, Player player, N value) {
+                    currency.take(player, value);
+                }
+            };
+        }
 
         final String path, defaultMessage;
 

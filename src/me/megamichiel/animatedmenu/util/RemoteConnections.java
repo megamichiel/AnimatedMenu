@@ -20,6 +20,7 @@ import java.util.Map.Entry;
 
 public class RemoteConnections implements Runnable {
 
+    private static final int PROTOCOL_VERSION = 335, PROTOCOL_VERSION_LENGTH = varIntLength(PROTOCOL_VERSION); // 1.12
     private static final byte[] PING = new byte[] { 9, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
     
     private final AnimatedMenuPlugin plugin;
@@ -138,7 +139,9 @@ public class RemoteConnections implements Runnable {
         int value = 0, offset = 0, read;
         
         do {
-            read = stream.read();
+            if ((read = stream.read()) == -1) {
+                throw new EOFException();
+            }
             value |= (read & 0x7F) << offset++ * 7;
             if (offset > 5) {
                 throw new RuntimeException("VarInt too big");
@@ -167,24 +170,20 @@ public class RemoteConnections implements Runnable {
         private int onlinePlayers, maxPlayers;
 
         Connection(InetSocketAddress address) {
-            String hostString = address.getHostString();
-            byte[] addressBytes = hostString.getBytes(Charsets.UTF_8);
+            byte[] addressBytes = address.getHostString().getBytes(Charsets.UTF_8);
 
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            int port = address.getPort();
 
             // Handshake
-            writeVarInt(bytes, 5 + varIntLength(addressBytes.length) + addressBytes.length);
 
-            bytes.write(new byte[] { 0, (byte) 0xBC, 0x2 }, 0, 2); // Packet ID + Protocol Version (316)
-
+            writeVarInt(bytes, 4 + PROTOCOL_VERSION_LENGTH + varIntLength(addressBytes.length) + addressBytes.length);
+            bytes.write(0);
+            writeVarInt(bytes, PROTOCOL_VERSION);
             writeVarInt(bytes, addressBytes.length);
-
             bytes.write(addressBytes, 0, addressBytes.length);
-
-            int port = address.getPort();
             bytes.write((port >> 8) & 0xFF);
             bytes.write(port & 0xFF);
-
             bytes.write(1); // Next protocol state: Status
 
             bytes.write(new byte[] { 1, 0 }, 0, 2); // Status Request

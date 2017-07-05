@@ -19,11 +19,14 @@ import org.bukkit.inventory.meta.SkullMeta;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
@@ -186,9 +189,15 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
         } else { // json?
             String base64;
             try {
+                Base64.getDecoder().decode(name);
                 base64 = name;
             } catch (IllegalArgumentException ex) {
-                base64 = "{textures:{SKIN:{url:\"" + name.replace("\\", "\\\\").replace("\"", "\\\"") + "\"}}}";
+                try {
+                    base64 = "{textures:{SKIN:{url:\"" + URLEncoder.encode(name, "UTF-8") + "\"}}}";
+                } catch (UnsupportedEncodingException ex2) {
+                    cachedProfiles.put(name, new GameProfile(UUID.randomUUID(), null));
+                    return;
+                }
             }
             try {
                 char[] chars = new char[16];
@@ -200,7 +209,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
                 profile.getProperties().put("textures", new Property("textures", base64));
                 cachedProfiles.put(name, profile);
             } catch (Exception ex) {
-                cachedProfiles.put(name, new GameProfile(null, null));
+                cachedProfiles.put(name, new GameProfile(UUID.randomUUID(), null));
             }
         }
     }
