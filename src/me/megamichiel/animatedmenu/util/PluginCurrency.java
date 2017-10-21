@@ -3,6 +3,7 @@ package me.megamichiel.animatedmenu.util;
 import me.JohnCrafted.gemseconomy.economy.GemMethods;
 import me.realized.tm.api.TMAPI;
 import net.milkbowl.vault.economy.Economy;
+import net.nifheim.beelzebu.coins.CoinsAPI;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
@@ -148,6 +149,38 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
             return false;
         }
     };
+
+    public static PluginCurrency<Double> COINS = new PluginCurrency<Double>() {
+
+	@Override
+        public boolean init() {
+	    try {
+	        Class.forName("net.nifheim.beelzebu.coins.CoinsAPI");
+		return true;
+	    } catch (ClassNotFoundException ex) {
+		return false;
+	    }
+
+	    @Override
+	    public Double get(Player player) {
+		return CoinsAPI.getCoins(player.getUniqueId());
+	    }
+
+	    @Override
+	    public void give(Player player, Double amount) {
+		CoinsAPI.addCoins(player.getUniqueId(), amount, false);
+	    }
+
+	    @Override
+	    public boolean take(Player player, Double amount) {
+		if (CoinsAPI.getCoins(player.getUniqueId()) >= amount) {
+		    CoinsAPI.takeCoins(player.getUniqueId(), amount);
+		    return true;
+		}
+		return false;
+	    }
+	}
+    }
 
     private boolean init, available;
 
