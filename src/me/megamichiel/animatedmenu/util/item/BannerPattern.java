@@ -3,6 +3,7 @@ package me.megamichiel.animatedmenu.util.item;
 import me.megamichiel.animationlib.Nagger;
 import me.megamichiel.animationlib.bukkit.nbt.NBTModifiers;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
+import me.megamichiel.animationlib.placeholder.PlaceholderContext;
 import org.bukkit.DyeColor;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
@@ -17,8 +18,6 @@ import java.util.Map;
 
 @SuppressWarnings("deprecation")
 public class BannerPattern implements MaterialSpecific.Action<BannerMeta> {
-
-    public static final BannerPattern EMPTY = new BannerPattern(null, "");
 
     private static final DyeColor[] colors = new DyeColor[16];
     
@@ -56,7 +55,7 @@ public class BannerPattern implements MaterialSpecific.Action<BannerMeta> {
     }
 
     @Override
-    public void apply(Player player, BannerMeta meta) {
+    public void apply(Player player, BannerMeta meta, PlaceholderContext context) {
         if (baseColor != null) {
             meta.setBaseColor(baseColor.getColor());
             meta.setPatterns(patterns);
@@ -69,7 +68,7 @@ public class BannerPattern implements MaterialSpecific.Action<BannerMeta> {
             Map<String, Object> entityMap = util.getMap(entityTag);
 
             entityMap.put("Base", NBTModifiers.INT.wrap((int) baseColor.getColor().getDyeData()));
-            Object patterns = util.createList();
+            Object patterns = util.createList((byte) 10);
             List<Object> list = util.getList(patterns);
             for (Pattern p : this.patterns) {
                 Object entry = util.createTag();

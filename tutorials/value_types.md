@@ -1,0 +1,131 @@
+# Value Types #
+Different kinds of values found around the plugin's configuration  
+### Summary ###
+- [Flag](#user-content-flag)
+- [Simple Text](#user-content-simple text)
+- [Text](#user-content-text)
+- [Time](#user-content-time)
+- [Section](#user-content-section)
+- [List of X](#user-content-list of x)
+- [Commands](#user-content-commands)
+
+- #### Flag ####
+  One of **true**, **yes**, **on**, **enable**, **false**, **no**, **off**, **disable**  
+
+- #### Simple Text ####
+  A simple piece of text that does not support placeholders  
+  Used in things like command labels  
+
+- #### Text ####
+  A piece of text that supports placeholders and in some cases is colorable using &  
+    - Placeholders can be used by surrounding the identifier with %, for example %player_name% will give you the player's name
+    - Note that you may have to download the correct expansions first. The expansion of %player_name% is 'player', in order to get it type '/papi ecloud download player'
+
+  You can also specify formulas that perform certain calculations for you (like addition and multiplication):  
+    - With \\(&lt;calculation&gt;) you will get a simple decimal number
+    - With \\(:&lt;format&gt;:&lt;calculation&gt;) you can specify a specific format to represent the number in. A simple '#' as format (without quotes) will give you a whole number
+    - See https://docs.oracle.com/javase/tutorial/i18n/format/decimalFormat.html for a full documentation on formats
+    - You can use placeholders in the calculation to obtain your values using % as specified above, and then use a couple of operators to alter it like you would do in normal maths:
+      - **+** to add
+      - **-** to subtract
+      - **&ast;** to multiply
+      - **/** to divide
+      - **mod** to get a remainder (5 mod 2 is 1 because 2 in 5 can make at most 4 and will leave you with 1 extra)
+      - **^** to raise a certain number to a power (5 ^ 2 is 25)
+      - **log** to perform a logarithmic (reverse power) operation (10 log 100 is 2 because 10 ^ 2 = 100)
+
+    - There are also some functions for calculations:
+      - sqrt(x) will give you the square root of x
+      - square(x) will give you x squared (x \* x)
+      - round(x) will round a number to the nearest whole number (1.7 will give you 2 and 5.3 will give you 5)
+      - floor(x) will round a number down to a whole number (1.7 will give you 1)
+      - ceil(x) will round a number up to a whole number (5.3 will give you 6)
+      - ln(x) will give you the natural logarithm of a number
+      - sin(x), cos(x) and tan(x) will respectively give you the sine, cosine and tangent of a number
+      - asin(x), acos(x) and atan(x) will respectively give you the arc sine, arc cosine and arc tangent of a number
+      - abs(x) will give you a positive version of x (-5 will become 5 and 5 will remain 5)
+      - random(x) will give you a random decimal number between 0 (inclusive) and x (exclusive). You can combine this with floor(x) to get a random whole number between 0 and x - 1 (both inclusive)
+
+    - Some examples:
+      - Health: \\(:#:%player_health% / %player_max_health%)\\%
+      - Money: \\(:#:%vault_eco_balance%)
+      - Distance to player (= sqrt(x^2 + y^2 + z^2)): \\(:#.0:sqrt(%player_x% - %menuadmin_player_x%)^2 + (%player_y% - %menuadmin_player_y%)^2 +(%player_z% - %menuadmin_player_z%)^2)
+
+
+
+- #### Time ####
+  Either:  
+    - A whole number specifying the amount of ticks
+    - (Only with AnimatedMenu Plus) An array of numbers following a time identifier:
+      - 10t is 10 ticks
+      - 5s is 5 seconds
+      - 30m is 30 minutes
+      - 2h is 2 hours
+      - 7d is 5 days
+      - 3w is 3 weeks
+      - 3w5d6h is 3 weeks, 5 days and 6 hours
+
+
+
+- #### Section ####
+  A subgroup of key/value pairs. The indent of the lines increases in each section and decreases again after the section  
+  Example:  
+
+```YAML
+key1: value
+section1:
+  key2: value
+  section2:
+    key3: value
+  key-inside-section1: value
+key-inside-base: value
+```
+
+- #### List of X ####
+  A list of X. Can be either a comma-separated list surrounded by [ and ], or values spread over multiple lines, each starting with '- ':  
+
+```YAML
+list1: [value1, value2, value3, value4]
+list2:
+- value1
+- value2
+- value3
+- value4
+```
+  It is also possible to have a list of sections. Key/value pairs have the same indent with a - meaning a new entry. This will look something like this:  
+
+```YAML
+list:
+- key1: value
+  key2: value
+- key3: value
+  key4: value
+```
+
+- #### Commands ####
+  A list of commands to perform. Same format as a List of Text. There are several values you can use:  
+    - '**&lt;command&gt;**' to make the player perform a command
+    - '**chat: &lt;message&gt;**' to make the player chat a message
+    - '**console: &lt;command&gt;**' to make the console execute the command
+    - '**message: &lt;message&gt;**' to send a message to the player
+    - '**op: &lt;command&gt;**' to make the player execute the command as operator
+    - '**broadcast: &lt;message&gt;**' to broadcast a message to the entire server
+    - '**server: &lt;server&gt;**' to send the player to a specific bungeecord server
+    - '**menu: &lt;menu&gt;**' to open a specific menu
+    - '**tellraw: &lt;message&gt;**' to send a raw message (e.g. {"text":"Hello there!"})
+    - '**sound: &lt;soundname&gt; [volume] [pitch]**' to send a sound to a player
+      - For a list of sound names, see [this page](http://www.minecraftforum.net/forums/mapping-and-modding/mapping-and-modding-tutorials/1571574-all-minecraft-playsound-file-names-1-9)
+
+    - '**give: &lt;type&gt; [amount] [data] [nbt]**' to give an item to a player
+    - '**action: &lt;action&gt;**' to execute an [ActionAPI](https://www.spigotmc.org/resources/actionapi.16346/) action
+    - If you have the Plus version, you also get access to these commands:
+      - '**bungee: &lt;command&gt;**' to execute a command as the bungeecord console.
+      - '**bungeeplayer: &lt;command&gt;**' to execute a bungeecord command as the player
+        - Note: For the above 2 commands to work, you must put the AnimatedMenu Plus jar in the BungeeCord plugins folder!
+
+      - '**script: &lt;script&gt;**' to execute some javascript code
+      - '**sql: &lt;statement&gt;**' to execute a config specified [SQL Statement](config.md#sql_statements)
+      - '**admin: &lt;command&gt;**' to make an admin menu player execute a command
+
+
+

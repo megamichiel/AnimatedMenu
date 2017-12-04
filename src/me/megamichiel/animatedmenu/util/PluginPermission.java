@@ -8,7 +8,8 @@ import org.bukkit.plugin.PluginManager;
 import java.util.Locale;
 import java.util.function.Predicate;
 
-import static org.bukkit.permissions.PermissionDefault.*;
+import static org.bukkit.permissions.PermissionDefault.OP;
+import static org.bukkit.permissions.PermissionDefault.TRUE;
 
 public enum PluginPermission implements Predicate<Permissible> {
 
@@ -27,8 +28,8 @@ public enum PluginPermission implements Predicate<Permissible> {
     PLUS_COMMAND_TOGGLEPI("Use /animatedmenu togglepi", OP),
     PLUS_COMMAND_RLBUNGEE("Use /animatedmenu rlbungee", OP),
     PLUS_COMMAND_TRIGGER("Use /animatedemenu trigger", OP),
-    PLUS_POLLS_REMOVE_OTHER("polls.removeOther", "Remove other people's polls", OP),
-    PLUS_POLLS_CLOSE_OTHER("polls.closeOther", "Close other people's polls", OP);
+    PLUS_POLLS_CLOSE_OTHER("polls.closeOther", "Close other people's polls", OP),
+    PLUS_POLLS_REMOVE_OTHER("polls.removeOther", "Remove other people's polls", OP);
 
     private final Permission permission;
     private final boolean premium;

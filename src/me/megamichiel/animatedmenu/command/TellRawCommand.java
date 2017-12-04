@@ -16,6 +16,7 @@ public class TellRawCommand extends Command<StringBundle, Object> {
     
     public TellRawCommand(Nagger nagger) {
         super("tellraw");
+
         boolean available = true;
         Method deserialize = null, getHandle = null, sendMessage = null;
         try {
@@ -47,47 +48,45 @@ public class TellRawCommand extends Command<StringBundle, Object> {
 
     @Override
     public Object tryCacheValue(AnimatedMenuPlugin plugin, StringBundle value) {
-        if (value.containsPlaceholders()) return null;
-        String s = value.toString(null);
-        if (!available) {
-            return s;
+        if (!value.containsPlaceholders()) {
+            String s = value.toString(null);
+            try {
+                return available ? deserialize.invoke(null, s) : s;
+            } catch (Exception ex) {
+                plugin.nag("Failed to parse raw message '" + s + "'");
+                plugin.nag(ex);
+            }
         }
-        try {
-            return deserialize.invoke(null, s);
-        } catch (Exception ex) {
-            plugin.nag("Failed to parse raw message '" + s + "'");
-            plugin.nag(ex);
-            return null;
-        }
+        return null;
     }
 
     @Override
     public boolean execute(AnimatedMenuPlugin plugin, Player p, StringBundle value) {
         String s = value.toString(p);
-        if (!available) {
+        if (available) {
+            try {
+                return executeCached(plugin, p, deserialize.invoke(null, s));
+            } catch (Exception ex) {
+                plugin.nag("Failed to parse raw message '" + s + "'");
+                plugin.nag(ex);
+            }
+        } else {
             plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), "minecraft:tellraw " + p.getName() + ' ' + s);
-            return true;
-        }
-        try {
-            return executeCached(plugin, p, deserialize.invoke(null, s));
-        } catch (Exception ex) {
-            plugin.nag("Failed to parse raw message '" + s + "'");
-            plugin.nag(ex);
         }
         return true;
     }
     
     @Override
     public boolean executeCached(AnimatedMenuPlugin plugin, Player p, Object value) {
-        if (!available) {
+        if (available) {
+            try {
+                sendMessage.invoke(getHandle.invoke(p), value);
+            } catch (Exception ex) {
+                plugin.nag("Failed to send raw message '" + value + "'!");
+                plugin.nag(ex);
+            }
+        } else {
             plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), "minecraft:tellraw " + p.getName() + ' ' + value);
-            return true;
-        }
-        try {
-            sendMessage.invoke(getHandle.invoke(p), value);
-        } catch (Exception ex) {
-            plugin.nag("Failed to send raw message '" + value + "'!");
-            plugin.nag(ex);
         }
         return true;
     }

@@ -2,19 +2,19 @@ package me.megamichiel.animatedmenu.command;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
-import me.megamichiel.animationlib.animation.Animatable;
-import me.megamichiel.animationlib.config.AbstractConfig;
+import me.megamichiel.animationlib.animation.AbsAnimatable;
+import me.megamichiel.animationlib.config.ConfigSection;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 import static java.util.Locale.ENGLISH;
 
-public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlugin, Player>>> implements Consumer<Player> {
+public class CommandExecutor extends AbsAnimatable<List<BiPredicate<AnimatedMenuPlugin, Player>>> implements Consumer<Player> {
 
     private final AnimatedMenuPlugin plugin;
     
@@ -33,18 +33,35 @@ public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlu
                 (plug, p) -> command.executeCached(plug, p, cached) :
                 (plug, p) -> command.execute(plug, p, val);
     }
-    
-    private boolean isStringOrPrimitive(Object input) {
-        return input instanceof String    || input instanceof Boolean ||
-               input instanceof Character || input instanceof Number;
-    }
 
     @Override
-    protected List<BiPredicate<AnimatedMenuPlugin, Player>> convert(Nagger nagger, Object o) {
+    protected List<BiPredicate<AnimatedMenuPlugin, Player>> get(Nagger nagger, Object o) {
         List<BiPredicate<AnimatedMenuPlugin, Player>> result = new ArrayList<>();
-        if (!(o instanceof List)) return result;
+        if (!(o instanceof List)) {
+            return result;
+        }
         for (Object raw : (List) o) {
-            if (isStringOrPrimitive(raw)) {
+            if (raw instanceof ConfigSection) {
+                ((ConfigSection) raw).forEach((key, value) -> {
+                    Command<?, ?> command = plugin.findCommand(key.trim().toLowerCase(ENGLISH));
+                    if (command == TextCommand.DEFAULT) {
+                        return;
+                    }
+                    if (value instanceof List<?>) {
+                        BiPredicate<AnimatedMenuPlugin, Player> handler;
+                        for (Object ele : ((List) value)) {
+                            if (!(ele instanceof List<?> || ele instanceof ConfigSection) && (handler = getCommandHandler(command, plugin, ele.toString())) != null) {
+                                result.add(handler);
+                            }
+                        }
+                    } else if (!(value instanceof ConfigSection)) {
+                        BiPredicate<AnimatedMenuPlugin, Player> handler = getCommandHandler(command, plugin, value.toString());
+                        if (handler != null) {
+                            result.add(handler);
+                        }
+                    }
+                });
+            } else if (!(raw instanceof Collection<?>)) {
                 String str = raw.toString();
                 int index = str.indexOf(':');
                 Command<?, ?> cmd;
@@ -59,34 +76,15 @@ public class CommandExecutor extends Animatable<List<BiPredicate<AnimatedMenuPlu
                 if (handler != null) {
                     result.add(handler);
                 }
-            } else if (raw instanceof AbstractConfig) {
-                ((AbstractConfig) raw).forEach((key, value) -> {
-                    Command<?, ?> command = plugin.findCommand(key.trim().toLowerCase(ENGLISH));
-                    if (command == TextCommand.DEFAULT) return;
-                    if (isStringOrPrimitive(value)) {
-                        BiPredicate<AnimatedMenuPlugin, Player> handler = getCommandHandler(command, plugin, value.toString());
-                        if (handler != null) {
-                            result.add(handler);
-                        }
-                    } else if (value instanceof List) {
-                        ((List<?>) value).stream().filter(this::isStringOrPrimitive)
-                                .map(val -> getCommandHandler(command, plugin, val.toString()))
-                                .filter(Objects::nonNull).forEach(result::add);
-                    }
-                });
             }
         }
         return result;
     }
 
     @Override
-    protected Object getValue(Nagger nagger, AbstractConfig section, String key) {
-        return section.getList(key);
-    }
-
-    @Override
     public void accept(Player player) {
-        List<BiPredicate<AnimatedMenuPlugin, Player>> commands = next();
+        tick();
+        List<BiPredicate<AnimatedMenuPlugin, Player>> commands = get();
         if (commands != null) {
             for (BiPredicate<AnimatedMenuPlugin, Player> predicate : commands) {
                 if (!predicate.test(plugin, player)) {

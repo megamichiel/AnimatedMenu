@@ -3,20 +3,18 @@ package me.megamichiel.animatedmenu.menu.config;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animatedmenu.animation.AnimatedLore;
 import me.megamichiel.animatedmenu.menu.AbstractMenu;
-import me.megamichiel.animatedmenu.menu.MenuItem;
 import me.megamichiel.animatedmenu.menu.MenuSession;
-import me.megamichiel.animatedmenu.menu.MenuType;
-import me.megamichiel.animatedmenu.menu.item.ItemInfo;
+import me.megamichiel.animatedmenu.menu.item.IMenuItem;
 import me.megamichiel.animatedmenu.util.Flag;
 import me.megamichiel.animatedmenu.util.item.BannerPattern;
 import me.megamichiel.animatedmenu.util.item.MaterialParser;
 import me.megamichiel.animatedmenu.util.item.MaterialSpecific;
 import me.megamichiel.animatedmenu.util.item.Skull;
-import me.megamichiel.animationlib.animation.Animatable;
-import me.megamichiel.animationlib.animation.AnimatedText;
+import me.megamichiel.animationlib.animation.AbsAnimatable;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
-import me.megamichiel.animationlib.config.AbstractConfig;
+import me.megamichiel.animationlib.config.ConfigSection;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
+import me.megamichiel.animationlib.placeholder.PlaceholderContext;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -32,7 +30,10 @@ import org.bukkit.inventory.meta.*;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -40,18 +41,19 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.lang.Integer.parseInt;
+import static java.lang.Integer.parseUnsignedInt;
 
-public class ConfigItemInfo implements ItemInfo {
+public class ConfigMenuItem implements IMenuItem {
 
     private static final Consumer<ItemMeta> UNBREAKABLE;
 
     static {
         Consumer<ItemMeta> action;
         try {
-            Method method = ItemMeta.class.getDeclaredMethod("setUnbreakable", boolean.class);
+            Method setUnbreakable = ItemMeta.class.getDeclaredMethod("setUnbreakable", boolean.class);
             action = meta -> {
                 try {
-                    method.invoke(meta, true);
+                    setUnbreakable.invoke(meta, true);
                 } catch (IllegalAccessException | InvocationTargetException ex) {
                     ex.printStackTrace();
                 }
@@ -59,11 +61,11 @@ public class ConfigItemInfo implements ItemInfo {
         } catch (NoSuchMethodException old) {
             try {
                 Class<?> spigot = Class.forName("org.bukkit.inventory.meta.ItemMeta$Spigot");
-                Method method = spigot.getDeclaredMethod("setUnbreakable", boolean.class),
-                    getSpigot = spigot.getEnclosingClass().getDeclaredMethod("spigot", spigot);
+                Method getSpigot = spigot.getEnclosingClass().getDeclaredMethod("spigot", spigot),
+                  setUnbreakable = spigot.getDeclaredMethod("setUnbreakable", boolean.class);
                 action = meta -> {
                     try {
-                        method.invoke(getSpigot.invoke(meta), true);
+                        setUnbreakable.invoke(getSpigot.invoke(meta), true);
                     } catch (IllegalAccessException | InvocationTargetException ex) {
                         ex.printStackTrace();
                     }
@@ -78,13 +80,13 @@ public class ConfigItemInfo implements ItemInfo {
 
     private final AnimatedMenuPlugin plugin;
     private final String name;
-    private final int slot, frameDelay, refreshDelay;
+    private final int slot;
 
     private final Predicate<Player> viewPredicate;
 
-    private final Animatable<IPlaceholder<ItemStack>> material;
-    private final AnimatedText displayName = new AnimatedText();
-    private final AnimatedLore lore = new AnimatedLore();
+    private final AbsAnimatable<IPlaceholder<ItemStack>> material;
+    private final AbsAnimatable<StringBundle> displayName = AbsAnimatable.ofText(true);
+    private final AnimatedLore lore;
 
     private final Map<Enchantment, Integer> enchantments = new HashMap<>();
     private final MaterialSpecific specific = new MaterialSpecific();
@@ -93,11 +95,11 @@ public class ConfigItemInfo implements ItemInfo {
 
     private final ClickHandler clickListener;
 
-    ConfigItemInfo(AnimatedMenuPlugin plugin, MenuLoader loader, AbstractMenu menu, String name, AbstractConfig section) {
+    ConfigMenuItem(AnimatedMenuPlugin plugin, ConfigMenuProvider provider, AbstractMenu menu, String name, ConfigSection section) {
         this.plugin = plugin;
         this.name = name;
 
-        MenuType type = menu.getMenuType();
+        AbstractMenu.Type type = menu.getType();
         if (section.isInt("x") && section.isInt("y")) {
             int x = clampSlot(type.getWidth(),  section.getInt("x")) - 1,
                 y = clampSlot(type.getHeight(), section.getInt("y")) - 1;
@@ -112,20 +114,29 @@ public class ConfigItemInfo implements ItemInfo {
                 slot = y * type.getWidth() + x;
             } catch (NumberFormatException ex) {
                 throw new IllegalArgumentException("Unknown slot for item " + name + " in menu " + menu.getName() + ": " + section.getString("slot") + "!");
-            } else throw new IllegalArgumentException("Unknown slot for item " + name + " in menu " + menu.getName() + ": " + section.getString("slot") + "!");
-        } else throw new IllegalArgumentException("No slot specified for item " + name + " in menu " + menu.getName() + "!");
+            } else {
+                throw new IllegalArgumentException("Unknown slot for item " + name + " in menu " + menu.getName() + ": " + section.getString("slot") + "!");
+            }
+        } else {
+            throw new IllegalArgumentException("No slot specified for item " + name + " in menu " + menu.getName() + "!");
+        }
 
-        frameDelay = plugin.parseTime(section, "frame-delay", 20);
-        refreshDelay = plugin.parseTime(section, "refresh-delay", frameDelay);
 
-        material = Animatable.of(IPlaceholder.constant(new ItemStack(Material.STONE)), plugin::parseItemPlaceholder);
-        if (!material.load(plugin, section, "material")) {
+        material = AbsAnimatable.of(plugin::parseItemPlaceholder);
+        if (material.load(plugin, section, "material").addDefault(IPlaceholder.constant(new ItemStack(Material.STONE)))) {
             plugin.nag("Item " + name + " in menu " + menu.getName() + " doesn't contain Material!");
         }
-        if (!displayName.load(plugin, section, "name", new StringBundle(plugin, name))) {
+        if (displayName.load(plugin, section, "name").addDefault(new StringBundle(plugin, name))) {
             plugin.nag("Item " + name + " in menu " + menu.getName() + " doesn't contain Name!");
         }
-        lore.load(plugin, section, "lore");
+        (lore = new AnimatedLore(plugin)).load(plugin, section, "lore").addDefault(new StringBundle[0]);
+
+        int i = provider.parseTime(section, "refresh-delay", provider.parseTime(section, "frame-delay", 20));
+
+        material.setDelay(i);
+        displayName.setDelay(i);
+        lore.setDelay(i);
+
         for (String str : section.getStringList("enchantments")) {
             String[] split = str.split(":");
             Enchantment ench = MaterialParser.getEnchantment(split[0]);
@@ -143,18 +154,19 @@ public class ConfigItemInfo implements ItemInfo {
             }
             enchantments.put(ench, level);
         }
-        Color leatherArmorColor = getColor(section.getString("color"));
-        if (leatherArmorColor != null) {
-            specific.add(LeatherArmorMeta.class, (player, meta) -> meta.setColor(leatherArmorColor));
+        Color color = getColor(section.getString("color"));
+        if (color != null) {
+            Color c = color;
+            specific.add(LeatherArmorMeta.class, (player, meta, context) -> meta.setColor(c));
         }
-        String skullOwner = section.getString("skull-owner", section.getString("skullowner"));
-        if (skullOwner != null) {
-            specific.add(SkullMeta.class, new Skull(plugin, skullOwner));
+        String str = section.getString("skull-owner", section.getString("skullowner"));
+        if (str != null) {
+            specific.add(SkullMeta.class, new Skull(plugin, str));
         }
         try {
             Class.forName("org.bukkit.inventory.meta.SpawnEggMeta");
             EntityType eggType = EntityType.valueOf(section.getString("egg-type").toUpperCase(Locale.ENGLISH).replace('-', '_'));
-            specific.add(SpawnEggMeta.class, (player, meta) -> meta.setSpawnedType(eggType));
+            specific.add(SpawnEggMeta.class, (player, meta, context) -> meta.setSpawnedType(eggType));
         } catch (NullPointerException | ClassNotFoundException ex) {
             // No egg type ;c
         } catch (IllegalArgumentException ex) {
@@ -162,43 +174,39 @@ public class ConfigItemInfo implements ItemInfo {
         }
 
         try {
-            String s = section.getString("banner-pattern", section.getString("bannerpattern"));
-            if (s != null) {
-                specific.add(BannerMeta.class, new BannerPattern(plugin, s));
+            if ((str = section.getString("banner-pattern", section.getString("bannerpattern"))) != null) {
+                specific.add(BannerMeta.class, new BannerPattern(plugin, str));
             }
         } catch (IllegalArgumentException ex) {
-            plugin.nag("Failed to parse banner pattern '" + section.getString("banner-pattern", section.getString("bannerpattern")) + "'!");
+            plugin.nag("Failed to parse banner pattern '" + str + "'!");
             plugin.nag(ex.getMessage());
         }
 
-        String fireworks = section.getString("fireworks-color");
-        if (fireworks != null) {
-            Color color = getColor(fireworks);
-            if (color != null) {
-                FireworkEffect effect = FireworkEffect.builder().withColor(color).build();
-                specific.add(FireworkEffectMeta.class, (player, meta) -> meta.setEffect(effect));
-            }
+        if ((str = section.getString("fireworks-color")) != null && (color = getColor(str)) != null) {
+            FireworkEffect effect = FireworkEffect.builder().withColor(color).build();
+            specific.add(FireworkEffectMeta.class, (player, meta, context) -> meta.setEffect(effect));
         }
 
         int hideFlags = 0;
         if (section.isInt("hide-flags")) {
             hideFlags = section.getInt("hide-flags");
-        } else if (section.isString("hide-flags")) {
-            String[] split = section.getString("hide-flags").split(", ");
-            for (String str : split) {
+        } else if ((str = section.getString("hide-flags")) != null) {
+            for (String s : str.split(",")) {
                 try {
-                    ItemFlag flag = ItemFlag.valueOf("HIDE_" + str.toUpperCase(Locale.ENGLISH).replace('-', '_'));
-                    hideFlags |= (1 << flag.ordinal());
+                    hideFlags |= (1 << ItemFlag.valueOf("HIDE_" + s.trim().toUpperCase(Locale.ENGLISH).replace('-', '_')).ordinal());
                 } catch (IllegalArgumentException ex) {
-                    plugin.nag("No Hide Flag by name \"" + str + "\" found!");
+                    plugin.nag("No Hide Flag with name \"" + s + "\" found!");
                 }
             }
         }
-        List<ItemFlag> flags = new ArrayList<>();
         ItemFlag[] values = ItemFlag.values();
-        for (int i = 0, len = values.length; i < len; i++)
-            if ((hideFlags & (1 << i)) != 0) flags.add(values[i]);
-        itemFlags = flags.toArray(new ItemFlag[flags.size()]);
+        for (int index = i = values.length; --index >= 0; --i) {
+            if ((hideFlags & (1 << index)) == 0) {
+                System.arraycopy(values, 0, values, 1, i++ - 1);
+            }
+        }
+        System.arraycopy(values, i, itemFlags = new ItemFlag[values.length - i], 0, values.length - i);
+
         String perm = section.getString("view-permission", section.getString("hide-permission"));
         if (perm == null) {
             viewPredicate = player -> true;
@@ -211,86 +219,66 @@ public class ConfigItemInfo implements ItemInfo {
         }
         unbreakable = Flag.parseBoolean(section.getString("unbreakable"));
 
-        clickListener = new ClickHandler(loader, menu.getName(), name, section);
+        clickListener = new ClickHandler(provider, menu.getName(), name, section);
     }
 
     @Override
-    public int getDelay(DelayType type) {
-        switch (type) {
-            case FRAME: return frameDelay;
-            case REFRESH: return refreshDelay;
-            default: return Integer.MAX_VALUE;
-        }
+    public int tick() {
+        return material.tick() | displayName.tick() | lore.tick() ? UPDATE_ITEM : 0;
     }
 
     @Override
-    public void nextFrame() {
-        material.next();
-        displayName.next();
-        lore.next();
-    }
-
-    @Override
-    public boolean hasFixedSlot() {
-        return true;
-    }
-
-    @Override
-    public int getSlot(Player player, MenuSession session, MenuItem.SlotContext ctx) {
+    public int getSlot(Player player, MenuSession session) {
         return slot;
     }
 
     @Override
-    public ItemStack load(Player player, MenuSession session) {
+    public ItemStack getItem(Player player, MenuSession session, ItemStack item) {
         if (!viewPredicate.test(player)) {
             return null;
         }
-        ItemStack item = this.material.get().invoke(plugin, player).clone();
-        if (item.getType() == Material.AIR) {
-            return null;
-        }
+        PlaceholderContext context = PlaceholderContext.create(plugin);
+        ItemMeta meta;
 
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
-            return item; // Safety, for air
-        }
+        boolean isNull = item == null;
+        if (isNull) {
+            if ((item = this.material.get().invoke(plugin, player, context)).getType() == Material.AIR) {
+                return null;
+            }
 
-        meta.setDisplayName(displayName.get().toString(player));
-        if (!lore.isEmpty()) {
-            meta.setLore(lore.stream(player).collect(Collectors.toList()));
-        }
+            if ((meta = (item = item.clone()).getItemMeta()) == null) {
+                return item; // Safety, for air n stuff
+            }
 
-        specific.apply(player, meta);
-        meta.addItemFlags(itemFlags);
+            meta.addItemFlags(itemFlags);
 
-        this.enchantments.forEach((ench, lvl) -> meta.addEnchant(ench, lvl, true));
+            this.enchantments.forEach((ench, lvl) -> meta.addEnchant(ench, lvl, true));
 
-        if (unbreakable) {
-            UNBREAKABLE.accept(meta);
-        }
-
-        item.setItemMeta(meta);
-
-        return item;
-    }
-
-    @Override
-    public ItemStack apply(Player player, MenuSession session, ItemStack item) {
-        if (viewPredicate.test(player)) {
-            ItemStack material = this.material.get().invoke(plugin, player);
-            if (material.getType() == Material.AIR) return null;
+            if (unbreakable) {
+                UNBREAKABLE.accept(meta);
+            }
+        } else {
+            ItemStack material = this.material.get().invoke(plugin, player, context);
+            if (material.getType() == Material.AIR) {
+                return null;
+            }
             item.setType(material.getType());
             item.setAmount(material.getAmount());
             item.setDurability(material.getDurability());
-        } else return null;
 
-        ItemMeta meta = item.getItemMeta();
+            meta = item.getItemMeta();
+        }
 
-        meta.setDisplayName(displayName.get().toString(player));
-        meta.setLore(lore.stream(player).collect(Collectors.toList()));
-        specific.apply(player, meta);
+        meta.setDisplayName(displayName.get().toString(player, context));
+        meta.setLore(Arrays.stream(lore.get()).map(sb -> sb.toString(player, context)).collect(Collectors.toList()));
+        specific.apply(player, meta, context);
 
-        item.setItemMeta(meta);
+        if (isNull) {
+            item.setItemMeta(meta);
+        } else {
+            NBTUtil util = NBTUtil.getInstance();
+            util.setTag(item, util.toTag(meta));
+        }
 
         return item;
     }
@@ -311,7 +299,7 @@ public class ConfigItemInfo implements ItemInfo {
 
     private static final Pattern COLOR_PATTERN = Pattern.compile("([0-9]+),\\s*([0-9]+),\\s*([0-9]+)");
 
-    public static Color getColor(String val) {
+    private static Color getColor(String val) {
         if(val == null) {
             return null;
         }
@@ -323,7 +311,7 @@ public class ConfigItemInfo implements ItemInfo {
                                   parseInt(matcher.group(3)));
         } else {
             try {
-                color = Color.fromRGB(parseInt(val, 16));
+                color = Color.fromRGB(parseUnsignedInt(val, 16));
             } catch (NumberFormatException ex) {
                 return null;
             }

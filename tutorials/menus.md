@@ -2,6 +2,7 @@
 Menus are where it all starts in the plugin  
 ### Summary ###
 #### Standard features ####
+- [Enable](#user-content-enable)
 - [Menu-Name](#user-content-menu-name)
 - [Menu-Type](#user-content-menu-type)
 - [Rows](#user-content-rows)
@@ -31,8 +32,14 @@ Menus are where it all starts in the plugin
 - [Require-Other](#user-content-require-other)
 - [Save-Navigation](#user-content-save-navigation)
 - [Auto-Close](#user-content-auto-close)
+- [Global](#user-content-global)
 
 ### Standard features ###
+- #### Enable ####
+  Default value: yes  
+  \------------------------------  
+  If disabled, this menu will not be loaded. An easy way to temporarily disable a menu.  
+
 - #### Menu-Name ####
   Animatable, Supports placeholders  
   \------------------------------  
@@ -92,8 +99,10 @@ Command:
   Usage: '/somecommand'
   Description: Opens a menu
   Lenient-Args: true
+  Fallback: 'help'
 ```
   If Lenient-Args is set to false and a player was to enter too many arguments in the command, it would fail  
+  The 'Fallback' option specifies a command to run when the player has entered too many arguments (or the console uses it). "/somecommand a b c" would make the player run "/help a b c"  
 
 - #### Hide-From-Command ####
   Prevent this menu from being openable through /animatedmenu open  
@@ -106,12 +115,12 @@ Command:
   \------------------------------  
   The message to send when [Click-Delay](#user-content-click-delay) is not over yet  
   You can use these special placeholders to customize the message:  
-    - **{hoursleft}** to retrieve the amount of hours left
-    - **{minutesleft}** to retrieve the amount of minutes left in the hour
-    - **{secondsleft}** to retrieve the amount of seconds left in the minute
-    - **{ticksleft}** to retrieve the amount of ticks left in the second
+    - **\\{hoursleft\\}** to retrieve the amount of hours left
+    - **\\{minutesleft\\}** to retrieve the amount of minutes left in the hour
+    - **\\{secondsleft\\}** to retrieve the amount of seconds left in the minute
+    - **\\{ticksleft\\}** to retrieve the amount of ticks left in the second
 
-  You can use formulas (e.g. \(20{secondsleft} + {ticksleft})) to get a total of something  
+  You can use formulas (e.g. \(20\\{secondsleft\\} + \\{ticksleft\\})) to get a total of something  
 
 - #### Items ####
   Section of Key-Section pairs  
@@ -138,8 +147,8 @@ Command:
 
 ```YAML
 Empty-Item:
-  Name: '&6Empty Item'
-  Material: stone
+  Name: '&0'
+  Material: stained-glass-pane:1:gray
   Single: true
 ```
 
@@ -181,14 +190,18 @@ Empty-Item:
 
 - #### Auto-Close ####
   Specify a time after which to automatically close the menu.  
-  You can use placeholders in items and whatnot to get the time left:  
-    - {autoclose_hoursleft}
-    - {autoclose_minutesleft}
-    - {autoclose_secondsleft}
-    - {autoclose_ticksleft}
+  You can use placeholders in text (item name, lore etc.) to get the time left:  
+    - \\{autoclose_hoursleft\\}
+    - \\{autoclose_minutesleft\\}
+    - \\{autoclose_secondsleft\\}
+    - \\{autoclose_ticksleft\\}
 
   You can either specify the amount of ticks, or a time:  
-    - 1200 equates to 20 * 60 ticks = 1 minute
-    - 3h6m5s equates to 3 hours, 6 minutes and 5 seconds
+    - 1200 = 20 * 60 ticks = 1 minute
+    - 3h6m5s = 3 hours, 6 minutes and 5 seconds
 
+
+- #### Global ####
+  When set to 'true' and AnimatedMenuPlus and AnimationLib are in the BungeeCord plugins folder, this menu will be spread across the entire BungeeCord network  
+  Note that in order to send the menu's data a player needs to have been online at least once since the menu was loaded, so I recommend putting global menus in a lobby server  
 

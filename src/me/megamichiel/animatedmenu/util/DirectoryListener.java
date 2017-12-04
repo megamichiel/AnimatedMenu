@@ -1,16 +1,10 @@
 package me.megamichiel.animatedmenu.util;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,9 +31,7 @@ public class DirectoryListener implements Runnable {
 
     public DirectoryListener(Logger log, File directory, FileListener listener) throws IOException {
         this.log = log;
-        service = FileSystems.getDefault().newWatchService();
-        dir = directory.toPath();
-        dir.register(service, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE);
+        (dir = directory.toPath()).register(service = FileSystems.getDefault().newWatchService(), ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE);
         this.listener = listener;
         (thread = new Thread(this)).start();
     }
@@ -49,46 +41,44 @@ public class DirectoryListener implements Runnable {
         thread.interrupt();
     }
 
-    private final Cache<String, Long> lastModified = CacheBuilder.newBuilder()
-            .expireAfterWrite(1, TimeUnit.MINUTES).build();
-
     @SuppressWarnings("unchecked")
     @Override
     public void run() {
-        while (running) {
+        Map<String, Long> lastModified = new HashMap<>();
+        WatchKey key = null;
+        do {
+            long time = System.currentTimeMillis();
+            lastModified.entrySet().removeIf($entry -> time - $entry.getValue() >= 60_000);
             try {
-                WatchKey key = service.take();
-
-                List<WatchEvent<?>> watchEvents = key.pollEvents();
-
-                for (WatchEvent<?> event : watchEvents) {
+                for (WatchEvent<?> event : (key = service.take()).pollEvents()) {
                     WatchEvent.Kind<?> kind = event.kind();
-                    if (kind == OVERFLOW) continue;
+                    if (kind == OVERFLOW) {
+                        continue;
+                    }
 
                     try {
                         File file = dir.resolve((Path) event.context()).toFile();
 
                         FileAction action = ACTIONS.get(kind);
                         if (action == FileAction.MODIFY) {
-                            long lastMod = file.lastModified();
-                            Long mod = lastModified.getIfPresent(file.getName());
-                            if (mod != null && mod == lastMod) continue;
-                            lastModified.put(file.getName(), lastMod);
+                            Long lastMod = file.lastModified();
+                            if (lastMod.equals(lastModified.put(file.getName(), lastMod))) {
+                                continue;
+                            }
                         }
                         listener.fileChanged(file, action);
                     } catch (RuntimeException ex) {
                         ex.printStackTrace();
                     }
                 }
-
-                if (!key.reset()) break;
             } catch (InterruptedException ex) {
                 // Interrupted by the plugin disabling
                 if (running) {
-                    log.log(Level.SEVERE, "Directory change listener was interrupted by an external source!", ex);
+                    log.log(Level.SEVERE, "File change listener was interrupted by an external source!", ex);
+                    running = false;
                 }
             }
-        }
+        } while (running && key.reset());
     }
 
     public enum FileAction {

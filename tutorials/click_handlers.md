@@ -36,6 +36,8 @@ Click-Handlers:
 - [Price-Message](#user-content-price-message)
 - [Points](#user-content-points)
 - [Points-Message](#user-content-points-message)
+- [Coins](#user-content-coins)
+- [Coins-Message](#user-content-coins-message)
 - [Gems](#user-content-gems)
 - [Gems-Message](#user-content-gems-message)
 - [Exp](#user-content-exp)
@@ -71,7 +73,7 @@ Click-Handlers:
 
 - #### Price ####
   The amount of Vault money required for this handler  
-  Vault and an economy handler (like Essentials) need to be installed of course  
+  [Vault](https://www.spigotmc.org/resources/vault.41918/) and an economy handler (like Essentials) need to be installed of course  
 
 - #### Price-Message ####
   Supports placeholders  
@@ -81,11 +83,21 @@ Click-Handlers:
 
 - #### Points ####
   The amount of player points required for this handler  
-  PlayerPoints is needed for this  
+  [PlayerPoints](https://dev.bukkit.org/projects/playerpoints) is needed for this  
 
 - #### Points-Message ####
   Supports placeholders  
   Default value: '&cYou don't have enough points for that!'  
+  \------------------------------  
+  The message to send when the player does not have [Points](#user-content-points)  
+
+- #### Coins ####
+  The amount of coins for this handler  
+  [Coins](https://www.spigotmc.org/resources/coins-1-8-x-1-12-x-mysql-sqlite-api.48536/) is needed for this  
+
+- #### Coins-Message ####
+  Supports placeholders  
+  Default value: '&cYou don't have enough coins for that!'  
   \------------------------------  
   The message to send when the player does not have [Points](#user-content-points)  
 
@@ -141,18 +153,17 @@ Click-Handlers:
   \------------------------------  
   The message to send when [Click-Delay](#user-content-click-delay) is not over yet  
   You can use these special placeholders to customize the message:  
-    - **{hoursleft}** to retrieve the amount of hours left
-    - **{minutesleft}** to retrieve the amount of minutes left in the hour
-    - **{secondsleft}** to retrieve the amount of seconds left in the minute
-    - **{ticksleft}** to retrieve the amount of ticks left in the second
+    - **\\{hoursleft\\}** to retrieve the amount of hours left
+    - **\\{minutesleft\\}** to retrieve the amount of minutes left in the hour
+    - **\\{secondsleft\\}** to retrieve the amount of seconds left in the minute
+    - **\\{ticksleft\\}** to retrieve the amount of ticks left in the second
 
-  You can use formulas (e.g. \(20{secondsleft} + {ticksleft})) to get a total of something  
+  You can use formulas (e.g. \\(20\\{secondsleft\\} + \\{ticksleft\\})) to get a total of something  
 
 - #### Commands ####
   Animatable, List, Supports placeholders  
   \------------------------------  
   The commands to execute when the player is allowed to click this item  
-  NOTE: If you want to use { and } for things as tellraw, use \{ and \}  
   By default, the player will execute the command you enter,  
   but you can start a command with these followed by a colon to do something special:  
     - **chat** to make the player chat a message
@@ -162,11 +173,11 @@ Click-Handlers:
     - **broadcast** to broadcast a message to the entire server
     - **server** to send the player to a specific bungeecord server
     - **menu** to open a specific menu
-    - **tellraw** to send a raw message (e.g. \\{"text":"Hello there!"\\})
+    - **tellraw** to send a raw message (e.g. {"text":"Hello there!"})
     - **sound** to send a sound to a player, format '&lt;soundname&gt; [volume] [pitch]'
       - For a list of sound names, see [this page](http://www.minecraftforum.net/forums/mapping-and-modding/mapping-and-modding-tutorials/1571574-all-minecraft-playsound-file-names-1-9)
 
-    - **give** to give an item to a player, format identical to [Item](#user-content-item) but { and } should be replaced with \{ and \}
+    - **give** to give an item to a player, format identical to [Item](#user-content-item)
     - If you have the Plus version, you also get access to these commands:
       - **bungee** to execute a command as the bungeecord console.
       - **bungeeplayer** to execute a bungeecord command as the player

@@ -2,6 +2,7 @@ package me.megamichiel.animatedmenu;
 
 import me.megamichiel.animatedmenu.menu.AbstractMenu;
 import me.megamichiel.animatedmenu.menu.Menu;
+import me.megamichiel.animatedmenu.util.PluginMessage;
 import me.megamichiel.animatedmenu.util.PluginPermission;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -14,67 +15,82 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static java.util.Locale.ENGLISH;
+import static me.megamichiel.animatedmenu.util.PluginMessage.*;
 import static me.megamichiel.animatedmenu.util.PluginPermission.*;
-import static org.bukkit.ChatColor.*;
+import static org.bukkit.ChatColor.RED;
 
 /**
  * The Animated Menu command
  */
 public class AnimatedMenuCommand implements TabExecutor {
-    
-    private final String[] helpHeader = {
-            DARK_AQUA + "-=" + GOLD + "Animated Menu - Help" + DARK_AQUA + "=-",
-            AQUA + "<> = required, [] = optional"
-    };
+
     private final Map<String, SubCommand> subCommands = new LinkedHashMap<>();
+    private final AnimatedMenuPlugin plugin;
 
     @SuppressWarnings("deprecation")
     AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
-        addHandler("help", "help", "See this help menu", COMMAND_HELP, (sender, args) -> {
-            sender.sendMessage(helpHeader);
+        this.plugin = plugin;
+        addHandler("help", USAGE__HELP, DESC__HELP, COMMAND_HELP, (sender, label, args) -> {
+            sender.sendMessage(plugin.formatRaw(PluginMessage.HELP__HEADER).split("\n"));
             subCommands.forEach((arg, cmd) -> {
                 if (cmd.permission.test(sender)) {
-                    sender.sendMessage(GREEN.toString() + "/animatedmenu" + cmd.usage);
+                    sender.sendMessage(plugin.formatRaw(PluginMessage.HELP__USAGE,
+                            "usage", plugin.formatRaw(cmd.usage, "label", label),
+                            "desc", plugin.formatRaw(cmd.desc)
+                    ));
                 }
             });
             return null;
         }, null);
-        addHandler("list", "list", "List the menus you can open", COMMAND_LIST, (sender, args) -> {
+
+        addHandler("list", USAGE__LIST, DESC__LIST, COMMAND_LIST, (sender, label, args) -> {
             StringBuilder sb = new StringBuilder();
             Player player = sender instanceof Player ? (Player) sender : null;
             for (AbstractMenu menu : plugin.getMenuRegistry().getMenus()) {
                 if (menu instanceof Menu) {
-                    if (sb.length() > 0) {
-                        sb.append(", ");
-                    }
                     Menu gui = (Menu) menu;
+
                     if (!gui.getSettings().isHiddenFromCommand()) {
                         sb.append(gui.getName());
                     } else if (player == null) {
-                        sb.append(gui.getName()).append(" (hidden)");
+                        sb.append(gui.getName()).append(' ').append(plugin.formatRaw(COMMAND__LIST_HIDDEN));
+                    } else {
+                        continue;
                     }
+                    sb.append(", ");
                 }
             }
 
-            return GREEN  + "Menus: " + sb.toString();
+            if (sb.length() == 0) {
+                return plugin.format(COMMAND__LIST_NONE);
+            }
+
+            return plugin.format(COMMAND__LIST, "menus", sb.substring(0, sb.length() - 2));
         }, (sender, args) -> Collections.emptyList());
-        addHandler("open", "open <menu> [player]", "Open a specific menu", COMMAND_OPEN, (sender, args) -> {
-            if (args.length < 2) return RED + "You must specify a menu!";
+
+        addHandler("open", USAGE__OPEN, DESC__OPEN, COMMAND_OPEN, (sender, label, args) -> {
+            if (args.length < 2) {
+                return plugin.format(COMMAND__NO_MENU);
+            }
             AbstractMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
             if (!(menu instanceof Menu) || ((Menu) menu).getSettings().isHiddenFromCommand()) {
-                return RED + "Couldn't find a menu by that name!";
+                return plugin.format(MENU__NOT_FOUND, "menu", args[1]);
             }
             Player target;
             if (args.length > 2) {
                 if (!COMMAND_OPEN_OTHER.test(sender)) {
-                    return RED + "You are not permitted to do that for other players!";
+                    return plugin.format(COMMAND__NO_OTHER);
                 }
-                target = Bukkit.getPlayerExact(args[2]);
-                if (target == null) return RED + "Couldn't find a player by that name!";
-            } else if (sender instanceof Player) target = (Player) sender;
-            else return RED + "$command open <menu> <player>";
+                if ((target = Bukkit.getPlayerExact(args[2])) == null) {
+                    return plugin.format(COMMAND__PLAYER_NOT_FOUND, "player", args[2]);
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                return "usage";
+            }
             ((Menu) menu).open(target);
-            return target.equals(sender) ? null : (GREEN + "Opened menu for " + target.getName() + "!");
+            return target.equals(sender) ? null : plugin.format(COMMAND__OPENED, "player", target.getName());
         }, (sender, args) -> {
             if (args.length == 2) {
                 String query = args[1].toLowerCase(ENGLISH), menuName;
@@ -82,7 +98,7 @@ public class AnimatedMenuCommand implements TabExecutor {
                 List<String> list = new ArrayList<>();
                 for (AbstractMenu menu : plugin.getMenuRegistry()) {
                     if (menu instanceof Menu && !((Menu) menu).getSettings().isHiddenFromCommand()
-                            && ((Menu) menu).canOpen(player) == null
+                            && ((Menu) menu).getSettings().canOpen(player) == null
                             && (menuName = menu.getName().toLowerCase(ENGLISH)).startsWith(query)) {
                         list.add(menuName);
                     }
@@ -96,35 +112,39 @@ public class AnimatedMenuCommand implements TabExecutor {
             }
             return Collections.emptyList();
         });
-        addHandler("item", "item <menu> [player]", "Get a menu's menu opener", COMMAND_ITEM, (sender, args) -> {
-            if (args.length < 2) return RED + "You must specify a menu!";
+
+        addHandler("item", USAGE__ITEM, DESC__ITEM, COMMAND_ITEM, (sender, label, args) -> {
+            if (args.length < 2) {
+                return plugin.format(COMMAND__NO_MENU);
+            }
             AbstractMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
             if (menu == null || !(menu instanceof Menu)) {
-                return RED + "Couldn't find a menu by that name!";
+                return plugin.format(MENU__NOT_FOUND, "menu", args[1]);
             }
             Player target;
             if (args.length > 2) {
                 if (!COMMAND_ITEM_OTHER.test(sender)) {
-                    return RED + "You are not permitted to do that for other players!";
+                    return plugin.format(COMMAND__NO_OTHER);
                 }
                 if ((target = Bukkit.getPlayerExact(args[2])) == null) {
-                    return RED + "Couldn't find a player by that name!";
+                    return plugin.format(COMMAND__PLAYER_NOT_FOUND, "player", args[2]);
                 }
             } else if (sender instanceof Player) {
                 target = (Player) sender;
             } else {
-                return RED + "$command item <menu> <player>";
+                return "usage";
             }
             if (!((Menu) menu).getSettings().giveOpener(target.getInventory(), true)) {
-                return RED + "That menu doesn't have an opener!";
+                return plugin.format(COMMAND__NO_OPENER);
             }
-            return GREEN + (target.equals(sender) ? "Gave yourself the menu's item" : "Gave " + target.getName() + " the menu's item!");
+            return target.equals(sender) ? plugin.format(COMMAND__GOT_OPENER, "menu", menu.getName()) :
+                    plugin.format(COMMAND__GAVE_OPENER, "player", target.getName(), "menu", menu.getName());
         }, (sender, args) -> {
             if (args.length == 2) {
                 String query = args[1].toLowerCase(ENGLISH), menuName;
                 List<String> list = new ArrayList<>();
                 for (AbstractMenu menu : plugin.getMenuRegistry()) {
-                    if (menu instanceof Menu && !((Menu) menu).getSettings().hasOpener() &&
+                    if (menu instanceof Menu && ((Menu) menu).getSettings().hasOpener() &&
                             (menuName = menu.getName().toLowerCase(ENGLISH)).startsWith(query)) {
                         list.add(menuName);
                     }
@@ -138,18 +158,15 @@ public class AnimatedMenuCommand implements TabExecutor {
             }
             return Collections.emptyList();
         });
-        addHandler("reload", "reload", "Reload the plugin", COMMAND_RELOAD, (sender, args) -> {
-            plugin.reload();
-            return DARK_GRAY + "[" + GOLD + plugin.getDescription().getName() + DARK_GRAY + "] "
-                    + GREEN + "Plugin reloaded! "
-                    + plugin.getMenuRegistry().getMenus().size() + " menu(s) loaded.";
-        }, null);
+
+        addHandler("reload", USAGE__RELOAD, DESC__RELOAD, COMMAND_RELOAD,
+                (sender, label, args) -> plugin.format(COMMAND__RELOADED, "menus", plugin.reload()), null);
     }
 
-    public void addHandler(String arg, String usage, String description, PluginPermission permission,
-                            BiFunction<CommandSender, String[], Object> exec,
-                            BiFunction<CommandSender, String[], List<String>> tab) {
-        subCommands.put(arg, new SubCommand(permission, ' ' + usage + ": " + YELLOW + description, exec, tab));
+    public void addHandler(String arg, PluginMessage usage, PluginMessage desc, PluginPermission permission,
+                           Handler handler,
+                           BiFunction<CommandSender, String[], List<String>> tab) {
+        subCommands.put(arg, new SubCommand(permission, usage, desc, handler, tab));
     }
 
     public void removeHandler(String arg) {
@@ -161,19 +178,21 @@ public class AnimatedMenuCommand implements TabExecutor {
         SubCommand cmd = subCommands.get(args.length == 0 ? "help" : args[0].toLowerCase(ENGLISH));
         if (cmd != null) {
             if (!cmd.permission.test(sender)) {
-                return invalid(sender, "You don't have permission for that!");
+                sender.sendMessage(plugin.format(COMMAND__NO_PERMISSION));
+                return true;
             }
-            Object result = cmd.executor.apply(sender, args);
+            Object result = cmd.handler.execute(sender, label, args);
             if (result != null && result.getClass() == String.class) {
                 if ("usage".equals(result)) {
-                    sender.sendMessage(RED + label + cmd.usage);
+                    sender.sendMessage(plugin.formatRaw(PREFIX) + RED + plugin.formatRaw(cmd.usage, "label", label));
                 } else {
-                    sender.sendMessage(((String) result).replace("$command", '/' + label));
+                    sender.sendMessage((String) result);
                 }
             }
             return true;
         }
-        return invalid(sender, "Unknown arguments, type \"/" + label + "\" for help");
+        sender.sendMessage(plugin.format(COMMAND__UNKNOWN_ARGUMENTS, "label", label));
+        return true;
     }
     
     @Override
@@ -194,23 +213,23 @@ public class AnimatedMenuCommand implements TabExecutor {
         }
         return list;
     }
-    
-    private boolean invalid(CommandSender sender, String msg) {
-        sender.sendMessage(RED + msg);
-        return true;
+
+    public interface Handler {
+        Object execute(CommandSender sender, String label, String[] args);
     }
 
     private static class SubCommand {
 
         private final PluginPermission permission;
-        private final BiFunction<CommandSender, String[], Object> executor;
+        private final Handler handler;
         private final BiFunction<CommandSender, String[], List<String>> tabCompleter;
-        private final String usage;
+        private final PluginMessage usage, desc;
 
-        SubCommand(PluginPermission permission, String usage, BiFunction<CommandSender, String[], Object> executor, BiFunction<CommandSender, String[], List<String>> tabCompleter) {
+        SubCommand(PluginPermission permission, PluginMessage usage, PluginMessage desc, Handler handler, BiFunction<CommandSender, String[], List<String>> tabCompleter) {
             this.permission = permission;
             this.usage = usage;
-            this.executor = executor;
+            this.desc = desc;
+            this.handler = handler;
             this.tabCompleter = tabCompleter;
         }
     }

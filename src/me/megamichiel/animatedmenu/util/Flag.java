@@ -31,12 +31,16 @@ public enum Flag {
     }
 
     public static boolean parseBoolean(String str, boolean def) {
-        return parseFlag(str, def ? TRUE : FALSE) == TRUE;
+        return str == null ? def : flags.getOrDefault(str.toLowerCase(Locale.ENGLISH), def ? TRUE : FALSE) == TRUE;
     }
 
     private static final Map<String, Flag> flags = new ImmutableMap.Builder<String, Flag>()
-            .put("true", TRUE).put("yes", TRUE).put("on", TRUE).put("enable", TRUE)
-            .put("both", BOTH).put("all", BOTH).build();
+            .put("true", TRUE).put("false", FALSE)
+            .put("yes", TRUE).put("no", FALSE)
+            .put("on", TRUE).put("off", FALSE)
+            .put("enable", TRUE).put("disable", FALSE)
+            .put("both", BOTH).put("all", BOTH)
+            .build();
 
     public static Flag parseFlag(String str, Flag def) {
         return str == null ? def : flags.getOrDefault(str.toLowerCase(Locale.ENGLISH), def);

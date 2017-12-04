@@ -16,7 +16,7 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
         Economy economy;
 
         @Override
-        public boolean init() {
+        boolean init() {
             try {
                 RegisteredServiceProvider<Economy> registration = Bukkit.getServicesManager().getRegistration(Economy.class);
                 return registration != null && (economy = registration.getProvider()) != null;
@@ -49,7 +49,7 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
         PlayerPointsAPI api;
 
         @Override
-        public boolean init() {
+        boolean init() {
             try {
                 return (api = ((PlayerPoints) Bukkit.getPluginManager().getPlugin("PlayerPoints")).getAPI()) != null;
             } catch (NoClassDefFoundError | ClassCastException ex) {
@@ -80,6 +80,7 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
         }
     };
     public static final PluginCurrency<Integer> GEMS = new PluginCurrency<Integer>() {
+
         GemMethods methods;
 
         @Override
@@ -132,7 +133,7 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
 
         @Override
         public Integer get(Player player) {
-            return (int) TMAPI.getTokens(player); // Method returns a long, but it's internally an int. Get your stuff together man
+            return (int) TMAPI.getTokens(player); // Method returns a long, but it's an integer internally. Get your stuff together man
         }
 
         @Override
@@ -149,46 +150,44 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
             return false;
         }
     };
+    public static final PluginCurrency<Double> COINS = new PluginCurrency<Double>() {
 
-    public static PluginCurrency<Double> COINS = new PluginCurrency<Double>() {
+        @Override
+        boolean init() {
+            try {
+                Class.forName("net.nifheim.beelzebu.coins.CoinsAPI");
+                return true;
+            } catch (ClassNotFoundException ex) {
+                return false;
+            }
+        }
 
-	@Override
-        public boolean init() {
-	    try {
-	        Class.forName("net.nifheim.beelzebu.coins.CoinsAPI");
-		return true;
-	    } catch (ClassNotFoundException ex) {
-		return false;
-	    }
+        @Override
+        public Double get(Player player) {
+            return CoinsAPI.getCoins(player.getUniqueId());
+        }
 
-	    @Override
-	    public Double get(Player player) {
-		return CoinsAPI.getCoins(player.getUniqueId());
-	    }
+        @Override
+        public void give(Player player, Double amount) {
+            CoinsAPI.addCoins(player.getUniqueId(), amount, false);
+        }
 
-	    @Override
-	    public void give(Player player, Double amount) {
-		CoinsAPI.addCoins(player.getUniqueId(), amount, false);
-	    }
-
-	    @Override
-	    public boolean take(Player player, Double amount) {
-		if (CoinsAPI.getCoins(player.getUniqueId()) >= amount) {
-		    CoinsAPI.takeCoins(player.getUniqueId(), amount);
-		    return true;
-		}
-		return false;
-	    }
-	}
-    }
+        @Override
+        public boolean take(Player player, Double amount) {
+            if (CoinsAPI.getCoins(player.getUniqueId()) >= amount) {
+                CoinsAPI.takeCoins(player.getUniqueId(), amount);
+                return true;
+            }
+            return false;
+        }
+    };
 
     private boolean init, available;
 
     abstract boolean init();
-    public boolean isAvailable() {
-        if (init) return available;
-        init = true;
-        return available = init();
+
+    public final boolean isAvailable() {
+        return init ? available : (init = true) & (available = init());
     }
 
     public abstract N get(Player player);

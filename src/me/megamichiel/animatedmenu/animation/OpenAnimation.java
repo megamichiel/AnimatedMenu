@@ -1,29 +1,30 @@
 package me.megamichiel.animatedmenu.animation;
 
-import me.megamichiel.animatedmenu.menu.MenuType;
+import me.megamichiel.animatedmenu.menu.AbstractMenu;
+import me.megamichiel.animationlib.util.ArrayUtils;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
 
-import static me.megamichiel.animationlib.util.ArrayUtils.flip;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static org.bukkit.util.NumberConversions.floor;
 
 public class OpenAnimation {
 
-    private final int[][] frames;
+    private final byte[][] frames;
     private final double speed;
 
     private double frame = 0;
 
-    private OpenAnimation(int[][] frames, double speed) {
+    private OpenAnimation(byte[][] frames, double speed) {
         this.frames = frames;
         this.speed = speed;
     }
 
-    OpenAnimation(Type type, MenuType menuType, double speed) {
+    OpenAnimation(Type type, AbstractMenu.Type menuType, double speed) {
         this(type.sort(menuType), speed);
     }
 
@@ -32,8 +33,7 @@ public class OpenAnimation {
     }
 
     public boolean tick(IntConsumer action) {
-        int i = floor(frame),
-           to = Math.min(floor(frame += speed), frames.length);
+        int i = floor(frame), to = min(floor(frame += speed), frames.length);
         while (i < to) {
             for (int j : frames[i++]) {
                 if (j >= 0) {
@@ -46,14 +46,14 @@ public class OpenAnimation {
 
     public interface Type {
 
-        int[][] sort(MenuType type);
+        byte[][] sort(AbstractMenu.Type type);
 
-        default OpenAnimation newAnimation(MenuType menuType) {
-            return new OpenAnimation(this, menuType, 1.0);
+        default OpenAnimation newAnimation(AbstractMenu.Type type) {
+            return new OpenAnimation(this, type, 1.0);
         }
 
-        default OpenAnimation newAnimation(MenuType menuType, double speed) {
-            return new OpenAnimation(this, menuType, speed);
+        default OpenAnimation newAnimation(AbstractMenu.Type type, double speed) {
+            return new OpenAnimation(this, type, speed);
         }
     }
 
@@ -61,116 +61,123 @@ public class OpenAnimation {
 
         DOWN(type -> {
             int width = type.getWidth(), height = type.getHeight();
-            int[][] out = new int[height][];
-            for (int y = 0, slot = 0; y < height; y++, slot += width) {
-                int[] slots = out[y] = new int[width];
-                Arrays.fill(slots, -1);
-                for (int x = 0; x < width; x++)
-                    slots[x] = slot + x;
-            }
-            return out;
-        }), UP(type -> flip(DOWN.sorter.apply(type))),
-        RIGHT(type -> {
-            int width = type.getWidth(), height = type.getHeight();
-            int[][] out = new int[width][];
-            for (int x = 0; x < width; x++) {
-                int[] slots = out[x] = new int[height];
-                Arrays.fill(slots, -1);
-                for (int y = 0; y < height; y++)
-                    slots[y] = y * width + x;
-            }
-            return out;
-        }), LEFT(type -> flip(RIGHT.sorter.apply(type))),
-        DOWN_RIGHT(type -> {
-            int width = type.getWidth(), height = type.getHeight(),
-                    min = Math.min(width, height);
-            int count = width + height - 1;
-            int[][] out = new int[count][];
-            for (int i = 0; i < count; i++) {
-                int[] slots = out[i] = new int[min];
-                Arrays.fill(slots, -1);
-                for (int x = 0, y = i, j = 0; y >= 0; x++, y--)
-                    if (x < width && y < height) slots[j++] = y * width + x;
-            }
-            return out;
-        }), UP_LEFT(type -> flip(DOWN_RIGHT.sorter.apply(type))),
-        UP_RIGHT(type -> {
-            int width = type.getWidth(), height = type.getHeight(),
-                    min = Math.min(width, height);
-            int count = width + height - 1;
-            int[][] out = new int[count][];
-            for (int i = 0; i < count; i++) {
-                int[] slots = out[i] = new int[min];
-                Arrays.fill(slots, -1);
-                for (int x = 0, y = height - i - 1, j = 0; y < height; x++, y++)
-                    if (x < width && y >= 0) slots[j++] = y * width + x;
-            }
-            return out;
-        }), DOWN_LEFT(type -> flip(UP_RIGHT.sorter.apply(type))),
-        OUT(type -> {
-            int width = type.getWidth(), height = type.getHeight(),
-                    midX = width / 2, midY = height / 2;
-            int hor = ~width & 0x1, ver = ~height & 0x1;
-            int count = Math.max(midX, midY) + 1;
-            int[][] out = new int[count][];
-            int[] slots;
-            for (int i = 0; i < count; i++) {
-                int slot = 0;
-                if (i == 0) {
-                    slots = out[i] = new int[(hor + 1) * (ver + 1)];
-                    for (int x = -hor; x <= 0; x++)
-                        for (int y = -ver; y <= 0; y++)
-                            slots[slot++] = (midY + y) * width + midX + x;
-                } else {
-                    slots = out[i] = new int[8 * i + 2 * hor + 2 * ver];
-                    Arrays.fill(slots, -1);
-                    int minX = midX - i - hor, maxX = midX + i,
-                            minY = midY - i - ver, maxY = midY + i;
-                    for (int x = minX; x <= maxX; x++)
-                        for (int y = minY; y <= maxY; y++)
-                            if ((x == minX || x == maxX || y == minY || y == maxY)
-                                    && x >= 0 && x < width && y >= 0 && y < height)
-                                slots[slot++] = y * width + x;
+            byte[][] out = new byte[height][];
+            for (int y = 0, slot = 0; y < height; ++y, slot += width) {
+                byte[] slots = out[y] = new byte[width];
+                for (int x = 0; x < width; ++x) {
+                    slots[x] = (byte) (slot + x);
                 }
             }
             return out;
-        }), IN(type -> flip(OUT.sorter.apply(type))),
-        SNAKE_DOWN(type -> {
+        }), UP(DOWN),
+        RIGHT(type -> {
             int width = type.getWidth(), height = type.getHeight();
-            int count = width * height;
-            int[][] out = new int[count][];
-            int i = 0;
-            for (int y = 0; y < height; y++) {
-                int slot = y * width;
-                if ((y & 0x1) == 0) for (int x = 0; x < width; x++)
-                    out[i++] = new int[] { slot + x };
-                else for (int x = width; x-- != 0;)
-                    out[i++] = new int[] { slot + x };
+            byte[][] out = new byte[width][];
+            for (int x = 0; x < width; ++x) {
+                byte[] slots = out[x] = new byte[height];
+                for (int y = 0; y < height; ++y) {
+                    slots[y] = (byte) (y * width + x);
+                }
             }
             return out;
-        }), SNAKE_UP(type -> flip(SNAKE_DOWN.sorter.apply(type))),
-        SNAKE_RIGHT(type -> {
-            int width = type.getWidth(), height = type.getHeight();
-            int count = width * height;
-            int[][] out = new int[count][];
-            int i = 0;
-            for (int x = 0; x < width; x++)
-                if ((x & 0x1) == 0) for (int y = 0; y < height; y++)
-                    out[i++] = new int[] { y * width + x };
-                else for (int y = height; y-- != 0;)
-                    out[i++] = new int[] { y * width + x };
+        }), LEFT(RIGHT),
+        DOWN_RIGHT(type -> {
+            int width = type.getWidth(), height = type.getHeight(), min = min(width, height);
+            int count = width + height - 1;
+            byte[][] out = new byte[count][];
+            for (int i = 0; i < count; i++) {
+                byte[] slots = new byte[min];
+                int len = 0;
+                for (int y = min(i, height - 1), x = max(i - y, 0); y >= 0 && x < width; ) {
+                    slots[len++] = (byte) (y-- * width + x++);
+                }
+                System.arraycopy(slots, 0, out[i] = new byte[len], 0, len);
+            }
             return out;
-        }), SNAKE_LEFT(type -> flip(SNAKE_RIGHT.sorter.apply(type)));
+        }), UP_LEFT(DOWN_RIGHT),
+        UP_RIGHT(type -> {
+            int width = type.getWidth(), height = type.getHeight(), min = min(width, height), count = width + height - 1;
+            byte[][] out = new byte[count][];
+            for (int i = 0; i < count; i++) {
+                byte[] slots = new byte[min];
+                int len = 0;
+                for (int y = max(height - 1 - i, 0), x = max(i - height + 1, 0); y < height && x < width; ) {
+                    slots[len++] = (byte) (y++ * width + x++);
+                }
+                System.arraycopy(slots, 0, out[i] = new byte[len], 0, len);
+            }
+            return out;
+        }), DOWN_LEFT(UP_RIGHT),
+        OUT(type -> {
+            int width = type.getWidth(), height = type.getHeight(),
+                   x0 =  width - 1 >>> 1, x1 =  (width & 0x1) == 0 ? x0 + 1 : x0,
+                   y0 = height - 1 >>> 1, y1 = (height & 0x1) == 0 ? y0 + 1 : y0;
 
-        private final Function<MenuType, int[][]> sorter;
-        private final Map<MenuType, int[][]> sorted = new HashMap<>();
+            byte[][] out = new byte[max(x0, y0) + 1][];
+            for (int pos = 0; x0 >= 0 || y0 >= 0; --x0, ++x1, --y0, ++y1) {
+                byte[] slots = out[pos++] = new byte[x0 == x1 && y0 == y1 ? 1 : (x0 < 0 ? width : y0 < 0 ? height : x1 - x0 + y1 - y0) << 1];
 
-        DefaultType(Function<MenuType, int[][]> sorter) {
+                for (int index = 0, x = x0 < 0 ? 0 : x0; x <= x1 && x < width; ++x) {
+                    for (int y = y0 < 0 ? 0 : y0; y <= y1 && y < height; ++y) {
+                        if (x == x0 || x == x1 || y == y0 || y == y1) {
+                            slots[index++] = (byte) (y * width + x);
+                        }
+                    }
+                }
+            }
+
+            return out;
+        }), IN(OUT),
+        SNAKE_DOWN(type -> {
+            int width = type.getWidth(), size = type.getSize();
+            byte[][] out = new byte[size][];
+            for (int i = 0, slot = 0; slot < size; slot += width) {
+                if ((slot & 0x1) == 0) {
+                    for (int x = 0; x < width; ) {
+                        out[i++] = new byte[] { (byte) (slot + x++) };
+                    }
+                } else {
+                    for (int x = width; x > 0; ) {
+                        out[i++] = new byte[] { (byte) (slot + --x) };
+                    }
+                }
+            }
+            return out;
+        }), SNAKE_UP(SNAKE_DOWN),
+        SNAKE_RIGHT(type -> {
+            int width = type.getWidth(), size = type.getSize();
+            byte[][] out = new byte[size][];
+            for (int i = 0, x = 0, slot = 0; x < width; ++x) {
+                if ((x & 0x1) == 0) {
+                    for (; slot < size; slot += width) {
+                        out[i++] = new byte[] { (byte) (slot + x) };
+                    }
+                } else {
+                    while (slot > 0) {
+                        out[i++] = new byte[] { (byte) ((slot -= width) + x) };
+                    }
+                }
+            }
+
+            return out;
+        }), SNAKE_LEFT(SNAKE_RIGHT);
+
+        private final Function<AbstractMenu.Type, byte[][]> sorter;
+        private final Map<AbstractMenu.Type, byte[][]> sorted = new HashMap<>();
+
+        DefaultType(Function<AbstractMenu.Type, byte[][]> sorter) {
             this.sorter = sorter;
         }
 
+        DefaultType(DefaultType opposite) {
+            sorter = type -> {
+                byte[][] sorted = opposite.sort(type);
+                return sorted == null ? null : ArrayUtils.flip(sorted);
+            };
+        }
+
         @Override
-        public int[][] sort(MenuType type) {
+        public byte[][] sort(AbstractMenu.Type type) {
             switch (type.getInventoryType()) {
                 case CHEST:case HOPPER:case DROPPER:case DISPENSER:
                     return sorted.computeIfAbsent(type, sorter);

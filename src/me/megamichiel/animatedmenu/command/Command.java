@@ -8,7 +8,7 @@ import java.util.Locale;
 
 public abstract class Command<Type, Cached> {
 
-    final String prefix;
+    private final String prefix;
 
     protected Command(String prefix) {
         this.prefix = prefix.toLowerCase(Locale.ENGLISH);

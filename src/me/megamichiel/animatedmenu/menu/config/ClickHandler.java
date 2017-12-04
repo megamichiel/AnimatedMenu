@@ -5,7 +5,7 @@ import me.megamichiel.animatedmenu.command.CommandExecutor;
 import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animatedmenu.util.Flag;
 import me.megamichiel.animatedmenu.util.PluginCurrency;
-import me.megamichiel.animationlib.config.AbstractConfig;
+import me.megamichiel.animationlib.config.ConfigSection;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -23,6 +23,7 @@ public class ClickHandler {
             Purchase.ofCurrency("points", "points", PluginCurrency.PLAYER_POINTS, Integer::valueOf, 0),
             Purchase.ofCurrency("gems", "gems", PluginCurrency.GEMS, Integer::valueOf, 0),
             Purchase.ofCurrency("tokens", "tokens", PluginCurrency.TOKENS, Integer::valueOf, 0),
+            Purchase.ofCurrency("coins", "coins", PluginCurrency.COINS, Double::valueOf, 0D),
 
             new ClickHandler.Purchase<Number>("exp", "&cYou don't have enough exp for that!") {
                 @Override
@@ -41,45 +42,47 @@ public class ClickHandler {
 
                 @Override
                 protected boolean test(AnimatedMenuPlugin plugin, Player player, Number value) {
-                    if (value instanceof Float) return player.getExp() >= value.floatValue();
-                    return player.getLevel() >= value.intValue();
+                    return value instanceof Float
+                            ? player.getExp() >= value.floatValue()
+                            : player.getLevel() >= value.intValue();
                 }
 
                 @Override
                 protected void take(AnimatedMenuPlugin plugin, Player player, Number value) {
-                    if (value instanceof Float) player.setExp(player.getExp() - value.floatValue());
-                    else player.setLevel(player.getLevel() - value.intValue());
+                    if (value instanceof Float) {
+                        player.setExp(player.getExp() - value.floatValue());
+                    } else {
+                        player.setLevel(player.getLevel() - value.intValue());
+                    }
                 }
             }
     };
 
     private final List<Entry> entries = new ArrayList<>();
 
-    public ClickHandler(MenuLoader loader, String menu, String item, AbstractConfig section) {
+    public ClickHandler(ConfigMenuProvider loader, String menu, String item, ConfigSection section) {
         Map<String, Object> values = null;
         Object o = section.get("click-handlers");
-        if (o != null) {
-            if (o instanceof AbstractConfig) {
-                values = ((AbstractConfig) o).values();
-            } else if (o instanceof Collection) {
-                int i = 0;
-                values = new HashMap<>();
-                for (Object obj : ((Collection) o)) {
-                    values.put(Integer.toString(++i), obj);
-                }
+        if (o instanceof ConfigSection) {
+            values = ((ConfigSection) o).values();
+        } else if (o instanceof Collection) {
+            int i = 0;
+            values = new HashMap<>();
+            for (Object obj : ((Collection) o)) {
+                values.put(Integer.toString(++i), obj);
             }
         } else if ((o = section.get("commands")) != null) {
-            if (o instanceof AbstractConfig) {
-                values = ((AbstractConfig) o).values();
+            if (o instanceof ConfigSection) {
+                values = ((ConfigSection) o).values();
             } else if (o instanceof List) {
                 (values = new HashMap<>()).put("(self)", section);
             }
         }
         if (values != null) {
             values.forEach((key, value) -> {
-                if (value instanceof AbstractConfig) {
+                if (value instanceof ConfigSection) {
                     String path = key + "_" + item + "_" + menu;
-                    Entry entry = loader.parseClickHandler(path, (AbstractConfig) value);
+                    Entry entry = loader.parseClickHandler(path, (ConfigSection) value);
                     if (entry != null) {
                         entries.add(entry);
                     }
@@ -105,7 +108,7 @@ public class ClickHandler {
 
         private final Delay delay;
 
-        public Entry(String path, AnimatedMenuPlugin plugin, AbstractConfig section, Purchase<?>... purchases) {
+        public Entry(String path, AnimatedMenuPlugin plugin, ConfigMenuProvider provider, ConfigSection section, Purchase<?>... purchases) {
             click = new ClickPredicate(section);
             (clickExecutor = new CommandExecutor(plugin)).load(plugin, section, "commands");
             permission = StringBundle.parse(plugin, section.getString("permission"));
@@ -119,8 +122,8 @@ public class ClickHandler {
                     .filter(Objects::nonNull).toArray(PurchaseData[]::new);
 
             CloseAction closeAction = CloseAction.NEVER;
-            if (section.isString("close")) {
-                String close = section.getString("close");
+            String close = section.getString("close");
+            if (close != null) {
                 try {
                     closeAction = CloseAction.valueOf(close.toUpperCase(Locale.ENGLISH).replace('-', '_'));
                 } catch (IllegalArgumentException ex) {
@@ -131,24 +134,19 @@ public class ClickHandler {
             }
             this.closeAction = closeAction;
 
-            long clickDelay = plugin.parseTime(section, "click-delay", 0) * 50L;
-            if (clickDelay > 0) {
-                delay = plugin.addPlayerDelay("item_" + path, section.getString("delay-message"), clickDelay);
-            } else {
-                delay = null;
-            }
+            long clickDelay = provider.parseTime(section, "click-delay", 0) * 50L;
+            delay = clickDelay > 0 ? plugin.addPlayerDelay("item_" + path, section.getString("delay-message"), clickDelay) : null;
         }
 
         void click(Player player, ClickType type) {
             if (!click.test(type)) {
                 return;
             }
-            if (canClick(player)) {
+            boolean click = canClick(player);
+            if (click) {
                 clickExecutor.accept(player);
-                if (closeAction.onSuccess) {
-                    player.closeInventory();
-                }
-            } else if (closeAction.onFailure) {
+            }
+            if (click ? closeAction.onSuccess : closeAction.onFailure) {
                 player.closeInventory();
             }
         }
@@ -158,16 +156,19 @@ public class ClickHandler {
                 player.sendMessage(permissionMessage.toString(player));
                 return false;
             }
-            if (delay != null && !delay.test(player)) return false;
+            if (delay != null && !delay.test(player)) {
+                return false;
+            }
 
             if (bypassPermission == null || !player.hasPermission(bypassPermission.toString(player))) {
                 for (PurchaseData<?> purchase : purchases) {
-                    if (!purchase.test(player)) return false;
+                    if (!purchase.test(player)) {
+                        return false;
+                    }
                 }
                 for (PurchaseData<?> purchase : purchases) {
                     purchase.perform(player);
                 }
-                return true;
             }
             return true;
         }
@@ -178,7 +179,7 @@ public class ClickHandler {
         private final boolean right, left, middle;
         private final Flag shift;
 
-        private ClickPredicate(AbstractConfig section) {
+        private ClickPredicate(ConfigSection section) {
             String click = section.getString("click-type", "both").toLowerCase(Locale.ENGLISH);
             switch (click) {
                 case "all": right = left = middle = true; break;
@@ -245,7 +246,7 @@ public class ClickHandler {
             this.defaultMessage = defaultMessage;
         }
 
-        PurchaseData<T> tryParse(AnimatedMenuPlugin plugin, AbstractConfig config) {
+        PurchaseData<T> tryParse(AnimatedMenuPlugin plugin, ConfigSection config) {
             String str = config.getString(path);
             if (str != null) {
                 T value = parse(plugin, str);

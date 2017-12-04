@@ -1,27 +1,29 @@
 package me.megamichiel.animatedmenu;
 
+import me.jacobculley.actionapi.ActionAPI;
 import me.megamichiel.animatedmenu.command.*;
 import me.megamichiel.animatedmenu.menu.AbstractMenu;
 import me.megamichiel.animatedmenu.menu.Menu;
 import me.megamichiel.animatedmenu.menu.MenuRegistry;
 import me.megamichiel.animatedmenu.menu.MenuSession;
-import me.megamichiel.animatedmenu.menu.config.MenuLoader;
-import me.megamichiel.animatedmenu.util.Delay;
-import me.megamichiel.animatedmenu.util.Flag;
-import me.megamichiel.animatedmenu.util.PluginPermission;
-import me.megamichiel.animatedmenu.util.RemoteConnections;
+import me.megamichiel.animatedmenu.menu.config.ConfigMenuProvider;
+import me.megamichiel.animatedmenu.util.*;
 import me.megamichiel.animatedmenu.util.item.MaterialParser;
 import me.megamichiel.animationlib.AnimLib;
 import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.animation.IAnimatable;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
-import me.megamichiel.animationlib.config.AbstractConfig;
-import me.megamichiel.animationlib.config.ConfigManager;
+import me.megamichiel.animationlib.config.ConfigFile;
+import me.megamichiel.animationlib.config.ConfigSection;
 import me.megamichiel.animationlib.config.type.YamlConfig;
+import me.megamichiel.animationlib.placeholder.CtxPlaceholder;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
+import me.megamichiel.animationlib.placeholder.PlaceholderContext;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import me.megamichiel.animationlib.util.LoggerNagger;
 import me.megamichiel.animationlib.util.ReflectClass;
 import me.megamichiel.animationlib.util.pipeline.PipelineContext;
+import net.minecraft.server.v1_12_R1.Item;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -32,10 +34,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.InventoryView;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
@@ -47,66 +46,74 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.function.Function;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.logging.Level;
-import java.util.stream.Stream;
 
 import static org.bukkit.ChatColor.*;
 
 public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNagger, PipelineContext {
 
-    private static AnimatedMenuPlugin instance;
-
-    public static AnimatedMenuPlugin get() {
-        return instance;
-    }
+    private static final String ANIMLIB_VERSION = "1.6.4";
 
     protected final Map<String, Command<?, ?>> commands = new HashMap<>();
     protected final AnimatedMenuCommand command = new AnimatedMenuCommand(this);
-    protected final MenuLoader menuLoader;
 
-    private final MenuRegistry menuRegistry;
+    private final MenuRegistry menuRegistry = new MenuRegistry(this);
+    private ConfigMenuProvider configMenuProvider;
+
     private final Set<Delay> delays = Collections.newSetFromMap(new WeakHashMap<>());
     private final Map<String, Map<UUID, Long>> loadedDelays = new HashMap<>();
-    private final List<BukkitTask> asyncTasks = new ArrayList<>();
-    private final ConfigManager<YamlConfig> config = ConfigManager.of(YamlConfig::new);
+    private BukkitTask menuTask;
+    private final ConfigFile<YamlConfig> config = ConfigFile.of(YamlConfig::new);
     private final RemoteConnections connections = new RemoteConnections(this);
 
-    private boolean warnOfflineServers = false;
+    protected final Map<PluginMessage, PluginMessage.FormatText> parsedMessages = new ConcurrentHashMap<>();
+    private String messagePrefix;
+
+    private boolean detailedErrors = false;
     private String update;
-    private boolean runningSync;
 
     public AnimatedMenuPlugin() {
-        this(MenuRegistry::new, MenuLoader::new);
+        Bukkit.getServicesManager().register(MenuRegistry.class, menuRegistry, this, ServicePriority.Normal);
     }
 
-    protected AnimatedMenuPlugin(Function<AnimatedMenuPlugin, MenuRegistry> registry, Function<AnimatedMenuPlugin, MenuLoader> loader) {
-        instance = this;
-
-        menuRegistry = registry.apply(this);
-        menuLoader = loader.apply(this);
-
-        Bukkit.getServicesManager().register(MenuRegistry.class, menuRegistry, this, ServicePriority.Normal);
+    protected void init(ConfigMenuProvider configMenuProvider) {
+        this.configMenuProvider = configMenuProvider;
     }
     
     @Override
     public void onEnable() {
-        if (!checkAnimationLib()) return;
-        else {
-            try {
-                Class.forName("me.megamichiel.animationlib.AnimLib");
-            } catch (ClassNotFoundException ex) {
-                getServer().getConsoleSender().sendMessage(new String[]{
-                        RED + "It appears you have the wrong AnimationLib plugin!",
-                        RED + "Download the correct one at https://www.spigotmc.org/resources/22295/"
-                });
-                getServer().getPluginManager().disablePlugin(this);
-                return;
-            }
+
+        for (Item item : Item.REGISTRY) {
+            item.d(127);
         }
 
-        registerPermissions();
+        menuRegistry.registerProvider(configMenuProvider == null ? (configMenuProvider = new ConfigMenuProvider(this)) : configMenuProvider);
+
+        Plugin plugin = getServer().getPluginManager().getPlugin("AnimationLib");
+        boolean disable = true;
+        if (plugin != null) {
+            String str = plugin.getDescription().getVersion();
+            if (str.equals(ANIMLIB_VERSION) || Double.parseDouble("0." + str.replace(".", ""))
+                    >= Double.parseDouble("0." + ANIMLIB_VERSION.replace(".", ""))) {
+                try {
+                    Class.forName("me.megamichiel.animationlib.AnimLib");
+                    disable = false;
+                } catch (ClassNotFoundException ex) {
+                    // Wrong AnimationLib
+                }
+            }
+        }
+        if (disable) {
+            getServer().getConsoleSender().sendMessage(new String[] {
+                    RED + "[AnimatedMenu] I require AnimationLib v" + ANIMLIB_VERSION + " to work!",
+                    RED + "Download it at \"https://www.spigotmc.org/resources/22295/\""
+            });
+            getServer().getPluginManager().disablePlugin(this);
+            getServer().getServicesManager().unregister(MenuRegistry.class, menuRegistry);
+            return;
+        }
 
         /* Listeners */
         getServer().getPluginManager().registerEvents(this, this);
@@ -114,96 +121,19 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         getCommand("animatedmenu").setExecutor(command);
         
         /* Config / API */
-        config.file(new File(getDataFolder(), "config.yml"));
-        saveDefaultConfig();
-        
-        registerDefaultCommandHandlers();
-        AnimatedMenuPlaceholders.register(this);
+        config.file(new File(getDataFolder(), "config.yml")).saveDefaultConfig(() -> getResource("config.yml"));
+
+        AnimatedMenuPlaceholders.register(this, connections);
         loadDelays();
-        post(menuLoader::loadConfig, SYNC);
-        
+        loadConfig(false, false);
+        post(configMenuProvider::loadConfig, SYNC);
+
         /* Other Stuff */
-        checkForUpdate();
-        loadConfig();
-
-        if (runningSync = Flag.parseBoolean(getConfiguration().getString("run-sync"))) {
-            getServer().getScheduler().runTaskTimer(this, menuRegistry, 0, 0);
-        } else asyncTasks.add(getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0));
-    }
-
-    private static final String ANIMLIB_VERSION = "1.6.2";
-
-    private boolean checkAnimationLib() {
-        Plugin plugin = getServer().getPluginManager().getPlugin("AnimationLib");
-        if (plugin != null) {
-            String str = plugin.getDescription().getVersion();
-            if (str.equals(ANIMLIB_VERSION) || Double.parseDouble("0." + str.replace(".", ""))
-                    >= Double.parseDouble("0." + ANIMLIB_VERSION.replace(".", ""))) {
-                try {
-                    Class.forName("me.megamichiel.animationlib.AnimLib");
-                    return true;
-                } catch (ClassNotFoundException ex) {
-                    // Wrong AnimationLib
-                }
-            }
-        }
-        getServer().getConsoleSender().sendMessage(new String[] {
-                RED + "[AnimatedMenu] I require AnimationLib v" + ANIMLIB_VERSION + " to work!",
-                RED + "Download it at \"https://www.spigotmc.org/resources/22295/\""
-        });
-        getServer().getPluginManager().disablePlugin(this);
-        return false;
-    }
-
-    @Override
-    public void onDisable() {
-        asyncTasks.forEach(BukkitTask::cancel);
-        asyncTasks.clear();
-        connections.cancel();
-        saveDelays();
-        menuLoader.onDisable();
-        menuRegistry.onDisable();
-
-        PluginManager pm = getServer().getPluginManager();
-        for (PluginPermission perm : PluginPermission.values()) {
-            perm.unregister(pm);
-        }
-    }
-
-    @Override
-    public void reloadConfig() {
-        config.reloadConfig();
-    }
-
-    public YamlConfig getConfiguration() {
-        return config.getConfig();
-    }
-
-    @Override
-    public void saveDefaultConfig() {
-        config.saveDefaultConfig(() -> getResource("config.yml"));
-    }
-
-    protected void registerPermissions() {
-        PluginManager pm = getServer().getPluginManager();
-        for (PluginPermission perm : PluginPermission.values()) {
-            if (!perm.isPremium()) {
-                try {
-                    perm.register(pm);
-                } catch (IllegalArgumentException e) {
-                    nag("Failed to register permission " + perm + " because it already exists");
-                }
-            }
-        }
-    }
-    
-    private void checkForUpdate() {
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
             String current = getDescription().getVersion();
             try {
                 String version = AnimLib.getVersion(4690);
-                update = current.equals(version) ? null : version;
-                if (update != null) {
+                if ((update = current.equals(version) ? null : version) != null) {
                     getLogger().info("A new version is available! (Current version: " + current + ", new version: " + update + ")");
                     update = String.format(
                             "%s[%s%s%1$s] %sA new version is available! (Current version: %s, new version: %s)",
@@ -214,39 +144,102 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 nag(ex);
             }
         });
+
+        menuTask = getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
+    }
+
+    @Override
+    public void onDisable() {
+        if (getServer().getServicesManager().getRegistration(MenuRegistry.class) == null) {
+            return;
+        }
+        getServer().getServicesManager().unregister(MenuRegistry.class, menuRegistry);
+
+        if (menuTask != null) {
+            menuTask.cancel();
+            menuTask = null;
+        }
+        connections.cancel();
+        saveDelays();
+        configMenuProvider.onDisable();
+
+        PluginManager pm = getServer().getPluginManager();
+        for (PluginPermission perm : PluginPermission.values()) {
+            perm.unregister(pm);
+        }
+    }
+
+    public YamlConfig getConfiguration() {
+        return config.getConfig();
     }
     
-    protected void registerDefaultCommandHandlers() {
-        commands.clear();
-        Stream.of(
-                TextCommand.ofPlayer("chat", false, Player::chat),
-                TextCommand.of("console", false, value -> getServer().dispatchCommand(getServer().getConsoleSender(), value)),
-                TextCommand.ofPlayer("message", true, Player::sendMessage),
-                TextCommand.ofPlayer("op", false, (p, value) -> {
-                    if (p.isOp()) p.performCommand(value);
-                    else {
-                        p.setOp(true);
-                        p.performCommand(value);
-                        p.setOp(false);
-                    }
-                }),
-                TextCommand.of("broadcast", true, getServer()::broadcastMessage),
-                TextCommand.ofPlayer("menu", false, (p, value) -> {
-                    MenuRegistry registry = getMenuRegistry();
-                    AbstractMenu menu = registry.getMenu(value);
-                    if (menu instanceof Menu) {
-                        ((Menu) menu).open(p);
-                    } else {
-                        nag("No menu with name " + value + " found!");
-                    }
-                }),
-                new Command<StringBundle, ItemStack>("give") {
+    protected void loadConfig(boolean reload, boolean premium) {
+        messagePrefix = formatRaw(PluginMessage.PREFIX);
 
-                    private ItemStack _parse(AnimatedMenuPlugin plugin, String value) {
-                        int index = value.indexOf(' ');
-                        if (index == -1) {
-                            return plugin.parseItemStack(value);
+        ConfigSection config = getConfiguration();
+        if (config.isSection("connections")) {
+            ConfigSection section = config.getSection("connections");
+            section.forEach((key, value) -> {
+                if (!(value instanceof ConfigSection)) {
+                    return;
+                }
+                ConfigSection sec = (ConfigSection) value;
+                String ip = sec.getString("ip");
+                if (ip != null) {
+                    int index = ip.indexOf(':');
+                    connections.add(section.getOriginalKey(key), new InetSocketAddress(
+                            index == -1 ? ip : ip.substring(0, index),
+                            index == -1 ? 25565 : Integer.parseInt(ip.substring(index + 1))
+                    ), sec);
+                }
+            });
+            connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L));
+        }
+        detailedErrors = Flag.parseBoolean(config.getString("detailed-errors"));
+
+        if (!reload) {
+            PluginManager pm = getServer().getPluginManager();
+            for (PluginPermission perm : PluginPermission.values()) {
+                if (premium || !perm.isPremium()) {
+                    try {
+                        perm.register(pm);
+                    } catch (IllegalArgumentException ex) {
+                        nag("Failed to register permission " + perm + " because it already exists");
+                    }
+                }
+            }
+
+            for (Command<?, ?> command : new Command<?, ?>[] {
+                    TextCommand.ofPlayer("chat", false, Player::chat),
+                    TextCommand.of("console", false, value -> getServer().dispatchCommand(getServer().getConsoleSender(), value)),
+                    TextCommand.ofPlayer("message", true, Player::sendMessage),
+                    TextCommand.ofPlayer("op", false, (p, value) -> {
+                        if (p.isOp()) {
+                            p.performCommand(value);
                         } else {
+                            p.setOp(true);
+                            p.performCommand(value);
+                            p.setOp(false);
+                        }
+                    }),
+                    TextCommand.of("broadcast", true, getServer()::broadcastMessage),
+                    TextCommand.ofPlayer("menu", false, (p, value) -> {
+                        AbstractMenu menu = menuRegistry.getMenu(value);
+                        if (menu instanceof Menu) {
+                            ((Menu) menu).open(p);
+                        } else {
+                            String text = format(PluginMessage.MENU__NOT_FOUND, "menu", value);
+                            p.sendMessage(text);
+                            getServer().getConsoleSender().sendMessage(text);
+                        }
+                    }),
+                    new Command<StringBundle, ItemStack>("give") {
+
+                        private ItemStack _parse(String value) {
+                            int index = value.indexOf(' ');
+                            if (index == -1) {
+                                return parseItemStack(value);
+                            }
                             NBTUtil util = NBTUtil.getInstance();
                             ItemStack item = parseItemStack(value.substring(0, index));
                             if (item != (item = util.asNMS(item))) {
@@ -254,80 +247,62 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                             }
                             return item;
                         }
-                    }
 
-                    @Override
-                    protected StringBundle parse(Nagger nagger, String command) {
-                        return StringBundle.parse(nagger, command).colorAmpersands();
-                    }
+                        @Override
+                        protected StringBundle parse(Nagger nagger, String command) {
+                            return StringBundle.parse(nagger, command).colorAmpersands();
+                        }
 
-                    @Override
-                    protected boolean execute(AnimatedMenuPlugin plugin, Player p, StringBundle value) {
-                        return executeCached(plugin, p, _parse(plugin, value.toString(p)));
-                    }
+                        @Override
+                        protected boolean execute(AnimatedMenuPlugin plugin, Player p, StringBundle value) {
+                            return executeCached(plugin, p, _parse(value.toString(p)));
+                        }
 
-                    @Override
-                    protected ItemStack tryCacheValue(AnimatedMenuPlugin plugin, StringBundle value) {
-                        return value.containsPlaceholders() ? null : _parse(plugin, value.toString(null));
-                    }
+                        @Override
+                        protected ItemStack tryCacheValue(AnimatedMenuPlugin plugin, StringBundle value) {
+                            return value.containsPlaceholders() ? null : _parse(value.toString(null));
+                        }
 
-                    @Override
-                    protected boolean executeCached(AnimatedMenuPlugin plugin, Player p, ItemStack value) {
-                        p.getInventory().addItem(value);
-                        return true;
+                        @Override
+                        protected boolean executeCached(AnimatedMenuPlugin plugin, Player p, ItemStack value) {
+                            p.getInventory().addItem(value);
+                            return true;
+                        }
+                    }, new ServerCommand(), new TellRawCommand(this), new SoundCommand(),
+                    new TextCommand("action", false) {
+                        Plugin api;
+
+                        @Override
+                        protected boolean executeCached(AnimatedMenuPlugin plugin, Player p, String value) {
+                            if (api == null || !api.isEnabled()) {
+                                try {
+                                    api = ActionAPI.getInstance();
+                                } catch (NoClassDefFoundError err) {
+                                    plugin.nag("Couldn't find ActionAPI plugin!");
+                                    return true;
+                                }
+                            }
+                            ((ActionAPI) api).getAPI().executeAction(p, value);
+                            return true;
+                        }
                     }
-                }, new ServerCommand(), new TellRawCommand(this), new SoundCommand()
-        ).forEach(this::registerCommand);
-    }
-    
-    public boolean warnOfflineServers() {
-        return warnOfflineServers;
-    }
-    
-    protected void loadConfig() {
-        AbstractConfig config = getConfiguration();
-        if (config.isSection("connections")) {
-            AbstractConfig section = config.getSection("connections");
-            section.forEach((key, value) -> {
-                if (!(value instanceof AbstractConfig)) return;
-                AbstractConfig sec = (AbstractConfig) value;
-                String ip = sec.getString("ip");
-                if (ip != null) {
-                    int index = ip.indexOf(':');
-                    int port;
-                    if (index == -1) {
-                        port = 25565;
-                    } else {
-                        port = Integer.parseInt(ip.substring(index + 1));
-                        ip = ip.substring(0, index);
-                    }
-                    connections.add(section.getOriginalKey(key), new InetSocketAddress(ip, port)).load(sec);
-                }
-            });
-            warnOfflineServers = Flag.parseBoolean(config.getString("warn-offline-servers"));
-            connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L));
-        }
-    }
-    
-    void reload() {
-        for (Delay delay : delays) {
-            Map<UUID, Long> map = delay.save();
-            if (map.isEmpty()) {
-                loadedDelays.remove(delay.getId());
-            } else {
-                loadedDelays.put(delay.getId(), map);
+            }) {
+                registerCommand(command);
             }
         }
+    }
+    
+    int reload() {
+        saveDelays();
 
-        menuLoader.onDisable();
-        saveDefaultConfig();
-        reloadConfig();
+        configMenuProvider.onDisable();
+        config.reloadConfig();
 
         connections.cancel();
-        loadConfig();
-        
-        registerDefaultCommandHandlers();
-        menuLoader.loadConfig();
+        parsedMessages.clear();
+        loadConfig(true, false);
+
+        return configMenuProvider.loadConfig();
     }
 
     private void saveDelays() {
@@ -420,26 +395,34 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     @EventHandler
     public void on(PlayerInteractEvent e) {
         Player p = e.getPlayer();
-        if (isOffHand.test(e)) return;
+        if (isOffHand.test(e)) {
+            return;
+        }
         ItemStack item = e.getItem();
         if (PluginPermission.OPEN_WITH_ITEM.test(p) && item != null) {
             ItemMeta meta = item.getItemMeta();
             for (AbstractMenu menu : menuRegistry) {
                 if (menu instanceof Menu && ((Menu) menu).getSettings().canOpenWith(item, meta)) {
                     e.setCancelled(true);
-                    ((Menu) menu).open(p);
+                    post(() -> ((Menu) menu).open(p), SYNC);
                     return;
                 }
             }
         }
     }
     
-    @EventHandler//(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler
     public void on(InventoryCloseEvent e) {
         if (!(e.getPlayer() instanceof Player)) {
             return;
         }
-        menuRegistry.handleMenuClose((Player) e.getPlayer());
+        InventoryHolder holder = e.getInventory().getHolder();
+        if (holder instanceof MenuSession) {
+            AbstractMenu menu = ((MenuSession) holder).getMenu();
+            if (menu instanceof Menu) {
+                ((Menu) menu).handleMenuClose((Player) e.getPlayer(), null);
+            }
+        }
     }
     
     @EventHandler
@@ -447,16 +430,14 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         if (!(e.getWhoClicked() instanceof Player)) {
             return;
         }
-        Player p = (Player) e.getWhoClicked();
-        MenuSession session = menuRegistry.getSession(p);
-        if (session == null) {
-            return;
-        }
-        e.setCancelled(true);
-        int slot = e.getRawSlot();
-        InventoryView view = e.getView();
-        if (view.getTopInventory() != null && slot >= 0 && slot < view.getTopInventory().getSize()) {
-            session.click(e.getSlot(), e.getClick());
+        Inventory inventory = e.getView().getTopInventory();
+        InventoryHolder holder = inventory.getHolder();
+        if (holder instanceof MenuSession) {
+            e.setCancelled(true);
+            int slot = e.getRawSlot();
+            if (slot >= 0 && slot < inventory.getSize()) {
+                ((MenuSession) holder).click(e.getSlot(), e.getClick());
+            }
         }
     }
 
@@ -470,23 +451,12 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         return delay;
     }
 
-    public int parseTime(AbstractConfig config, String key, int def) {
-        return parseTime(this, config.get(key, def));
+    public final String format(PluginMessage message, Object... args) {
+        return messagePrefix + formatRaw(message, args);
     }
 
-    public int parseTime(Nagger nagger, Object o) {
-        if (o instanceof Number) return ((Number) o).intValue();
-        nagger.nag("Invalid number: " + o);
-        return 0;
-    }
-
-    public short resolveDataValue(Nagger nagger, Material type, String str) {
-        try {
-            return (short) Integer.parseInt(str);
-        } catch (NumberFormatException ex) {
-            nagger.nag("Invalid data value: " + str);
-            return 0;
-        }
+    public String formatRaw(PluginMessage message, Object... args) {
+        return parsedMessages.computeIfAbsent(message, $ -> new PluginMessage.FormatText(message.getDefault(), args)).format(args);
     }
 
     public ItemStack parseItemStack(String str) {
@@ -500,43 +470,63 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             return new ItemStack(type);
         }
         int amount = 1;
-        short data = 0;
         try {
-            amount = Integer.parseInt(split[1]);
-            if (amount < 0) amount = 0;
-            if (amount > 64) amount = 64;
+            amount = (amount = Integer.parseInt(split[1])) < 0 ? 0 : amount > 127 ? 127 : amount;
         } catch (NumberFormatException ex) {
             nag("Invalid amount in " + str + "! Defaulting to 1");
         }
-        if (split.length > 2) {
-            data = resolveDataValue(this, type, split[2]);
-        }
-        return new ItemStack(type, amount, data);
+        return new ItemStack(type, amount, split.length == 2 ? 0 : configMenuProvider.resolveDataValue(type, split[2]));
     }
 
-    public IPlaceholder<ItemStack> parseItemPlaceholder(Nagger nagger, String str) {
-        StringBundle sb = StringBundle.parse(nagger, str);
+    public IPlaceholder<ItemStack> parseItemPlaceholder(Nagger nagger, Object o) {
+        StringBundle sb = StringBundle.parse(nagger, o.toString());
         if (sb.containsPlaceholders()) {
-            return (n, player) -> parseItemStack(sb.toString(player));
-        } else {
-            return IPlaceholder.constant(parseItemStack(sb.toString(null)));
+            if (sb.isAnimated()) {
+                class ItemPlaceholder implements CtxPlaceholder<ItemStack>, IAnimatable<ItemPlaceholder> {
+
+                    @Override
+                    public ItemPlaceholder get() {
+                        return this;
+                    }
+
+                    @Override
+                    public boolean isAnimated() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean tick() {
+                        return sb.tick();
+                    }
+
+                    @Override
+                    public ItemStack invoke(Nagger nagger, Object o, PlaceholderContext ctx) {
+                        return parseItemStack(sb.invoke(nagger, o, ctx));
+                    }
+                }
+
+                return new ItemPlaceholder();
+            }
+
+            return (CtxPlaceholder<ItemStack>) (n, p, ctx) -> parseItemStack(sb.invoke(n, p, ctx));
         }
+        return IPlaceholder.constant(parseItemStack(sb.toString(null)));
     }
 
     public Command<?, ?> findCommand(String name) {
         return commands.getOrDefault(name, TextCommand.DEFAULT);
     }
 
-    public void registerCommand(Command<?, ?> command) {
-        commands.put(command.getPrefix(), command);
+    public boolean registerCommand(Command<?, ?> command) {
+        return commands.putIfAbsent(command.getPrefix(), command) == null;
+    }
+
+    public boolean unregisterCommand(Command<?, ?> command) {
+        return commands.remove(command.getPrefix(), command);
     }
 
     public MenuRegistry getMenuRegistry() {
         return menuRegistry;
-    }
-
-    RemoteConnections getConnections() {
-        return connections;
     }
 
     @Override
@@ -544,11 +534,19 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
 
     @Override
     public void post(Runnable task, boolean async) {
-        if (async) getServer().getScheduler().runTaskAsynchronously(this, task);
-        else getServer().getScheduler().runTask(this, task);
+        if (async) {
+            getServer().getScheduler().runTaskAsynchronously(this, task);
+        } else {
+            getServer().getScheduler().runTask(this, task);
+        }
     }
 
-    public boolean isRunningSync() {
-        return runningSync;
+    @Override
+    public void nag(Throwable throwable) {
+        if (detailedErrors) {
+            throwable.printStackTrace();
+        } else {
+            getLogger().warning(throwable.toString());
+        }
     }
 }

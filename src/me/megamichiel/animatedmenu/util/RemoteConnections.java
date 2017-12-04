@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animationlib.config.AbstractConfig;
+import me.megamichiel.animationlib.config.ConfigSection;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
@@ -94,6 +94,7 @@ public class RemoteConnections implements Runnable {
                     } else motd = response.getAsString();
 
                     connection.online = true;
+                    connection.failed = true;
                     connection.motd = motd;
                     connection.onlinePlayers = online;
                     connection.maxPlayers = max;
@@ -102,9 +103,11 @@ public class RemoteConnections implements Runnable {
 
                     // input.skip(10); // Length (9) + ID (1) + Keep Alive ID (eight 0s)
                 } catch (Exception ex) {
-                    if (plugin.warnOfflineServers()) {
+                    if (!connection.failed) {
                         plugin.nag("Failed to connect to " + address.getHostName() + ':' + address.getPort() + '!');
                         plugin.nag(ex);
+
+                        connection.failed = true;
                     }
                     connection.online = false;
                 }
@@ -151,10 +154,8 @@ public class RemoteConnections implements Runnable {
         return value;
     }
     
-    public ServerInfo add(String name, InetSocketAddress address) {
-        ServerInfo info = new ServerInfo(connections.computeIfAbsent(address, Connection::new));
-        statuses.put(name, info);
-        return info;
+    public void add(String name, InetSocketAddress address, ConfigSection config) {
+        statuses.put(name, new ServerInfo(connections.computeIfAbsent(address, Connection::new), config));
     }
     
     public ServerInfo get(String name) {
@@ -165,7 +166,7 @@ public class RemoteConnections implements Runnable {
 
         private final byte[] handshake;
 
-        private boolean online;
+        private boolean online, failed;
         private String motd = ChatColor.RED + "Offline";
         private int onlinePlayers, maxPlayers;
 
@@ -198,8 +199,28 @@ public class RemoteConnections implements Runnable {
         private final Map<String, IPlaceholder<String>> fastValues = new HashMap<>();
         private final Map<StringBundle, IPlaceholder<String>> values = new HashMap<>();
 
-        ServerInfo(Connection connection) {
+        ServerInfo(Connection connection, ConfigSection config) {
             this.connection = connection;
+
+            String val;
+            for (String key : config.keys()) {
+                if (!"ip".equals(key) && (val = config.getString(key)) != null) {
+                    IPlaceholder<String> value = StringBundle.parse(plugin, val).colorAmpersands().tryCache();
+                    switch (key) {
+                        case "online":case "offline":case "default":
+                            fastValues.put(key, value);
+                            break;
+                        default:
+                            StringBundle keySB = StringBundle.parse(plugin, config.getOriginalKey(key)).colorAmpersands();
+                            if (keySB.containsPlaceholders()) {
+                                values.put(keySB, value);
+                            } else {
+                                fastValues.put(keySB.toString(null), value);
+                            }
+                            break;
+                    }
+                }
+            }
         }
 
         public String get(String key, Player player) {
@@ -229,29 +250,6 @@ public class RemoteConnections implements Runnable {
 
         public int getMaxPlayers() {
             return connection.maxPlayers;
-        }
-
-        public void load(AbstractConfig section) {
-            String val;
-            for (String key : section.keys()) {
-                if ("ip".equals(key)) continue;
-                val = section.getString(key);
-                if (val == null) continue;
-                IPlaceholder<String> value = StringBundle.parse(plugin, val).colorAmpersands().tryCache();
-                switch (key) {
-                    case "online":case "offline":case "default":
-                        fastValues.put(key, value);
-                        break;
-                    default:
-                        StringBundle keySB = StringBundle.parse(plugin, section.getOriginalKey(key)).colorAmpersands();
-                        if (keySB.containsPlaceholders()) {
-                            values.put(keySB, value);
-                        } else {
-                            fastValues.put(keySB.toString(null), value);
-                        }
-                        break;
-                }
-            }
         }
     }
 }

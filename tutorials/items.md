@@ -77,8 +77,8 @@ What are menus without items?
   Default value: stone  
   \------------------------------  
   The material of this item, in format &lt;type&gt;:&lt;amount&gt;:&lt;data&gt;  
-  Note: Numerical IDs are still supported (and might be for a while), but I recommended using names  
-  &lt;amount&gt; and &lt;data&gt; are optional  
+  Note: Numerical IDs are still supported, but I recommended using names.  
+  &lt;amount&gt; and &lt;data&gt; are optional, so 'diamond:5' and 'diamond_sword' both work as well.  
   A nice list of item ids can be found on [this page](http://minecraft-ids.grahamedgecombe.com/)  
 
 - #### Name ####
@@ -88,9 +88,60 @@ What are menus without items?
   The display name of this item  
 
 - #### Lore ####
-  Animatable, List, Supports placeholders  
-  \------------------------------  
-  The lore of this item  
+  The lore of this item. This fully supports colors and placeholders and is animatable.  
+  If you start a line with 'file:', an image will be loaded from the 'images' folder in the plugin's folder and put in the lore.  
+  For example:  
+
+```YAML
+Lore:
+- '&aThis is the first line, &6%player_name%!'
+- '&eThis is the second line'
+- 'file: imagename.png'
+```
+
+```YAML
+Lore:
+  1:
+  - '&aThis is the first line, &6%player_name%!'
+  - '&eThis is the second line'
+  2:
+  - '&6This is the first line, &a%player_name%!'
+  - '&cThis is the second line'
+```
+     
+  AnimatedMenu Plus has a much more comprehensive lore system, including modules and putting text next to images, as well as changing the pixel characters and more!  
+  Modules are basically a way to separate a lore into multiple parts, making it easy to animate some parts while other parts aren't animated.  
+
+```YAML
+Lore:
+- '&aThis line is not animated!'
+- 1:
+  - '&bThis line is animated!'
+  2:
+  - '&cThis line is animated!'
+  3:
+  - '&eThis line is animated!'
+  - '&5This is another line that is not always visible!'
+```
+  Images are another great feature that can make your menu look much more stunning.  
+  As mentioned above, you can start a line with 'file:' to display an image. However, you can also use a more customizable version:  
+
+```YAML
+Lore:
+- '&aThis is the first line'
+- image: 'imagefolder'
+  pixel: 'O'
+  transparent: '&0+'
+  blank-line: '&cThis is a blank line'
+  random: 'yes'
+```
+  These are all keys explained:  
+    - 'image' specifies a file or directory name. If it's a directory, all images from this directory are loaded. GIF files are also supported
+    - 'pixel' specifies the text to display for each pixel.
+    - 'transparent' specifies the text of a transparent pixel
+    - 'blank-line': When multiple files are loaded with some images smaller than others, this text is placed to fill the blank lines
+    - 'random' specifies if images should be displayed at random instead of in order
+
 
 - #### Enchantments ####
   Animatable with Plus version, List  
@@ -114,6 +165,7 @@ What are menus without items?
     - A player's UUID (with or without hyphens)
     - A json object containing profile information
     - Base64 encoded profile texture
+    - If you have Head Database, you can use 'hdb: &lt;id&gt;' (without the &lt;&gt;s) to get a head database skull
 
 
 - #### Egg-Type ####

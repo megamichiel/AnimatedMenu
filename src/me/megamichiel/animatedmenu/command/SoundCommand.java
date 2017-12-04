@@ -64,23 +64,23 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
             } catch (IllegalArgumentException ex) {
                 sound = null;
             }
-            this.sound = sound;
-            soundName = sound != null ? null : new String(nmsName, 0, length);
+            this.soundName = (this.sound = sound) == null ? new String(nmsName, 0, length) : null;
 
             float volume = 1, pitch = 1;
-            if (split.length > 1) {
-                try {
-                    volume = Float.parseFloat(split[1]);
-                } catch (NumberFormatException ex) {
-                    nagger.nag("Invalid volume: " + split[1]);
-                }
-                if (split.length > 2) {
+            switch (split.length) {
+                default:
                     try {
                         pitch = Float.parseFloat(split[2]);
                     } catch (NumberFormatException ex) {
                         nagger.nag("Invalid pitch: " + split[2]);
                     }
-                }
+                case 2:
+                    try {
+                        volume = Float.parseFloat(split[1]);
+                    } catch (NumberFormatException ex) {
+                        nagger.nag("Invalid volume: " + split[1]);
+                    }
+                case 1:
             }
             this.volume = volume;
             this.pitch = pitch;
@@ -89,7 +89,9 @@ public class SoundCommand extends Command<StringBundle, SoundCommand.SoundInfo> 
         public void play(Player player) {
             if (sound != null) {
                 player.playSound(player.getLocation(), sound, volume, pitch);
-            } else player.playSound(player.getLocation(), soundName, volume, pitch);
+            } else {
+                player.playSound(player.getLocation(), soundName, volume, pitch);
+            }
         }
     }
 }

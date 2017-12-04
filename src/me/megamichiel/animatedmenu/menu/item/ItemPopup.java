@@ -1,27 +1,46 @@
 package me.megamichiel.animatedmenu.menu.item;
 
-import me.megamichiel.animatedmenu.menu.MenuItem;
 import me.megamichiel.animatedmenu.menu.MenuSession;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
 import java.util.function.Function;
 
-public class ItemPopup {
+public abstract class ItemPopup {
+
+    public static ItemPopup of(Plugin plugin, TimedMenuItem info) {
+        return of(plugin, info, () -> info.refresh(IMenuItem.UPDATE_ITEM));
+    }
+
+    public static ItemPopup of(Plugin plugin, IMenuItem info, Runnable refresh) {
+        return new ItemPopup(plugin) {
+            @Override
+            protected ItemStack load(Player player, MenuSession session) {
+                return info.getItem(player, session, null);
+            }
+
+            @Override
+            protected void refresh() {
+                refresh.run();
+            }
+        };
+    }
 
     private final MenuSession.Property<State> property = MenuSession.Property.of();
 
-    private Plugin plugin;
-    private MenuItem item;
-    private ItemInfo info;
+    private final Plugin plugin;
 
-    public void init(Plugin plugin, MenuItem item) {
+    public ItemPopup(Plugin plugin) {
         this.plugin = plugin;
-        this.info = (this.item = item).getInfo();
     }
+
+    protected abstract ItemStack load(Player player, MenuSession session);
+
+    protected abstract void refresh();
 
     public ItemStack apply(MenuSession session, ItemStack item, Function<ItemStack, ItemStack> func) {
         State state = session.get(property);
@@ -34,12 +53,12 @@ public class ItemPopup {
                     item.setItemMeta(meta);
                     return item;
                 }
-                return info.load(session.getPlayer(), session);
+                return load(session.getPlayer(), session);
             } else if (state.type != null) {
                 return item;
             }
         }
-        return func.apply(item);
+        return item == null ? load(session.getPlayer(), session) : func.apply(item);
     }
 
     public void showError(MenuSession session, String message) {
@@ -53,10 +72,10 @@ public class ItemPopup {
     public void show(MenuSession session, Material type, int data, String message, long time) {
         State state = session.compute(property, State::new);
         state.update(type, (short) data, message);
-        item.requestUpdate(ItemInfo.DelayType.REFRESH);
+        refresh();
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             state.update(null, (short) 0, null);
-            item.requestUpdate(ItemInfo.DelayType.REFRESH);
+            refresh();
         }, time);
     }
 

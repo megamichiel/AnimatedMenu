@@ -2,78 +2,62 @@ package me.megamichiel.animatedmenu.animation;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
 import me.megamichiel.animationlib.Nagger;
-import me.megamichiel.animationlib.animation.Animatable;
-import me.megamichiel.animationlib.config.AbstractConfig;
+import me.megamichiel.animationlib.animation.AbsAnimatable;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.ChatColor;
-import org.bukkit.entity.Player;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Stream;
 
-public class AnimatedLore extends Animatable<StringBundle[]> {
+public class AnimatedLore extends AbsAnimatable<StringBundle[]> {
 
-    private File imagesFolder;
+    private final File imagesFolder;
 
-    public Stream<String> stream(Player player) {
-        return Arrays.stream(get()).map(sb -> sb.toString(player));
-    }
-
-    public boolean load(AnimatedMenuPlugin plugin, AbstractConfig section, String key) {
+    public AnimatedLore(AnimatedMenuPlugin plugin) {
         imagesFolder = new File(plugin.getDataFolder(), "images");
-        return super.load(plugin, section, key);
-    }
-
-    @Override
-    protected StringBundle[] defaultValue() {
-        return new StringBundle[0];
-    }
-
-    @Override
-    protected Object getValue(Nagger nagger, AbstractConfig section, String key) {
-        return section.getStringList(key);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    protected StringBundle[] convert(Nagger nagger, Object o) {
-        List<StringBundle> frame = new ArrayList<>();
-        for (String item : (List<String>) o) {
-            if (item.toLowerCase(Locale.ENGLISH).startsWith("file:")) {
-                File file = new File(imagesFolder, item.substring(5).trim());
-                if (file.isFile()) {
-                    try {
-                        readImage(file, frame);
-                    } catch (IOException e) {
-                        nagger.nag("Failed to read file " + file.getName() + "!");
-                        nagger.nag(e);
+    protected StringBundle[] get(Nagger nagger, Object o) {
+        if (o instanceof List<?>) {
+            List<StringBundle> frame = new ArrayList<>();
+            for (Object item : (List<?>) o) {
+                String str = item.toString();
+                if (str.toLowerCase(Locale.ENGLISH).startsWith("file:")) {
+                    File file = new File(imagesFolder, str.substring(5).trim());
+                    if (file.isFile()) {
+                        try {
+                            readImage(file, frame);
+                        } catch (IOException ex) {
+                            nagger.nag("Failed to read file " + file.getName() + "!");
+                            nagger.nag(ex);
+                        }
+                        continue;
                     }
-                    continue;
                 }
+                frame.add(StringBundle.parse(nagger, str).colorAmpersands());
             }
-            frame.add(StringBundle.parse(nagger, item).colorAmpersands());
+            return frame.toArray(new StringBundle[0]);
         }
-        return frame.toArray(new StringBundle[0]);
+        return null;
     }
 
     private static void readImage(File file, List<StringBundle> list) throws IOException {
         BufferedImage img = ImageIO.read(file);
         int height = img.getHeight(), width = img.getWidth();
-        for (int y = 0; y < height; y++) {
+        for (int y = 0; y < height; ++y) {
             StringBuilder sb = new StringBuilder();
             ChatColor previous = null;
-            for (int x = 0; x < width; x++) {
-                ChatColor color = matchColor(img.getRGB(x, y));
+            for (int x = 0; x < width; ) {
+                ChatColor color = matchColor(img.getRGB(x++, y));
                 if (color != previous) {
-                    sb.append(color.toString());
-                    previous = color;
+                    sb.append((previous = color).toString());
                 }
                 sb.append(StringBundle.BOX);
             }

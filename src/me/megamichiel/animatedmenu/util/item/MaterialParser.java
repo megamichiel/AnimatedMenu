@@ -15,6 +15,8 @@ public class MaterialParser {
     
     private static final Method ITEM_BY_NAME, ITEM_TO_MATERIAL, BLOCK_BY_NAME, BLOCK_TO_MATERIAL;
     private static final Map<String, Material> cache = new HashMap<>();
+
+    private static boolean usingIds = false;
     
     static {
         Method[] methods = new Method[4];
@@ -47,11 +49,10 @@ public class MaterialParser {
         return cache.computeIfAbsent(value.toLowerCase(Locale.ENGLISH).replace('-', '_'), id -> {
             try {
                 Object o = ITEM_BY_NAME.invoke(null, id);
-                if (o != null && o != Material.AIR) {
-                    return (Material) ITEM_TO_MATERIAL.invoke(null, o);
-                } else if (((o = BLOCK_BY_NAME.invoke(null, id))) != null) {
-                    Material m = (Material) BLOCK_TO_MATERIAL.invoke(null, o);
-                    if (m != Material.AIR) return m;
+                Material m;
+                if (o != null && (m = (Material) ITEM_TO_MATERIAL.invoke(null, o)) != Material.AIR ||
+                        ((o = BLOCK_BY_NAME.invoke(null, id))) != null && (m = (Material) BLOCK_TO_MATERIAL.invoke(null, o)) != null && m != Material.AIR) {
+                    return m;
                 }
             } catch (Exception ex) {
                 // Failed to load in <clinit>
@@ -103,6 +104,7 @@ public class MaterialParser {
 
         for (Enchantment ench : Enchantment.values()) {
             enchantments.put(Integer.toString(ench.getId()), ench);
+            enchantments.putIfAbsent(ench.getName().toLowerCase(Locale.ENGLISH), ench);
         }
     }
     

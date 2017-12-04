@@ -1,20 +1,25 @@
 package me.megamichiel.animatedmenu.menu;
 
-import me.megamichiel.animatedmenu.animation.OpenAnimation;
-import me.megamichiel.animatedmenu.menu.item.ItemInfo;
-import me.megamichiel.animationlib.animation.AnimatedText;
+import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.animation.IAnimatable;
+import me.megamichiel.animationlib.bukkit.BukkitCommandAPI;
+import me.megamichiel.animationlib.command.CommandInfo;
 import me.megamichiel.animationlib.command.exec.CommandContext;
 import me.megamichiel.animationlib.command.exec.CommandExecutor;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.StringBundle;
-import me.megamichiel.animationlib.util.pipeline.PipelineContext;
+import me.megamichiel.animationlib.util.LoggerNagger;
+import me.megamichiel.animationlib.util.Subscription;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.Plugin;
 
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -26,51 +31,103 @@ public class Menu extends AbstractMenu implements CommandExecutor {
 
     private static final MenuSession.Property<Menu> ORIGIN = MenuSession.Property.of();
 
-    private final AnimatedText title;
+    private final Plugin plugin;
+    private final IAnimatable<? extends IPlaceholder<String>> title;
     private final boolean titleAnimatable;
-    private final MenuSettings settings = new MenuSettings(this);
+    private final Settings settings = new Settings();
     private final Map<Player, Menu> navigation = new WeakHashMap<>();
-    private final int titleUpdateDelay;
 
-    private int titleUpdateTick;
+    private Subscription[] command;
     
-    public Menu(String name, AnimatedText title, int titleUpdateDelay, MenuType type) {
-        super(name, type);
+    public Menu(Plugin plugin, String name, IAnimatable<? extends IPlaceholder<String>> title, Type type) {
+        super(plugin instanceof Nagger ? (Nagger) plugin : LoggerNagger.of(plugin.getLogger()), name, type);
+
+        this.plugin = plugin;
         this.title = title;
-        this.titleUpdateDelay = titleUpdateTick = titleUpdateDelay;
-        titleAnimatable = title.isAnimated() || title.get(0).containsPlaceholders();
+        titleAnimatable = title.isAnimated();
     }
 
-    public Menu(String name, String title, MenuType type) {
-        this(name, new AnimatedText(new StringBundle(null, title)), 0, type);
+    public Menu(Plugin plugin, String name, String title, Type type) {
+        this(plugin, name, IAnimatable.single(new StringBundle(null, title)), type);
     }
 
-    public Menu(String title, MenuType type) {
-        this(UUID.randomUUID().toString(), new AnimatedText(new StringBundle(null, title)), 0, type);
+    public Menu(Plugin plugin, String title, Type type) {
+        this(plugin, UUID.randomUUID().toString(), IAnimatable.single(new StringBundle(null, title)), type);
     }
 
-    public Config config() {
-        return new Config(this);
+    public boolean registerCommand(String plugin) {
+        if (command == null) {
+            CommandInfo openCommand = settings.getOpenCommand();
+            if (openCommand != null) {
+                BukkitCommandAPI api = BukkitCommandAPI.getInstance();
+                List<Subscription> sub = new ArrayList<>();
+
+                Command command = api.getCommand(openCommand.name());
+                if (command != null) {
+                    sub.addAll(api.deleteCommands((lbl, cmd) -> cmd == command && lbl.equals(openCommand.name())));
+                }
+
+                for (String alias : openCommand.aliases()) {
+                    Command cmd = api.getCommand(alias);
+                    if (cmd != null) {
+                        sub.addAll(api.deleteCommands((lbl, $cmd) -> $cmd == cmd && lbl.equals(alias)));
+                    }
+                }
+                // Make sure the command is removed first on unregister:
+                sub.add(0, api.registerCommand(plugin, openCommand));
+
+                this.command = sub.toArray(new Subscription[0]);
+                return true;
+            }
+        }
+        return false;
     }
 
-    public MenuSettings getSettings() {
+    public boolean isCommandRegistered() {
+        return command != null;
+    }
+
+    public boolean unregisterCommand() {
+        Subscription[] cmd = command;
+        if (cmd != null) {
+            command = null;
+            for (Subscription sub : cmd) {
+                sub.unsubscribe();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public void closeAll() {
+        closeAll(null);
+    }
+
+    public void closeAll(String reason) {
+        forEachViewer(player -> {
+            if (reason != null) {
+                player.sendMessage(reason);
+            }
+            player.closeInventory();
+        });
+    }
+
+    public Settings getSettings() {
         return settings;
     }
 
-    public void requestTitleUpdate() {
-        titleUpdateTick = 0;
-    }
-
-    protected MenuSession handleMenuClose(Player who, MenuSession newSession) {
-        MenuSession session = removeViewer(who);
+    public MenuSession handleMenuClose(Player player, MenuSession newSession) {
+        MenuSession session = removeViewer(player);
         if (session != null) {
-            settings.callListeners(who, session, true);
+            for (BiConsumer<? super Player, ? super MenuSession> listener : settings.closeListeners) {
+                listener.accept(player, session);
+            }
             Menu origin = session.get(ORIGIN);
             if (origin != null) {
                 if (newSession != null) {
                     newSession.set(ORIGIN, origin);
                 } else {
-                    origin.navigation.put(who, this);
+                    origin.navigation.put(player, this);
                 }
             }
         }
@@ -78,30 +135,14 @@ public class Menu extends AbstractMenu implements CommandExecutor {
     }
 
     private void openInventory(Player who, Consumer<? super MenuSession> action) {
-        String title = this.title.get().toString(who);
-        if (title.length() > 32) {
-            title = title.substring(0, 32);
-        }
-        MenuType menuType = getMenuType();
-        Inventory inv;
-        if (menuType.getInventoryType() == InventoryType.CHEST) {
-            inv = Bukkit.createInventory(null, menuType.getSize(), title);
-        } else {
-            inv = Bukkit.createInventory(null, menuType.getInventoryType(), title);
-        }
-        who.openInventory(inv);
-        setup(who, inv, action);
-    }
-
-    public String canOpen(Player who) {
-        IPlaceholder<String> permission = settings.getPermission();
-        if (permission != null && !who.hasPermission(permission.invoke(plugin, who))) {
-            if (settings.getPermissionMessage() != null) {
-                return settings.getPermissionMessage().invoke(plugin, who);
+        who.openInventory(setup(who, $session -> {
+            Type type = getType();
+            String title = this.title.get().invoke($session, who);
+            if (title.length() > 32) {
+                title = title.substring(0, 32);
             }
-            return "";
-        }
-        return null;
+            return type.isChest() ? Bukkit.createInventory($session, type.getSize(), title) : Bukkit.createInventory($session, type.getInventoryType(), title);
+        }, action).getInventory());
     }
 
     /**
@@ -120,21 +161,21 @@ public class Menu extends AbstractMenu implements CommandExecutor {
     public void open(Player who, Consumer<? super MenuSession> ready) {
         boolean saveNavigation = settings.saveNavigation();
         if (saveNavigation) {
-            Menu menu = navigation.get(who);
+            Menu menu = navigation.remove(who);
             if (menu != null && menu != this) {
                 menu.open(who, session -> {
-                    if (ready != null) {
-                        ready.accept(session);
-                    }
                     if (session != null) {
                         session.set(ORIGIN, this);
+                    }
+                    if (ready != null) {
+                        ready.accept(session);
                     }
                 });
                 return;
             }
         }
 
-        String s = canOpen(who);
+        String s = settings.canOpen(who);
         if (s != null) {
             if (!s.isEmpty()) {
                 who.sendMessage(s);
@@ -144,45 +185,58 @@ public class Menu extends AbstractMenu implements CommandExecutor {
             }
             return;
         }
-        List<Predicate<? super Player>> awaits = settings.getAwaits();
         Consumer<MenuSession> action = session -> {
             if (settings.saveNavigation()) {
                 session.set(ORIGIN, this);
             }
             Player player = session.getPlayer();
-            plugin.getMenuRegistry().onOpen(player, this, session);
-            settings.callListeners(player, session, false);
+            Inventory inventory = player.getOpenInventory().getTopInventory();
+            if (inventory != null) {
+                InventoryHolder holder = inventory.getHolder();
+                if (holder instanceof MenuSession) {
+                    AbstractMenu menu = ((MenuSession) holder).getMenu();
+                    if (menu instanceof Menu) {
+                        ((Menu) menu).handleMenuClose(who, session);
+                    }
+                }
+            }
+            InventoryHolder holder;
+            if ((holder = player.getOpenInventory().getTopInventory().getHolder()) instanceof MenuSession) {
+                ((Menu) ((MenuSession) holder).getMenu()).handleMenuClose(who, session);
+            }
+            for (BiConsumer<? super Player, ? super MenuSession> listener : settings.openListeners) {
+                listener.accept(player, session);
+            }
             if (ready != null) {
                 ready.accept(session);
             }
         };
+        List<Predicate<? super Player>> awaits = settings.getAwaits();
         if (awaits.isEmpty()) {
             openInventory(who, action);
         } else {
-            if (settings.getWaitMessage() != null) {
-                who.sendMessage(settings.getWaitMessage().invoke(plugin, who));
+            Function<Player, String> message = settings.getWaitMessage();
+            if (message != null) {
+                who.sendMessage(message.apply(who));
             }
-            plugin.post(() -> {
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                 for (Predicate<? super Player> await : awaits) {
                     if (!await.test(who)) {
                         return;
                     }
                 }
-                plugin.post(() -> openInventory(who, action), PipelineContext.SYNC);
-            }, PipelineContext.ASYNC);
+                plugin.getServer().getScheduler().runTask(plugin, () -> openInventory(who, action));
+            });
         }
     }
 
     @Override
     public void tick() {
-        if (titleAnimatable && titleUpdateTick-- == 0) {
-            title.next();
-            if ((titleUpdateTick = titleUpdateDelay) >= 0) {
-                plugin.post(() -> forEachSession(session -> {
-                    String title = this.title.get().toString(session.getPlayer());
-                    session.setTitle(title.length() > 32 ? title.substring(0, 32) : title);
-                }), PipelineContext.SYNC);
-            }
+        if (titleAnimatable && title.tick()) {
+            plugin.getServer().getScheduler().runTask(plugin, () -> forEachSession(session -> {
+                String title = this.title.get().invoke(session, session.getPlayer());
+                session.setTitle(title.length() > 32 ? title.substring(0, 32) : title);
+            }));
         }
         super.tick();
     }
@@ -191,143 +245,165 @@ public class Menu extends AbstractMenu implements CommandExecutor {
     public void onCommand(CommandContext ctx) {
         CommandSender sender = (CommandSender) ctx.getSender();
 
-        String fallback = getSettings().getFallbackCommand();
-        if (fallback != null && ctx.getArgs().length > 0) {
-            if (fallback.isEmpty()) {
-                sender.sendMessage(ChatColor.RED + "Too many arguments!");
-            } else {
-                StringBuilder sb = new StringBuilder(fallback);
-                for (String arg : ctx.getArgs()) {
-                    sb.append(' ').append(arg);
-                }
-                ((Player) sender).performCommand(sb.toString());
+        String[] args = ctx.getArgs();
+        CommandExecutor fallback = getSettings().getFallbackExecutor();
+        if (sender instanceof Player) {
+            if (args.length == 0 || fallback == null) {
+                open((Player) sender);
             }
-            return;
+        } else if (fallback != null) {
+            fallback.onCommand(ctx);
         }
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "You must be a player for that!");
-            return;
-        }
-        open((Player) sender);
     }
 
     public String getDefaultUsage() {
         return "/<command>";
     }
 
-    public static class Config {
+    public static final class Settings {
 
-        private final Menu menu;
+        private final List<Function<? super Player, ? extends String>> openFilters = new ArrayList<>();
+        private final List<BiConsumer<? super Player, ? super MenuSession>> openListeners = new ArrayList<>();
+        private final List<BiConsumer<? super Player, ? super MenuSession>> closeListeners = new ArrayList<>();
 
-        private Config(Menu menu) {
-            this.menu = menu;
+        private final List<Predicate<? super Player>> awaits = new ArrayList<>();
+        private Function<Player, String> waitMessage;
+
+        private ItemStack opener;
+        private boolean openerName, openerLore;
+        private int openerJoinSlot = -1;
+
+        private boolean openOnJoin;
+        private CommandInfo openCommand;
+        private CommandExecutor fallbackExecutor;
+        private boolean hiddenFromCommand = false, saveNavigation = false;
+
+        private Settings() { }
+
+        public boolean shouldOpenOnJoin() {
+            return openOnJoin;
         }
 
-        public Config openAnimation(Function<? super Player, ? extends OpenAnimation> openAnimation) {
-            menu.setOpenAnimation(openAnimation);
-            return this;
-        }
-
-        public Config emptyItem(boolean single, ItemInfo info) {
-            menu.setEmptyItem(info);
-            menu.setSingleEmptyItem(single);
-            return this;
-        }
-
-        public Config clickDelay(long delay, String delayMessage) {
-            menu.setClickDelay(delay, delayMessage);
-            return this;
-        }
-
-        public Config withItem(ItemInfo item) {
-            menu.getMenuGrid().add(item);
-            return this;
-        }
-
-        public Config withItem(ItemInfo... items) {
-            for (ItemInfo item : items) {
-                menu.getMenuGrid().add(item);
+        public void setOpener(ItemStack opener, int slot) {
+            this.opener = opener;
+            this.openerJoinSlot = slot;
+            if (opener == null || !opener.hasItemMeta()) {
+                return;
             }
-            return this;
+            ItemMeta meta = opener.getItemMeta();
+            openerName = meta.hasDisplayName();
+            openerLore = meta.hasLore();
         }
 
-        public Config opener(ItemStack opener, int slot) {
-            menu.settings.setOpener(opener, slot);
-            return this;
+        public boolean hasOpener() {
+            return opener != null;
         }
 
-        public Config openOnJoin(boolean openOnJoin) {
-            menu.settings.setOpenOnJoin(openOnJoin);
-            return this;
+        public boolean giveOpener(PlayerInventory inv, boolean add) {
+            if (opener != null) {
+                if (add) {
+                    inv.addItem(opener);
+                } else if (openerJoinSlot >= 0) {
+                    inv.setItem(openerJoinSlot, opener);
+                }
+                return true;
+            }
+            return false;
         }
 
-        public Config openOnJoin() {
-            menu.settings.setOpenOnJoin(true);
-            return this;
+        public boolean canOpenWith(ItemStack item, ItemMeta meta) {
+            ItemStack opener = this.opener;
+            if (opener == null || item.getType() != opener.getType() || item.getAmount() < opener.getAmount()
+                    || (item.getDurability() != Short.MAX_VALUE && item.getDurability() != opener.getDurability())) {
+                return false;
+            }
+            if (openerName || openerLore) {
+                ItemMeta im = opener.getItemMeta();
+                return (!openerName || im.getDisplayName().equals(meta.getDisplayName())) &&
+                       (!openerLore || im.getLore().equals(meta.getLore()));
+            }
+            return true;
         }
 
-        public Config withListener(BiConsumer<? super Player, ? super MenuSession> listener, boolean close) {
-            menu.settings.addListener(listener, close);
-            return this;
+        public void setOpenOnJoin(boolean openOnJoin) {
+            this.openOnJoin = openOnJoin;
         }
 
-        public Config withListener(Consumer<? super Player> listener, boolean close) {
-            menu.settings.addListener((player, session) -> listener.accept(player), close);
-            return this;
+        public void addListener(BiConsumer<? super Player, ? super MenuSession> listener, boolean close) {
+            (close ? closeListeners : openListeners).add(listener);
         }
 
-        public Config removeWhenClosed() {
-            menu.settings.addListener((p, session) -> session.getMenu().remove(), true);
-            return this;
+        public void addListener(Consumer<? super Player> listener, boolean close) {
+            addListener((player, session) -> listener.accept(player), close);
         }
 
-        public Config openCommand(String name, String usage, String description, String[] aliases) {
-            menu.settings.setOpenCommand(name, usage, description, aliases);
-            return this;
+        public void setOpenCommand(Menu executor, String name, String usage, String description, String[] aliases) {
+            if (name == null) {
+                openCommand = null;
+            } else {
+                openCommand = new CommandInfo(name, executor).usage(usage).desc(description).aliases(aliases);
+            }
         }
 
-        public Config hiddenFromCommand(boolean hiddenFromCommand) {
-            menu.settings.setHiddenFromCommand(hiddenFromCommand);
-            return this;
+        public CommandInfo getOpenCommand() {
+            return openCommand;
         }
 
-        public Config hiddenFromCommand() {
-            menu.settings.setHiddenFromCommand(true);
-            return this;
+        public void setHiddenFromCommand(boolean hiddenFromCommand) {
+            this.hiddenFromCommand = hiddenFromCommand;
         }
 
-        public Config fallbackCommand(String fallbackCommand) {
-            menu.settings.setFallbackCommand(fallbackCommand);
-            return this;
+        public boolean isHiddenFromCommand() {
+            return hiddenFromCommand;
         }
 
-        public Config saveNavigation(boolean saveNavigation) {
-            menu.settings.setSaveNavigation(saveNavigation);
-            return this;
+        public CommandExecutor getFallbackExecutor() {
+            return fallbackExecutor;
         }
 
-        public Config saveNavigation() {
-            menu.settings.setSaveNavigation(true);
-            return this;
+        public void setFallbackExecutor(CommandExecutor fallbackExecutor) {
+            this.fallbackExecutor = fallbackExecutor;
         }
 
-        public Config permission(IPlaceholder<String> permission) {
-            menu.settings.setPermission(permission);
-            return this;
+        public void setSaveNavigation(boolean saveNavigation) {
+            this.saveNavigation = saveNavigation;
         }
 
-        public Config permissionMessage(IPlaceholder<String> permissionMessage) {
-            menu.settings.setPermissionMessage(permissionMessage);
-            return this;
+        public boolean saveNavigation() {
+            return saveNavigation;
         }
 
-        public Config waitMessage(IPlaceholder<String> waitMessage) {
-            menu.settings.setWaitMessage(waitMessage);
-            return this;
+        public void addOpenFilter(Function<? super Player, ? extends String> filter) {
+            if (filter == null) {
+                throw new NullPointerException("filter");
+            }
+            openFilters.add(filter);
         }
 
-        public Menu get() {
-            return menu;
+        public void removeOpenFilter(Function<? super Player, ? extends String> filter) {
+            openFilters.remove(filter);
+        }
+
+        public String canOpen(Player player) {
+            String str;
+            for (Function<? super Player, ? extends String> filter : openFilters) {
+                if ((str = filter.apply(player)) != null) {
+                    return str;
+                }
+            }
+            return null;
+        }
+
+        public List<Predicate<? super Player>> getAwaits() {
+            return awaits;
+        }
+
+        public void setWaitMessage(Function<Player, String> waitMessage) {
+            this.waitMessage = waitMessage;
+        }
+
+        public Function<Player, String> getWaitMessage() {
+            return waitMessage;
         }
     }
 }

@@ -10,6 +10,8 @@ import java.io.DataOutputStream;
 
 public class ServerCommand extends Command<StringBundle, byte[]> {
 
+    private static final byte[] CONNECT_UTF = { 0, 7, 'C', 'o', 'n', 'n', 'e', 'c', 't' };
+
     public ServerCommand() {
         super("server");
     }
@@ -22,33 +24,33 @@ public class ServerCommand extends Command<StringBundle, byte[]> {
     @Override
     protected boolean execute(AnimatedMenuPlugin plugin, Player p, StringBundle value) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(bytes);
         try {
-            dos.writeUTF("Connect");
-            dos.writeUTF(value.toString(p));
+            bytes.write(CONNECT_UTF, 0, 9);
+            new DataOutputStream(bytes).writeUTF(value.toString(p));
+
+            p.sendPluginMessage(plugin, "BungeeCord", bytes.toByteArray());
         } catch (Exception ex) {
             plugin.nag("An error occured on trying to encode bungee server '" + value + "'");
             plugin.nag(ex);
-            return true;
         }
-        p.sendPluginMessage(plugin, "BungeeCord", bytes.toByteArray());
         return true;
     }
 
     @Override
     protected byte[] tryCacheValue(AnimatedMenuPlugin plugin, StringBundle value) {
-        if (value.containsPlaceholders()) return null;
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(bytes);
-        try {
-            dos.writeUTF("Connect");
-            dos.writeUTF(value.toString(null));
-        } catch (Exception ex) {
-            plugin.nag("An error occured on trying to encode bungee server '" + value + "'");
-            plugin.nag(ex);
-            return null;
+        if (!value.containsPlaceholders()) {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            try {
+                bytes.write(CONNECT_UTF, 0, 9);
+                new DataOutputStream(bytes).writeUTF(value.toString(null));
+
+                return bytes.toByteArray();
+            } catch (Exception ex) {
+                plugin.nag("An error occured on trying to encode bungee server '" + value + "'");
+                plugin.nag(ex);
+            }
         }
-        return bytes.toByteArray();
+        return null;
     }
 
     @Override

@@ -12,13 +12,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Delay implements Runnable {
 
     private final String id;
 
-    private final Map<UUID, AtomicLong> delays = new HashMap<>();
+    private final Map<UUID, Long> delays = new HashMap<>();
     private final StringBundle delayMessage;
     private final long delay;
     private long result;
@@ -44,11 +45,13 @@ public class Delay implements Runnable {
     }
 
     public Map<UUID, Long> save() {
-        if (delays.isEmpty()) return Collections.emptyMap();
+        if (delays.isEmpty()) {
+            return Collections.emptyMap();
+        }
         long time = System.currentTimeMillis(), delay;
         Map<UUID, Long> save = new HashMap<>();
-        for (Map.Entry<UUID, AtomicLong> entry : delays.entrySet()) {
-            if (time < (delay = entry.getValue().get())) {
+        for (Map.Entry<UUID, Long> entry : delays.entrySet()) {
+            if (time < (delay = entry.getValue())) {
                 save.put(entry.getKey(), delay);
             }
         }
@@ -56,31 +59,31 @@ public class Delay implements Runnable {
     }
 
     public void load(Map<UUID, Long> map) {
-        map.forEach((id, timer) -> delays.put(id, new AtomicLong(timer)));
+        delays.putAll(map);
     }
 
     public boolean test(Player player) {
-        AtomicLong l = delays.get(player.getUniqueId());
         long time = System.currentTimeMillis();
-        if (l == null) {
-            delays.put(player.getUniqueId(), new AtomicLong(time + delay));
-            return true;
-        }
-        if (time < l.get()) {
-            if (delayMessage != null) {
-                result = l.get() - time;
+
+        AtomicBoolean bool = new AtomicBoolean();
+        delays.compute(player.getUniqueId(), (id, timer) -> {
+            if (timer == null || time >= timer) {
+                bool.set(true);
+                return time + delay;
+            } else if (delayMessage != null) {
+                result = timer - time;
                 player.sendMessage(delayMessage.toString(player));
             }
-            return false;
-        }
-        l.set(time + delay);
-        return true;
+            return timer;
+        });
+
+        return bool.get();
     }
 
     @Override
     public void run() {
         long time = System.currentTimeMillis();
-        delays.values().removeIf(timer -> time >= timer.get());
+        delays.values().removeIf(timer -> time >= timer);
     }
 
     private class MessageNagger implements ParsingNagger, ParsingContext {
@@ -109,10 +112,10 @@ public class Delay implements Runnable {
         @Override
         public IPlaceholder<?> parse(String s) {
             switch (s) {
-                case "hoursleft": return (n, p) -> result / 3600_000;
-                case "minutesleft": return (n, p) -> (result / 60_000) % 60;
-                case "secondsleft":  return (n, p) -> (result / 1_000) % 60;
-                case "ticksleft": return (n, p) -> (result / 50) % 20;
+                case "hoursleft":   return (n, p) ->  result / 3600_000;
+                case "minutesleft": return (n, p) -> (result /   60_000) % 60;
+                case "secondsleft": return (n, p) -> (result /    1_000) % 60;
+                case "ticksleft":   return (n, p) -> (result /       50) % 20;
                 default:
                     return nagger instanceof ParsingNagger ? ((ParsingNagger) nagger).context().parse(s) : null;
             }

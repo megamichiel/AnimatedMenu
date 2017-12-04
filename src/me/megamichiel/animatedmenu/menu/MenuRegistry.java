@@ -1,83 +1,67 @@
 package me.megamichiel.animatedmenu.menu;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animationlib.bukkit.BukkitCommandAPI;
-import me.megamichiel.animationlib.command.CommandInfo;
-import me.megamichiel.animationlib.command.CommandSubscription;
-import me.megamichiel.animationlib.util.Subscription;
-import org.bukkit.ChatColor;
-import org.bukkit.command.Command;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.HumanEntity;
+import org.bukkit.inventory.InventoryHolder;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-public class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
-
-    private final Map<String, AbstractMenu> menus = new ConcurrentHashMap<>();
-    private final Map<Menu, Runnable> commandSubscriptions = new ConcurrentHashMap<>();
+public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
 
     private final AnimatedMenuPlugin plugin;
-    private final Map<Player, MenuSession> sessions = new WeakHashMap<>();
+    private final Set<IMenuProvider<?>> providers = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     public MenuRegistry(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
     }
-
-    public void onDisable() {
-        menus.values().forEach(this::remove);
-    }
     
     @Override
     public void run() {
-        for (AbstractMenu menu : menus.values()) {
-            try {
-                menu.tick();
-            } catch (Exception ex) {
-                plugin.nag("An error occured on ticking " + menu.getName() + ":");
-                plugin.nag(ex);
+        for (IMenuProvider<?> provider : providers) {
+            for (AbstractMenu menu : provider) {
+                try {
+                    menu.tick();
+                } catch (Exception ex) {
+                    plugin.nag("An error occured on ticking " + menu.getName() + ":");
+                    plugin.nag(ex);
+                }
             }
         }
     }
 
     /**
-     * Returns the AnimatedMenuPlugin this registry belongs to
+     * Registers a new IMenuProvider
+     * @param provider The provider to register.
+     *
+     * @throws NullPointerException if <i>provider</i> is null
      */
-    public AnimatedMenuPlugin getPlugin() {
-        return plugin;
+    public void registerProvider(IMenuProvider provider) {
+        if (provider == null) {
+            throw new NullPointerException("provider");
+        }
+        providers.add(provider);
     }
 
+    /**
+     * Unregisters an IMenuProvider
+     */
+    public void unregisterProvider(IMenuProvider provider) {
+        providers.remove(provider);
+    }
+
+    /**
+     * Returns a set of all currently loaded menus
+     */
     public Collection<AbstractMenu> getMenus() {
-        return Collections.unmodifiableCollection(menus.values());
-    }
-
-    /**
-     * Get a player's opened menu
-     * @param who the player to get the opened menu of
-     * @return the player's opened menu, or null if the player doesn't have a menu open
-     */
-    public Menu getOpenedMenu(Player who) {
-        MenuSession session = sessions.get(who);
-        return session == null ? null : (Menu) session.getMenu();
-    }
-
-    /**
-     * Gets a player's opened menu session
-     * @param who the player to get the session of
-     * @return the player's opened menu session, or null if the player doesn't have a menu open
-     */
-    public MenuSession getSession(Player who) {
-        return sessions.get(who);
-    }
-    
-    /**
-     * Clears all menus
-     */
-    public void clear() {
-        menus.clear();
-        commandSubscriptions.values().forEach(Runnable::run);
-        commandSubscriptions.clear();
+        List<AbstractMenu> list = new ArrayList<>();
+        for (IMenuProvider<?> provider : providers) {
+            for (AbstractMenu menu : provider) {
+                list.add(menu);
+            }
+        }
+        return list;
     }
 
     /**
@@ -86,108 +70,77 @@ public class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
      * @return true if the menu is registered, false otherwise
      */
     protected boolean contains(AbstractMenu menu) {
-        return menus.get(menu.getName()) == menu;
-    }
-    
-    /**
-     * Adds a menu to the registry
-     * @param menu the menu to add
-     */
-    public void add(AbstractMenu menu) {
-        AbstractMenu old = menus.put(menu.getName(), menu);
-        if (menu != old) {
-            if (old instanceof Menu) {
-                Optional.ofNullable(commandSubscriptions.remove(old)).ifPresent(Runnable::run);
-            }
-            if (menu instanceof Menu) {
-                addMenuCommand((Menu) menu);
+        String name = menu.getName();
+        for (IMenuProvider<?> provider : providers) {
+            if (provider.getMenu(name) == menu) {
+                return true;
             }
         }
+        return false;
     }
-    
+
     /**
-     * Removes a menu from the registry
-     * @param menu the menu to remove
-     */
-    public void remove(AbstractMenu menu) {
-        menu.forEachViewer(player -> {
-            player.sendMessage(ChatColor.RED + "Menu has been removed");
-            player.closeInventory();
-        });
-        menus.remove(menu.getName(), menu);
-        if (menu instanceof Menu) {
-            Runnable task = commandSubscriptions.remove(menu);
-            if (task != null) {
-                task.run();
-            }
-        }
-    }
-    
-    /**
-     * Gets a menu by name
-     * @param name the name of the menu, case insensitive
+     * Finds a menu by name
+     * @param name the name of the menu
      * @return the menu by name, or null if none was found
      */
     public AbstractMenu getMenu(String name) {
-        return menus.get(name);
+        AbstractMenu menu;
+        for (IMenuProvider<?> provider : providers) {
+            if ((menu = provider.getMenu(name)) != null) {
+                return menu;
+            }
+        }
+        return null;
     }
-    
+
+    /**
+     * Returns the current menu session of a player
+     * @param player The player to get the session of
+     * @return The player's current menu session, or <i>null</i> if they don't have a menu open
+     */
+    public MenuSession getSession(HumanEntity player) {
+        InventoryHolder holder;
+        return (holder = player.getOpenInventory().getTopInventory().getHolder()) instanceof MenuSession ? (MenuSession) holder : null;
+    }
+
     /**
      * Get a new iterator of all menus
      */
     @Override
     public Iterator<AbstractMenu> iterator() {
-        return menus.values().iterator();
+        return new Iterator<AbstractMenu>() {
+
+            final Iterator<IMenuProvider<?>> provider = providers.iterator();
+            Iterator<? extends AbstractMenu> menu = provider.hasNext() ? provider.next().iterator() : Collections.emptyIterator();
+
+            @Override
+            public boolean hasNext() {
+                for (; !menu.hasNext(); menu = provider.next().iterator()) {
+                    if (!provider.hasNext()) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public AbstractMenu next() {
+                while (!menu.hasNext()) {
+                    menu = provider.next().iterator();
+                }
+                return menu.next();
+            }
+        };
     }
 
     @Override
     public void forEach(Consumer<? super AbstractMenu> action) {
-        menus.values().forEach(action);
-    }
-
-    @Override
-    public Spliterator<AbstractMenu> spliterator() {
-        return menus.values().spliterator();
-    }
-
-    public void handleMenuClose(Player who) {
-        MenuSession session = sessions.remove(who);
-        if (session != null) {
-            ((Menu) session.getMenu()).handleMenuClose(who, null);
-        }
-    }
-
-    void onOpen(Player who, Menu menu, MenuSession session) {
-        menus.putIfAbsent(menu.getName(), menu);
-        MenuSession old = sessions.put(who, session);
-        if (old != null) {
-            ((Menu) old.getMenu()).handleMenuClose(who, session);
-        }
-    }
-
-    private void addMenuCommand(Menu menu) {
-        CommandInfo openCommand = menu.getSettings().getOpenCommand();
-        if (openCommand != null) {
-            BukkitCommandAPI api = BukkitCommandAPI.getInstance();
-            List<CommandSubscription<Command>> list = new ArrayList<>();
-            deleteOld(api, openCommand.name(), list);
-            for (String alias : openCommand.aliases()) {
-                deleteOld(api, alias, list);
+        Iterator<? extends AbstractMenu> it;
+        for (IMenuProvider<?> provider : providers) {
+            for (it = provider.iterator(); it.hasNext(); ) {
+                action.accept(it.next());
             }
-            // Make sure the command is removed first on disable:
-            list.add(0, api.registerCommand(plugin, openCommand));
-            commandSubscriptions.put(menu, createSubscription(list));
         }
-    }
-
-    private void deleteOld(BukkitCommandAPI api, String label, List<CommandSubscription<Command>> list) {
-        Command command = api.getCommand(label);
-        if (command != null) {
-            list.addAll(api.deleteCommands((lbl, cmd) -> cmd == command && lbl.equals(label)));
-        }
-    }
-
-    private Runnable createSubscription(List<CommandSubscription<Command>> list) {
-        return () -> list.forEach(Subscription::unsubscribe);
     }
 }

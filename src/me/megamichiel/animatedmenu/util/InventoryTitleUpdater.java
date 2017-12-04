@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class InventoryTitleUpdater {
 
-    private final ReflectClass.Method getInventory, getContainerName, getHandle, sendPacket, updateInventory;
+    private final ReflectClass.Method getHandle, sendPacket, updateInventory;
     private final ReflectClass.Field activeContainer, playerConnection, windowId;
     private final ReflectClass.Constructor chatMessage, openWindow;
 
@@ -21,8 +21,6 @@ public class InventoryTitleUpdater {
         getHandle = cbk.getClass("entity.CraftPlayer").getMethod("getHandle");
         activeContainer = nms.getClass("EntityHuman").getField("activeContainer");
         windowId = activeContainer.getReflectType().getField("windowId");
-        getContainerName = nms.getClass("ITileEntityContainer").getMethod("getContainerName");
-        getInventory = cbk.getClass("inventory.CraftInventory").getMethod("getInventory");
         chatMessage = nms.getClass("ChatComponentText").getConstructor(String.class);
         playerConnection = getHandle.getReflectType().getField("playerConnection");
         openWindow = nms.getClass("PacketPlayOutOpenWindow").getConstructor(
@@ -32,22 +30,11 @@ public class InventoryTitleUpdater {
         updateInventory = getHandle.getReflectType().getMethod("updateInventory", activeContainer.getType());
     }
 
-    private final Map<InventoryType, String> nmsNames = new HashMap<>();
-
-    public void update(Player player, Inventory inventory, String title) {
-        String nmsName = nmsNames.computeIfAbsent(inventory.getType(), $type -> {
-            Object inventoryHandle = getInventory.invoke(inventory);
-            if (getContainerName.canInvoke(inventoryHandle)) {
-                return getContainerName.invokeGeneric(inventoryHandle);
-            }
-            return "minecraft:container";
-        });
+    public void update(Player player, Inventory inventory, String type, String title) {
         Object handle = getHandle.invoke(player),
             container = activeContainer.get(handle);
         sendPacket.invoke(playerConnection.get(handle), openWindow.newInstance(
-                windowId.get(container), nmsName,
-                title == null ? "" : chatMessage.newInstance(title),
-                inventory.getSize(), 0
+                windowId.get(container), type, title == null ? "" : chatMessage.newInstance(title), inventory.getSize(), 0
         ));
         updateInventory.invoke(handle, container);
     }

@@ -6,9 +6,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import me.arcaniax.hdb.api.HeadDatabaseAPI;
 import me.megamichiel.animationlib.Nagger;
-import me.megamichiel.animationlib.bukkit.nbt.NBTModifiers;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
+import me.megamichiel.animationlib.placeholder.PlaceholderContext;
 import me.megamichiel.animationlib.placeholder.StringBundle;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -19,13 +20,12 @@ import org.bukkit.inventory.meta.SkullMeta;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLConnection;
-import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Random;
@@ -33,184 +33,259 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 public class Skull implements MaterialSpecific.Action<SkullMeta> {
-    
-    private static final Field skullProfile;
-    private static final Method fillProfile, serializeProfile;
 
-    private static final String USERNAME_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    
+    private static final char[] USERNAME_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_".toCharArray();
+
+    private static final Map<String, GameProfile> cachedProfiles = new ConcurrentHashMap<>();
+
+    private static final Field skullProfile;
+    private static final Method getProfile, fillProfile, serializeProfile, deserializeProfile;
+
     static {
-        Field field = null;
-        Method method = null, method1 = null;
+        Field _skullProfile = null;
+        Method _getProfile = null, _fillProfile = null, _serializeProfile = null, _deserializeProfile = null;
         try {
             String pkg = Bukkit.getServer().getClass().getPackage().getName();
-            field = Class.forName(pkg + ".inventory.CraftMetaSkull").getDeclaredField("profile");
-            field.setAccessible(true);
+            _skullProfile = Class.forName(pkg + ".inventory.CraftMetaSkull").getDeclaredField("profile");
+            _skullProfile.setAccessible(true);
+
+            _getProfile = Class.forName(pkg + ".entity.CraftPlayer").getDeclaredMethod("getProfile");
 
             pkg = "net.minecraft.server" + pkg.substring(pkg.lastIndexOf('.'));
 
-            Class<?> clazz = Class.forName(pkg + ".TileEntitySkull");
+            Class<?> clazz = Class.forName(pkg + ".TileEntitySkull"),
+                  compound = Class.forName(pkg + ".NBTTagCompound");
+            Class<?>[] params;
             for (Method m : clazz.getDeclaredMethods()) {
-                if (Modifier.isStatic(m.getModifiers())) {
-                    Class<?>[] params = m.getParameterTypes();
-                    if (params.length > 0 && params[0] == GameProfile.class) {
-                        method = m;
-                        break;
-                    }
+                if (Modifier.isStatic(m.getModifiers()) && (params = m.getParameterTypes()).length > 0 && params[0] == GameProfile.class) {
+                    _fillProfile = m;
+                    break;
                 }
             }
-            method1 = Class.forName(pkg + ".GameProfileSerializer").getDeclaredMethod(
-                    "serialize", Class.forName(pkg + ".NBTTagCompound"), field.getType());
+
+            _serializeProfile = Class.forName(pkg + ".GameProfileSerializer").getDeclaredMethod(
+                    "serialize", compound, _skullProfile.getType()
+            );
+            _deserializeProfile = Class.forName(pkg + ".GameProfileSerializer").getDeclaredMethod(
+                    "deserialize", compound
+            );
         } catch (Exception ex) {
             // Not supported
         }
-        skullProfile = field;
-        fillProfile = method;
-        serializeProfile = method1;
+        skullProfile = _skullProfile;
+        fillProfile = _fillProfile;
+        serializeProfile = _serializeProfile;
+        deserializeProfile = _deserializeProfile;
+        getProfile = _getProfile;
     }
 
     public static Skull forName(String name) {
         Skull skull = new Skull(null, name);
 
-        if (!cachedProfiles.containsKey(name)) loadProfile(name);
+        if (!cachedProfiles.containsKey(name)) {
+            loadProfile(name);
+        }
 
         return skull;
     }
-    
-    private static final Map<String, GameProfile> cachedProfiles = new ConcurrentHashMap<>();
-    
+
     private final StringBundle name;
     
-    public Skull(Nagger nagger, String name) {
-        this.name = StringBundle.parse(nagger, name);
+    public Skull(Nagger nagger, Object name) {
+        this.name = StringBundle.parse(nagger, name.toString());
+    }
+
+    public Stream<?> stream() {
+        return name.stream();
     }
 
     @Override
-    public void apply(Player player, SkullMeta meta) {
-        String name = this.name.toString(player);
+    public void apply(Player player, SkullMeta meta, PlaceholderContext context) {
+        String name = this.name.toString(player, context);
         GameProfile profile = cachedProfiles.get(name);
-        if (profile != null) {
-            if (profile.getName() != null) {
-                try {
-                    skullProfile.set(meta, profile);
-                } catch (Exception ex) {
-                    // No support ;c
-                }
+        if ((profile == null ? (profile = loadProfile(name)) : profile).getName() != null) {
+            try {
+                skullProfile.set(meta, profile);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                // No support ;c
             }
-        } else {
-            loadProfile(name);
-            meta.setOwner(name);
         }
     }
 
-    public void apply(Player player, Map<String, Object> map) {
-        String name = this.name.toString(player);
+    public void apply(Player player, Map<String, Object> map, PlaceholderContext context) {
+        String name = this.name.toString(player, context);
         GameProfile profile = cachedProfiles.get(name);
-        if (profile != null) {
-            if (profile.getName() != null) {
-                try {
-                    map.put("SkullOwner", serializeProfile.invoke(null, NBTUtil.getInstance().createTag(), profile));
-                } catch (Exception ex) {
-                    // No support ;c
-                }
+        if ((profile == null ? (profile = loadProfile(name)) : profile).getName() != null) {
+            try {
+                map.put("SkullOwner", serializeProfile.invoke(null, NBTUtil.getInstance().createTag(), profile));
+            } catch (Exception ex) {
+                // No support ;c
             }
-        } else {
-            loadProfile(name);
-            map.put("SkullOwner", NBTModifiers.STRING.wrap(name));
         }
     }
 
-    public ItemStack toItemStack(Player player, int amount, Consumer<ItemMeta> meta) {
+    public ItemStack toItemStack(Player player, int amount, Consumer<ItemMeta> meta, PlaceholderContext context) {
         ItemStack item = new ItemStack(Material.SKULL_ITEM, amount, (short) 3);
         ItemMeta im = item.getItemMeta();
-        apply(player, (SkullMeta) im);
+        apply(player, (SkullMeta) im, context);
         meta.accept(im);
         return item;
     }
 
-    public ItemStack toItemStack(Player player, Consumer<ItemMeta> meta) {
-        return toItemStack(player, 1, meta);
+    public ItemStack toItemStack(Player player, Consumer<ItemMeta> meta, PlaceholderContext context) {
+        return toItemStack(player, 1, meta, context);
     }
 
-    private static void load(final String savedName, String name) {
-        final GameProfile profile = new GameProfile(null, name);
+    private static GameProfile load(final String savedName, String name) {
+        if (Bukkit.getOnlineMode()) {
+            Player player = Bukkit.getPlayerExact(name);
+            if (player != null) { // Player is online? Use their skin!
+                try {
+                    GameProfile profile = (GameProfile) getProfile.invoke(player);
+                    cachedProfiles.put(name, profile);
+                    return profile;
+                } catch (Exception ex) {
+                    // At least I tried ;c
+                }
+            }
+        }
+
+        GameProfile profile = new GameProfile(UUID.randomUUID(), name);
         cachedProfiles.put(savedName, profile);
         try {
-            if (fillProfile.getParameterTypes().length == 2) { // Spigot
-                fillProfile.invoke(null, profile, (Predicate<GameProfile>) profile1 -> {
-                    if (profile1 != null)
-                        cachedProfiles.put(savedName, profile1);
-                    return false;
-                });
-            } else if (fillProfile.getParameterTypes().length == 1) { // Bukkit
-                cachedProfiles.put(savedName, (GameProfile) fillProfile.invoke(null, profile));
+            switch (fillProfile.getParameterTypes().length) {
+                case 1: // CraftBukkit
+                    cachedProfiles.put(savedName, profile = (GameProfile) fillProfile.invoke(null, profile));
+                    break;
+                case 2: // Spigot
+                    fillProfile.invoke(null, profile, (Predicate<GameProfile>) $profile -> {
+                        if ($profile != null) {
+                            cachedProfiles.put(savedName, $profile);
+                        }
+                        return false;
+                    });
             }
         } catch (Exception ex) {
             // No support ;c
         }
+        return profile;
     }
     
-    public static void loadProfile(final String name) {
-        int length = name.length();
-        if (length <= 36) { // uuid/name
-            final GameProfile profile;
-            if (length <= 16) { // name :O
-                load(name, name);
-                return;
-            } else if (length == 32) { // non-hyphen uuid
-                profile = new GameProfile(UUID.fromString(name.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5")), null);
-            } else if (length == 36) { // hyphen uuid
-                profile = new GameProfile(UUID.fromString(name), null);
-            } else { // idk D:
-                cachedProfiles.put(name, new GameProfile(UUID.randomUUID(), null));
-                return;
+    private static GameProfile loadProfile(final String name) {
+        GameProfile profile = null;
+        if (name.startsWith("hdb:")) {
+            String id = name.substring(4).trim();
+            try {
+                ItemStack item = new HeadDatabaseAPI().getItemHead(id);
+                if (item != null) {
+                    ItemMeta meta = item.getItemMeta();
+                    try {
+                        profile = (GameProfile) skullProfile.get(meta);
+                    } catch (Exception ex) {
+                        // Failed ;c
+                    }
+                    if (profile == null) { // Profile access failed or field is actually null. Possibly stored in unhandledTags field
+                        NBTUtil util = NBTUtil.getInstance();
+                        Object tag = util.createTag();
+                        util.getMap(tag).putAll(util.getMap(meta));
+                        try {
+                            profile = (GameProfile) deserializeProfile.invoke(null, tag);
+                        } catch (Exception ex) {
+                            // Failed again ;c
+                        }
+                    }
+                }
+            } catch (NoClassDefFoundError err) {
+                // No head database ;c
             }
+            if (profile == null) {
+                profile = new GameProfile(UUID.randomUUID(), null);
+            } else {
+                GameProfile copy = new GameProfile(profile.getId(), "Dummy");
+                copy.getProperties().putAll(profile.getProperties());
+                profile = copy;
+            }
+            cachedProfiles.put(name, profile);
+            return profile;
+        }
+        int length = name.length();
+
+        switch (length) {
+            case 32:
+                try {
+                    profile = new GameProfile(UUID.fromString(
+                            name.substring(0, 8) + '-' +
+                            name.substring(8, 12) + '-' +
+                            name.substring(12, 16) + '-' +
+                            name.substring(16, 20) + '-' +
+                            name.substring(20, 32)
+                    ), null);
+                } catch (IllegalArgumentException ex) {
+                    // Not a UUID
+                }
+                break;
+            case 36:
+                try {
+                    profile = new GameProfile(UUID.fromString(name), null);
+                } catch (IllegalArgumentException ex) {
+                    // Not a UUID
+                }
+        }
+        if (profile != null) {
+            UUID id = profile.getId();
+            if (Bukkit.getOnlineMode()) {
+                Player player = Bukkit.getPlayer(id);
+                if (player != null) { // Player is online? Use their skin!
+                    try {
+                        cachedProfiles.put(name, profile = (GameProfile) getProfile.invoke(player));
+                        return profile;
+                    } catch (Exception ex) {
+                        // At least I tried ;c
+                    }
+                }
+            }
+
             cachedProfiles.put(name, profile);
             // Load skin from UUID asynchronous:
             Thread thread = new Thread(() -> {
-                UUID uuid = profile.getId();
                 try {
-                    URLConnection connection = new URL("https://api.mojang.com/user/profiles/"
-                                    + uuid.toString().replace("-", "") + "/names").openConnection();
+                    URLConnection connection = new URL("https://api.mojang.com/user/profiles/" + id.toString().replace("-", "") + "/names").openConnection();
                     InputStream in = connection.getInputStream();
                     byte[] data = new byte[in.available()];
                     ByteStreams.readFully(in, data);
                     JsonArray array = (JsonArray) new JsonParser().parse(new String(data, "UTF-8"));
-                    String currentName = array.get(array.size() - 1).getAsJsonObject().get("name").getAsString();
-                    load(name, currentName);
-                } catch (IOException ex) {
+                    load(name, array.get(array.size() - 1).getAsJsonObject().get("name").getAsString());
+                } catch (IOException | IndexOutOfBoundsException ex) {
                     // Cannot connect/no such player
                 }
             });
             thread.setDaemon(true);
             thread.start();
-        } else { // json?
-            String base64;
-            try {
-                Base64.getDecoder().decode(name);
-                base64 = name;
-            } catch (IllegalArgumentException ex) {
-                try {
-                    base64 = "{textures:{SKIN:{url:\"" + URLEncoder.encode(name, "UTF-8") + "\"}}}";
-                } catch (UnsupportedEncodingException ex2) {
-                    cachedProfiles.put(name, new GameProfile(UUID.randomUUID(), null));
-                    return;
-                }
-            }
-            try {
-                char[] chars = new char[16];
-                Random random = ThreadLocalRandom.current();
-                for (int i = 0; i < 16; ++i) {
-                    chars[i] = USERNAME_CHARS.charAt(random.nextInt(36));
-                }
-                GameProfile profile = new GameProfile(UUID.randomUUID(), new String(chars));
-                profile.getProperties().put("textures", new Property("textures", base64));
-                cachedProfiles.put(name, profile);
-            } catch (Exception ex) {
-                cachedProfiles.put(name, new GameProfile(UUID.randomUUID(), null));
-            }
+            return profile;
         }
+        if (length <= 16) {
+            return load(name, name);
+        }
+        // json?
+        String base64;
+        try {
+            Base64.getDecoder().decode(name);
+            base64 = name;
+        } catch (IllegalArgumentException ex) {
+            base64 = Base64.getEncoder().encodeToString(("{textures:{SKIN:{url:\"" + name + "\"}}}").getBytes(StandardCharsets.UTF_8));
+        }
+        char[] chars = USERNAME_CHARS, username = new char[16];
+        Random random = ThreadLocalRandom.current();
+        for (int i = 0; i < 16; ++i) {
+            username[i] = chars[random.nextInt(chars.length)];
+        }
+        (profile = new GameProfile(UUID.randomUUID(), new String(username))).getProperties().put("textures", new Property("textures", base64));
+        cachedProfiles.put(name, profile);
+
+        return profile;
     }
 }

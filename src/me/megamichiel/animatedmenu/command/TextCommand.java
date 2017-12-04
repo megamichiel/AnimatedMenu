@@ -36,6 +36,7 @@ public abstract class TextCommand extends Command<StringBundle, String> {
 
     protected TextCommand(String prefix, boolean color) {
         super(prefix);
+
         this.color = color;
     }
 
