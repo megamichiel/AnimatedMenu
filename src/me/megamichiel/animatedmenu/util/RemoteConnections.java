@@ -12,11 +12,14 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RemoteConnections implements Runnable {
 
@@ -25,8 +28,8 @@ public class RemoteConnections implements Runnable {
     
     private final AnimatedMenuPlugin plugin;
 
-    private final Map<String, ServerInfo> statuses = new HashMap<>();
-    private final Map<InetSocketAddress, Connection> connections = new HashMap<>();
+    private final Map<String, IServerInfo> statuses = new ConcurrentHashMap<>();
+    private final Map<InetSocketAddress, Connection> connections = new ConcurrentHashMap<>();
 
     private long delay;
     private boolean running = false;
@@ -91,10 +94,12 @@ public class RemoteConnections implements Runnable {
                             online = playersObj.get("online").getAsInt();
                             max = playersObj.get("max").getAsInt();
                         }
-                    } else motd = response.getAsString();
+                    } else {
+                        motd = response.getAsString();
+                    }
 
                     connection.online = true;
-                    connection.failed = true;
+                    connection.failed = false;
                     connection.motd = motd;
                     connection.onlinePlayers = online;
                     connection.maxPlayers = max;
@@ -158,8 +163,51 @@ public class RemoteConnections implements Runnable {
         statuses.put(name, new ServerInfo(connections.computeIfAbsent(address, Connection::new), config));
     }
     
-    public ServerInfo get(String name) {
-        return statuses.get(name);
+    public IServerInfo get(String name, boolean create) {
+        return statuses.computeIfAbsent(name, $name -> {
+            if (create) {
+                int index = name.lastIndexOf(':');
+                InetSocketAddress address;
+                try {
+                    address = new InetSocketAddress(
+                            InetAddress.getByName(index == -1 ? name : name.substring(0, index)),
+                            index == -1 ? 25565 : Integer.parseInt(name.substring(index + 1))
+                    );
+                } catch (UnknownHostException | NumberFormatException ex) {
+                    return null;
+                }
+                return new IServerInfo() {
+
+                    final Connection connection = connections.computeIfAbsent(address, Connection::new);
+
+                    @Override
+                    public String get(String key, Player player, String def) {
+                        return def;
+                    }
+
+                    @Override
+                    public boolean isOnline() {
+                        return connection.online;
+                    }
+
+                    @Override
+                    public String getMotd() {
+                        return connection.motd;
+                    }
+
+                    @Override
+                    public int getOnlinePlayers() {
+                        return connection.onlinePlayers;
+                    }
+
+                    @Override
+                    public int getMaxPlayers() {
+                        return connection.maxPlayers;
+                    }
+                };
+            }
+            return null;
+        });
     }
 
     private class Connection {
@@ -193,7 +241,20 @@ public class RemoteConnections implements Runnable {
         }
     }
 
-    public class ServerInfo {
+    public interface IServerInfo {
+
+        String get(String key, Player player, String def);
+
+        boolean isOnline();
+
+        String getMotd();
+
+        int getOnlinePlayers();
+
+        int getMaxPlayers();
+    }
+
+    private class ServerInfo implements IServerInfo {
 
         private final Connection connection;
         private final Map<String, IPlaceholder<String>> fastValues = new HashMap<>();
@@ -202,10 +263,10 @@ public class RemoteConnections implements Runnable {
         ServerInfo(Connection connection, ConfigSection config) {
             this.connection = connection;
 
-            String val;
-            for (String key : config.keys()) {
-                if (!"ip".equals(key) && (val = config.getString(key)) != null) {
-                    IPlaceholder<String> value = StringBundle.parse(plugin, val).colorAmpersands().tryCache();
+            String key;
+            for (Map.Entry<String, Object> entry : config.values().entrySet()) {
+                if (!"ip".equals(key = entry.getKey())) {
+                    IPlaceholder<String> value = StringBundle.parse(plugin, entry.getValue().toString()).colorAmpersands().tryCache();
                     switch (key) {
                         case "online":case "offline":case "default":
                             fastValues.put(key, value);
@@ -223,7 +284,8 @@ public class RemoteConnections implements Runnable {
             }
         }
 
-        public String get(String key, Player player) {
+        @Override
+        public String get(String key, Player player, String def) {
             IPlaceholder<String> val = fastValues.get(key);
             if (val != null) {
                 return val.invoke(plugin, player);
@@ -233,21 +295,25 @@ public class RemoteConnections implements Runnable {
                     return entry.getValue().invoke(plugin, player);
                 }
             }
-            return null;
+            return def;
         }
 
+        @Override
         public boolean isOnline() {
             return connection.online;
         }
 
+        @Override
         public String getMotd() {
             return connection.motd;
         }
 
+        @Override
         public int getOnlinePlayers() {
             return connection.onlinePlayers;
         }
 
+        @Override
         public int getMaxPlayers() {
             return connection.maxPlayers;
         }

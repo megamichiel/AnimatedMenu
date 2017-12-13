@@ -18,7 +18,7 @@ public interface IMenuItem {
         return 0;
     }
 
-    ItemStack getItem(Player player, MenuSession session, ItemStack item);
+    ItemStack getItem(Player player, MenuSession session, ItemStack item, int tick);
 
     default void click(Player player, MenuSession session, ClickType type) { }
 }

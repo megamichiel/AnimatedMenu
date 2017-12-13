@@ -37,7 +37,7 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
 
     protected final Map<String, Menu> menus = new ConcurrentHashMap<>();
 
-    protected final AnimatedMenuPlugin plugin;
+    private final AnimatedMenuPlugin plugin;
     private final File directory;
 
     private DirectoryListener listener;
@@ -112,10 +112,7 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
             }
             String name = file.getName();
             int index = name.lastIndexOf('.');
-            if (index == -1) {
-                continue;
-            }
-            if (name.regionMatches(true, index, ".yml", 0, 4)) {
+            if (index >= 0 && name.regionMatches(true, index, ".yml", 0, 4)) {
                 YamlConfig config;
                 try {
                     config = ConfigFile.quickLoad(YamlConfig::new, file);
@@ -169,6 +166,7 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
 
         loadSettings(menu, menu.getSettings(), config);
         loadMenu(menu, config);
+
         return menu;
     }
 
@@ -193,7 +191,8 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
             plugin.nag("No items specified for " + menu.getName() + "!");
             return;
         }
-        items.forEach((key, value) -> loadItem(menu, key, value, true, null));
+        Consumer<IMenuItem> add = menu.getGrid()::add;
+        items.forEach((key, value) -> loadItem(menu, key, value, true, add));
     }
 
     protected void loadSettings(Menu menu, Menu.Settings settings, ConfigSection config) {
@@ -207,21 +206,35 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
             menu.getSettings().addOpenFilter(player -> player.hasPermission(perm.invoke(plugin, player)) ? null : msg == null ? "" : msg.invoke(plugin, player));
         }
 
-        if (config.isSet("menu-opener")) {
-            ItemStack opener = plugin.parseItemStack(config.getString("menu-opener"));
-            boolean openerName = config.isSet("menu-opener-name"),
-                    openerLore = config.isSet("menu-opener-lore");
-            if (openerName || openerLore) {
-                ItemMeta meta = opener.getItemMeta();
-                if (openerName)
-                    meta.setDisplayName(StringBundle.colorAmpersands(config.getString("menu-opener-name")));
-                if (openerLore) {
-                    meta.setLore(config.getStringList("menu-opener-lore").stream()
-                            .map(StringBundle::colorAmpersands).collect(Collectors.toList()));
-                }
-                opener.setItemMeta(meta);
+        Object opener = config.get("menu-opener");
+        if (opener != null) {
+            ItemStack item;
+            String name;
+            List<String> lore;
+            int slot;
+            if (opener instanceof ConfigSection) {
+                ConfigSection section = (ConfigSection) opener;
+                item = plugin.parseItemStack(section.getString("item"));
+                name = section.getString("name");
+                lore = section.getStringList("lore");
+                slot = section.getInt("slot");
+            } else {
+                item = plugin.parseItemStack(config.getString("menu-opener"));
+                name = config.getString("menu-opener-name");
+                lore = config.getStringList("menu-opener-lore");
+                slot = config.getInt("menu-opener-slot");
             }
-            settings.setOpener(opener, config.getInt("menu-opener-slot", 0) - 1);
+            if (name != null || !lore.isEmpty()) {
+                ItemMeta meta = item.getItemMeta();
+                if (name != null) {
+                    meta.setDisplayName(StringBundle.colorAmpersands(name));
+                }
+                if (!lore.isEmpty()) {
+                    meta.setLore(lore.stream().map(StringBundle::colorAmpersands).collect(Collectors.toList()));
+                }
+                item.setItemMeta(meta);
+            }
+            settings.setOpener(item, slot - 1);
         }
         settings.setOpenOnJoin(Flag.parseBoolean(config.getString("open-on-join")));
         if (config.isString("open-sound")) {
@@ -235,32 +248,28 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
             String name, usage = menu.getDefaultUsage(), description = "Opens menu " + menu.getName();
             String fallbackCommand = null;
             if (command instanceof ConfigSection) {
-                ConfigSection sec = (ConfigSection) command;
-                name = sec.getString("name");
-                usage = sec.getString("usage", usage);
-                description = sec.getString("description", description);
-                if ((fallbackCommand = sec.getString("fallback")) == null && !sec.getBoolean("lenient-args", true)) {
+                ConfigSection section = (ConfigSection) command;
+                name = section.getString("name");
+                usage = section.getString("usage", usage);
+                description = section.getString("description", description);
+                if ((fallbackCommand = section.getString("fallback")) == null && !section.getBoolean("lenient-args", true)) {
                     fallbackCommand = "";
                 }
-            } else if (command instanceof String || ConfigSection.isPrimitiveWrapper(command)) {
-                name = command.toString();
             } else {
-                name = null;
+                name = command instanceof String || ConfigSection.isPrimitiveWrapper(command) ? command.toString() : null;
             }
 
             if (name != null) {
-                String[] split = name.split(";");
-                name = split[0].trim().toLowerCase(Locale.ENGLISH);
-                String[] aliases = new String[split.length - 1];
+                String[] split = name.split(";"), aliases = new String[split.length - 1];
                 for (int i = 0; i < aliases.length; ) {
                     aliases[i] = split[++i].trim().toLowerCase(Locale.ENGLISH);
                 }
 
-                settings.setOpenCommand(menu, name, usage, description, aliases);
+                settings.setOpenCommand(menu, split[0].trim().toLowerCase(Locale.ENGLISH), usage, description, aliases);
 
                 String[] fallback;
                 if (fallbackCommand == null || (fallback = fallbackCommand.split(";")).length == 0 || (fallback.length == 1 && fallback[0].isEmpty())) {
-                    settings.setFallbackExecutor(ctx -> ((CommandSender) ctx.getSender()).sendMessage(ctx.getSender() instanceof Player ? plugin.format(PluginMessage.COMMAND__NOT_PLAYER) : plugin.format(PluginMessage.COMMAND__TOO_MANY_ARGUMENTS)));
+                    settings.setFallbackExecutor(ctx -> ((CommandSender) ctx.getSender()).sendMessage(plugin.format(ctx.getSender() instanceof Player ? PluginMessage.COMMAND__TOO_MANY_ARGUMENTS : PluginMessage.COMMAND__NOT_PLAYER)));
                 } else {
                     Map<String, String> map = new HashMap<>();
 
@@ -283,12 +292,7 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
     public void loadItem(AbstractMenu menu, String name, ConfigSection section,
                          boolean withSlot, Consumer<IMenuItem> action) {
         try {
-            ConfigMenuItem item = new ConfigMenuItem(plugin, this, menu, name, section);
-            if (action == null) {
-                menu.getGrid().add(item);
-            } else {
-                action.accept(item);
-            }
+            action.accept(new ConfigMenuItem(plugin, this, menu, name, section));
         } catch (IllegalArgumentException ex) {
             plugin.nag(ex.getMessage());
         }
@@ -324,12 +328,10 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
     @Override
     public void fileChanged(File file, FileAction action) {
         if (file.isFile() || action == FileAction.DELETE) {
-            int index = file.getName().lastIndexOf('.');
-            if (index == -1) return;
-            if (!file.toPath().startsWith(directory.toPath())) return;
-            String extension = file.getName().substring(index + 1);
-            if (extension.equals("yml")) {
-                String name = file.getName().substring(0, index).replace(" ", "_");
+            String fileName = file.getName();
+            int index = fileName.lastIndexOf('.');
+            if (index >= 0 && file.toPath().startsWith(directory.toPath()) && fileName.regionMatches(index, ".yml", 0, 4)) {
+                String name = fileName.substring(0, index).replace(" ", "_");
                 switch (action) {
                     case CREATE:
                         Menu menu = menus.remove(name);
@@ -339,11 +341,21 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
                             menu.closeAll(ChatColor.RED + "Menu reloaded");
                             menu.unregisterCommand();
                         }
-                        menu = loadMenu(name, ConfigFile.quickLoad(YamlConfig::new, file));
-                        plugin.getLogger().info("Loaded " + file.getName());
+                        YamlConfig config;
+                        try {
+                            config = ConfigFile.quickLoad(YamlConfig::new, file);
+                        } catch (ConfigException ex) {
+                            plugin.nag("Failed to load menu file " + fileName + "!");
+                            plugin.nag(ex);
+                            return;
+                        }
+                        if (Flag.parseBoolean(config.getString("enable"), true)) {
+                            menus.put(name, menu = loadMenu(name, config));
+                            menu.registerCommand(plugin.getName());
 
-                        menus.put(name, menu);
-                        menu.registerCommand(plugin.getName());
+                            plugin.getLogger().info("Loaded " + fileName);
+                        }
+
                         break;
                     case MODIFY:
                         if (file.length() == 0) {
@@ -357,18 +369,28 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
                             }
                             menu.unregisterCommand();
                         }
-                        menus.put(name, menu = loadMenu(name, ConfigFile.quickLoad(YamlConfig::new, file)));
-                        menu.registerCommand(plugin.getName());
-                        plugin.getLogger().info("Updated " + file.getName());
-                        break;
-                    case DELETE:
-                        if ((menu = menus.remove(name)) == null) {
-                            plugin.getLogger().warning("Failed to remove " + name + ": No menu by that name found!");
+
+                        try {
+                            config = ConfigFile.quickLoad(YamlConfig::new, file);
+                        } catch (ConfigException ex) {
+                            plugin.nag("Failed to load menu file " + fileName + "!");
+                            plugin.nag(ex);
                             return;
                         }
-                        menu.closeAll(ChatColor.RED + "Menu removed");
-                        menu.unregisterCommand();
-                        plugin.getLogger().info("Removed " + file.getName());
+                        if (Flag.parseBoolean(config.getString("enable"), true)) {
+                            menus.put(name, menu = loadMenu(name, config));
+                            menu.registerCommand(plugin.getName());
+                            
+                            plugin.getLogger().info("Updated " + fileName);
+                        }
+                        break;
+                    case DELETE:
+                        if ((menu = menus.remove(name)) != null) {
+                            menu.closeAll(ChatColor.RED + "Menu removed");
+                            menu.unregisterCommand();
+
+                            plugin.getLogger().info("Removed " + fileName);
+                        }
                         break;
                 }
             }

@@ -23,7 +23,6 @@ import me.megamichiel.animationlib.placeholder.StringBundle;
 import me.megamichiel.animationlib.util.LoggerNagger;
 import me.megamichiel.animationlib.util.ReflectClass;
 import me.megamichiel.animationlib.util.pipeline.PipelineContext;
-import net.minecraft.server.v1_12_R1.Item;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -49,6 +48,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.logging.Level;
+import java.util.stream.Stream;
 
 import static org.bukkit.ChatColor.*;
 
@@ -61,12 +61,13 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
 
     private final MenuRegistry menuRegistry = new MenuRegistry(this);
     private ConfigMenuProvider configMenuProvider;
+    private BukkitTask menuTask;
 
     private final Set<Delay> delays = Collections.newSetFromMap(new WeakHashMap<>());
     private final Map<String, Map<UUID, Long>> loadedDelays = new HashMap<>();
-    private BukkitTask menuTask;
     private final ConfigFile<YamlConfig> config = ConfigFile.of(YamlConfig::new);
-    private final RemoteConnections connections = new RemoteConnections(this);
+
+    protected final RemoteConnections connections = new RemoteConnections(this);
 
     protected final Map<PluginMessage, PluginMessage.FormatText> parsedMessages = new ConcurrentHashMap<>();
     private String messagePrefix;
@@ -84,11 +85,6 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     
     @Override
     public void onEnable() {
-
-        for (Item item : Item.REGISTRY) {
-            item.d(127);
-        }
-
         menuRegistry.registerProvider(configMenuProvider == null ? (configMenuProvider = new ConfigMenuProvider(this)) : configMenuProvider);
 
         Plugin plugin = getServer().getPluginManager().getPlugin("AnimationLib");
@@ -145,7 +141,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             }
         });
 
-        menuTask = getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
+        menuTask = Flag.parseBoolean(config.getConfig().getString("run-sync")) ? getServer().getScheduler().runTaskTimer(this, menuRegistry, 0, 0) : getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
     }
 
     @Override
@@ -209,7 +205,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 }
             }
 
-            for (Command<?, ?> command : new Command<?, ?>[] {
+            Stream.of(
                     TextCommand.ofPlayer("chat", false, Player::chat),
                     TextCommand.of("console", false, value -> getServer().dispatchCommand(getServer().getConsoleSender(), value)),
                     TextCommand.ofPlayer("message", true, Player::sendMessage),
@@ -233,6 +229,8 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                             getServer().getConsoleSender().sendMessage(text);
                         }
                     }),
+                    new ServerCommand(),
+                    new SoundCommand(),
                     new Command<StringBundle, ItemStack>("give") {
 
                         private ItemStack _parse(String value) {
@@ -268,7 +266,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                             p.getInventory().addItem(value);
                             return true;
                         }
-                    }, new ServerCommand(), new TellRawCommand(this), new SoundCommand(),
+                    },
                     new TextCommand("action", false) {
                         Plugin api;
 
@@ -286,8 +284,13 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                             return true;
                         }
                     }
-            }) {
-                registerCommand(command);
+            ).forEach(this::registerCommand);
+
+            try {
+                registerCommand(new TellRawCommand());
+            } catch (IllegalStateException ex) {
+                nag("Unable to load chat message class! Tellraw won't be usable!");
+                nag(ex.getCause());
             }
         }
     }
@@ -340,7 +343,9 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
 
     private void loadDelays() {
         File file = new File(getDataFolder(), "delays.dat");
-        if (!file.isFile()) return;
+        if (!file.isFile()) {
+            return;
+        }
         try (FileInputStream fis = new FileInputStream(file);
              DataInputStream dis = new DataInputStream(fis)) {
             int size;

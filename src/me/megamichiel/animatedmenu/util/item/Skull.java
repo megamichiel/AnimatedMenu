@@ -86,7 +86,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
         Skull skull = new Skull(null, name);
 
         if (!cachedProfiles.containsKey(name)) {
-            loadProfile(name);
+            loadProfile(name, name);
         }
 
         return skull;
@@ -106,7 +106,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
     public void apply(Player player, SkullMeta meta, PlaceholderContext context) {
         String name = this.name.toString(player, context);
         GameProfile profile = cachedProfiles.get(name);
-        if ((profile == null ? (profile = loadProfile(name)) : profile).getName() != null) {
+        if ((profile == null ? (profile = loadProfile(name, name)) : profile).getName() != null) {
             try {
                 skullProfile.set(meta, profile);
             } catch (Exception ex) {
@@ -119,7 +119,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
     public void apply(Player player, Map<String, Object> map, PlaceholderContext context) {
         String name = this.name.toString(player, context);
         GameProfile profile = cachedProfiles.get(name);
-        if ((profile == null ? (profile = loadProfile(name)) : profile).getName() != null) {
+        if ((profile == null ? (profile = loadProfile(name, name)) : profile).getName() != null) {
             try {
                 map.put("SkullOwner", serializeProfile.invoke(null, NBTUtil.getInstance().createTag(), profile));
             } catch (Exception ex) {
@@ -139,43 +139,8 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
     public ItemStack toItemStack(Player player, Consumer<ItemMeta> meta, PlaceholderContext context) {
         return toItemStack(player, 1, meta, context);
     }
-
-    private static GameProfile load(final String savedName, String name) {
-        if (Bukkit.getOnlineMode()) {
-            Player player = Bukkit.getPlayerExact(name);
-            if (player != null) { // Player is online? Use their skin!
-                try {
-                    GameProfile profile = (GameProfile) getProfile.invoke(player);
-                    cachedProfiles.put(name, profile);
-                    return profile;
-                } catch (Exception ex) {
-                    // At least I tried ;c
-                }
-            }
-        }
-
-        GameProfile profile = new GameProfile(UUID.randomUUID(), name);
-        cachedProfiles.put(savedName, profile);
-        try {
-            switch (fillProfile.getParameterTypes().length) {
-                case 1: // CraftBukkit
-                    cachedProfiles.put(savedName, profile = (GameProfile) fillProfile.invoke(null, profile));
-                    break;
-                case 2: // Spigot
-                    fillProfile.invoke(null, profile, (Predicate<GameProfile>) $profile -> {
-                        if ($profile != null) {
-                            cachedProfiles.put(savedName, $profile);
-                        }
-                        return false;
-                    });
-            }
-        } catch (Exception ex) {
-            // No support ;c
-        }
-        return profile;
-    }
     
-    private static GameProfile loadProfile(final String name) {
+    private static GameProfile loadProfile(String savedName, String name) {
         GameProfile profile = null;
         if (name.startsWith("hdb:")) {
             String id = name.substring(4).trim();
@@ -203,13 +168,13 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
                 // No head database ;c
             }
             if (profile == null) {
-                profile = new GameProfile(UUID.randomUUID(), null);
+                profile = new GameProfile(UUID.randomUUID(), "Dummy");
             } else {
                 GameProfile copy = new GameProfile(profile.getId(), "Dummy");
                 copy.getProperties().putAll(profile.getProperties());
                 profile = copy;
             }
-            cachedProfiles.put(name, profile);
+            cachedProfiles.put(savedName, profile);
             return profile;
         }
         int length = name.length();
@@ -241,7 +206,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
                 Player player = Bukkit.getPlayer(id);
                 if (player != null) { // Player is online? Use their skin!
                     try {
-                        cachedProfiles.put(name, profile = (GameProfile) getProfile.invoke(player));
+                        cachedProfiles.put(savedName, profile = (GameProfile) getProfile.invoke(player));
                         return profile;
                     } catch (Exception ex) {
                         // At least I tried ;c
@@ -249,7 +214,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
                 }
             }
 
-            cachedProfiles.put(name, profile);
+            cachedProfiles.put(savedName, profile);
             // Load skin from UUID asynchronous:
             Thread thread = new Thread(() -> {
                 try {
@@ -258,7 +223,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
                     byte[] data = new byte[in.available()];
                     ByteStreams.readFully(in, data);
                     JsonArray array = (JsonArray) new JsonParser().parse(new String(data, "UTF-8"));
-                    load(name, array.get(array.size() - 1).getAsJsonObject().get("name").getAsString());
+                    loadProfile(savedName, array.get(array.size() - 1).getAsJsonObject().get("name").getAsString());
                 } catch (IOException | IndexOutOfBoundsException ex) {
                     // Cannot connect/no such player
                 }
@@ -268,7 +233,37 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
             return profile;
         }
         if (length <= 16) {
-            return load(name, name);
+            if (Bukkit.getOnlineMode()) {
+                Player player = Bukkit.getPlayerExact(name);
+                if (player != null) { // Player is online? Use their skin!
+                    try {
+                        cachedProfiles.put(savedName, profile = (GameProfile) getProfile.invoke(player));
+                        return profile;
+                    } catch (Exception ex) {
+                        // At least I tried ;c
+                    }
+                }
+            }
+
+            cachedProfiles.put(savedName, profile = new GameProfile(UUID.randomUUID(), name));
+            try {
+                switch (fillProfile.getParameterTypes().length) {
+                    case 1: // CraftBukkit
+                        cachedProfiles.put(savedName, profile = (GameProfile) fillProfile.invoke(null, profile));
+                        break;
+                    case 2: // Spigot
+                        fillProfile.invoke(null, profile, (Predicate<GameProfile>) $profile -> {
+                            if ($profile != null) {
+                                cachedProfiles.put(savedName, $profile);
+                            }
+                            return false;
+                        });
+                }
+            } catch (Exception ex) {
+                // No support ;c
+            }
+
+            return profile;
         }
         // json?
         String base64;
@@ -284,7 +279,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
             username[i] = chars[random.nextInt(chars.length)];
         }
         (profile = new GameProfile(UUID.randomUUID(), new String(username))).getProperties().put("textures", new Property("textures", base64));
-        cachedProfiles.put(name, profile);
+        cachedProfiles.put(savedName, profile);
 
         return profile;
     }

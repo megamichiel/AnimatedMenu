@@ -97,7 +97,7 @@ public abstract class AbstractMenu {
         } else {
             ItemStack itemStack = null;
             try {
-                itemStack = emptyItem.getItem(who, session, null);
+                itemStack = emptyItem.getItem(who, session, null, -1);
             } catch (Exception ex) {
                 nagger.nag("Failed to load empty item " + emptyItem + " in menu " + name + "!");
                 nagger.nag(ex);
@@ -112,12 +112,12 @@ public abstract class AbstractMenu {
         for (IMenuItem item : this.grid) {
             ItemStack stack = null;
             try {
-                stack = item.getItem(who, session, null);
+                stack = item.getItem(who, session, null, -1);
             } catch (Exception ex) {
                 nagger.nag("Failed to load item " + item + " in menu " + name + "!");
                 nagger.nag(ex);
             }
-            if (stack != null && (slot = session.getSlot(item, stack, true)) >= 0 && slot < size && anim == null) {
+            if (stack != null && (slot = session.getSlot(item, stack, -1)) >= 0 && slot < size && anim == null) {
                 inv.setItem(slot, stack);
             }
         }
@@ -131,7 +131,7 @@ public abstract class AbstractMenu {
                     inv.setItem(i, emptyStack);
                 } else if (emptyItem != null) {
                     try {
-                        inv.setItem(i, emptyItem.getItem(who, session, null));
+                        inv.setItem(i, emptyItem.getItem(who, session, null, -1));
                     } catch (Exception ex) {
                         nagger.nag("Failed to load empty item " + emptyItem + "in menu " + name + "!");
                         nagger.nag(ex);
@@ -143,7 +143,7 @@ public abstract class AbstractMenu {
                 if (entries[i] == null) {
                     if (emptyStack == null) {
                         try {
-                            inv.setItem(i, emptyItem.getItem(who, session, null));
+                            inv.setItem(i, emptyItem.getItem(who, session, null, -1));
                         } catch (Exception ex) {
                             nagger.nag("Failed to load empty item " + emptyItem + " in menu " + name + "!");
                             nagger.nag(ex);
@@ -194,7 +194,8 @@ public abstract class AbstractMenu {
 
         List<ItemTick> items = new ArrayList<>();
 
-        boolean gridChanged = false, emptyChanged = emptyItem != null && emptyItem.tick() != 0, emptyRemoved = emptyItemRemoved;
+        boolean gridChanged = false, emptyRemoved = emptyItemRemoved;
+        int emptyTick = emptyItem == null ? -1 : emptyItem.tick();
         for (IMenuItem item; (item = grid.removed.poll()) != null; ) {
             items.add(new ItemTick(item, -1));
         }
@@ -206,7 +207,7 @@ public abstract class AbstractMenu {
             }
         }
 
-        if (!gridChanged && !emptyChanged && !emptyItemRemoved) { // Nothing's changed, only update open animations
+        if (!gridChanged && emptyTick == 0 && !emptyRemoved) { // Nothing's changed, only update open animations
             sessions.values().forEach(MenuSession::tick);
             return;
         }
@@ -217,33 +218,27 @@ public abstract class AbstractMenu {
             }
             MenuSession.GridEntry[] entries = session.entries;
             Inventory inv = session.getInventory();
+            Map<IMenuItem, Integer> slots = session.slots;
 
             ItemStack stack, newStack;
             int slot;
             for (ItemTick frame : items) {
                 IMenuItem item = frame.item;
                 int tick = frame.tick;
+                Integer old;
                 if (tick == -1) {
-                    Integer i = session.slots.remove(item);
-                    if (i != null) {
-                        entries[i] = null;
-                        if (emptyItem == null) {
-                            inv.setItem(i, null);
-                        } else {
-                            try {
-                                inv.setItem(i, emptyItem.getItem(player, session, null));
-                            } catch (Exception ex) {
-                                nagger.nag("Failed to load empty item " + emptyItem + "in menu " + name + "!");
-                            }
+                    if ((old = slots.remove(item)) != null) {
+                        entries[old] = null;
+                        try {
+                            inv.setItem(old, emptyItem == null ? null : emptyItem.getItem(player, session, null, -1));
+                        } catch (Exception ex) {
+                            nagger.nag("Failed to load empty item " + emptyItem + " in menu " + name + "!");
                         }
                     }
-                }
-
-                Integer old = session.slots.get(item);
-                if (old != null && (stack = inv.getItem(slot = old)) != null) { // Item exists in the inventory
+                } else if ((old = slots.get(item)) != null && (stack = inv.getItem(slot = old)) != null) { // Item exists in the inventory
 
                     try {
-                        newStack = (tick & UPDATE_ITEM) == 0 ? stack : item.getItem(player, session, stack);
+                        newStack = (tick & UPDATE_ITEM) == 0 ? stack : item.getItem(player, session, stack, tick);
                     } catch (Exception ex) {
                         nagger.nag("Failed to tick item " + item + " in menu " + name + "!");
                         nagger.nag(ex);
@@ -252,44 +247,29 @@ public abstract class AbstractMenu {
 
                     if (newStack == null) {
                         inv.setItem(slot, null);
-                        session.slots.remove(item);
+                        slots.remove(item);
                         entries[slot] = null;
-                    } else if ((tick & UPDATE_SLOT) == 0) {
+                    } else if (slot == (slot = session.getSlot(item, stack, tick))) {
                         if (newStack != stack) {
                             inv.setItem(slot, newStack);
                         }
-                        MenuSession.GridEntry entry = entries[slot];
-                        entry.stack = stack;
-                        if ((tick & UPDATE_WEIGHT) != 0) {
-                            try {
-                                entry.weight = item.getWeight(player, session);
-                            } catch (Exception ex) {
-                                nagger.nag("Failed to update weight of " + item + " in menu " + name + "!");
-                                nagger.nag(ex);
-                            }
-                        }
-                    } else if (slot != (slot = session.getSlot(item, stack, (tick & UPDATE_WEIGHT) != 0))) {
+                    } else {
                         inv.setItem(old, null);
-                        if (slot == -1) {
-                            Integer i = session.slots.remove(item);
-                            if (i != null) {
-                                entries[i] = null;
-                            }
-                        } else  {
+                        if (slot != -1) {
                             inv.setItem(slot, newStack);
+                        } else if ((old = slots.remove(item)) != null) {
+                            entries[old] = null;
                         }
-                    } else if (newStack != stack) {
-                        inv.setItem(slot, newStack);
                     }
                 } else {
                     try {
-                        stack = item.getItem(player, session, null);
+                        stack = item.getItem(player, session, null, tick);
                     } catch (Exception ex) {
                         nagger.nag("Failed to load item " + item + " in menu " + name + "!");
                         nagger.nag(ex);
                         continue;
                     }
-                    if (stack != null && (slot = session.getSlot(item, stack, (tick & UPDATE_WEIGHT) != 0)) != -1) {
+                    if (stack != null && (slot = session.getSlot(item, stack, tick)) != -1) {
                         inv.setItem(slot, stack);
                     }
                 }
@@ -299,7 +279,7 @@ public abstract class AbstractMenu {
                     if (entries[i] == null) {
                         if ((stack = inv.getItem(i)) != null) {
                             try {
-                                if (emptyChanged && stack != emptyItem.getItem(player, session, stack)) {
+                                if (emptyTick > 0 && stack != emptyItem.getItem(player, session, stack, emptyTick)) {
                                     inv.setItem(i, stack);
                                 }
                             } catch (Exception ex) {
@@ -308,7 +288,7 @@ public abstract class AbstractMenu {
                             }
                         } else {
                             try {
-                                inv.setItem(i, emptyItem.getItem(player, session, null));
+                                inv.setItem(i, emptyItem.getItem(player, session, null, -1));
                             } catch (Exception ex) {
                                 nagger.nag("Failed to load empty item in menu " + name + "!");
                                 nagger.nag(ex);
@@ -495,9 +475,9 @@ public abstract class AbstractMenu {
         public static final Type HOPPER = new Type(InventoryType.HOPPER, "minecraft:hopper", 5, 1);
         public static final Type DISPENSER = new Type(InventoryType.DISPENSER, "minecraft:dispenser", 3, 3);
         public static final Type DROPPER = new Type(InventoryType.DROPPER, "minecraft:dropper", 3, 3);
-        public static final Type CRAFTING = new Type(InventoryType.WORKBENCH, "minecraft:crafting_table", 3, 3);
+        public static final Type WORKBENCH = new Type(InventoryType.WORKBENCH, "minecraft:crafting_table", 3, 3);
 
-        private static final Type[] VALUES = new Type[] { HOPPER, DISPENSER, DROPPER, CRAFTING };
+        private static final Type[] VALUES = new Type[] { HOPPER, DISPENSER, DROPPER, WORKBENCH};
 
         private static final Type[] CHEST = new Type[6];
 

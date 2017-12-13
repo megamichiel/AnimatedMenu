@@ -22,14 +22,9 @@ public class CommandExecutor extends AbsAnimatable<List<BiPredicate<AnimatedMenu
         this.plugin = plugin;
     }
 
-    private <T, C> BiPredicate<AnimatedMenuPlugin, Player> getCommandHandler(Command<T, C> command,
-                                                                             AnimatedMenuPlugin plugin, String str) {
-        T val = command.parse(plugin, str);
-        if (val == null) {
-            return null;
-        }
-        C cached = command.tryCacheValue(plugin, val);
-        return cached != null ?
+    private <T, C> BiPredicate<AnimatedMenuPlugin, Player> getCommandHandler(Command<T, C> command, AnimatedMenuPlugin plugin, String str) {
+        T val = command.parse(plugin, str); C cached;
+        return val == null ? null : (cached = command.tryCacheValue(plugin, val)) != null ?
                 (plug, p) -> command.executeCached(plug, p, cached) :
                 (plug, p) -> command.execute(plug, p, val);
     }
@@ -37,10 +32,10 @@ public class CommandExecutor extends AbsAnimatable<List<BiPredicate<AnimatedMenu
     @Override
     protected List<BiPredicate<AnimatedMenuPlugin, Player>> get(Nagger nagger, Object o) {
         List<BiPredicate<AnimatedMenuPlugin, Player>> result = new ArrayList<>();
-        if (!(o instanceof List)) {
+        if (!(o instanceof List<?>)) {
             return result;
         }
-        for (Object raw : (List) o) {
+        for (Object raw : (List<?>) o) {
             if (raw instanceof ConfigSection) {
                 ((ConfigSection) raw).forEach((key, value) -> {
                     Command<?, ?> command = plugin.findCommand(key.trim().toLowerCase(ENGLISH));

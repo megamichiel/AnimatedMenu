@@ -1,13 +1,13 @@
 # Welcome to the official AnimatedMenu repository! #
 
 <!-- Format used by old versions to check for update, will be removed sometime -->
-Current Version: <b>3.1.1</b><br>
+Current Version: <b>3.2.1</b><br>
 Feel free to have a look around or use the code for private use.
 
 ### Used Dependencies ###
 AnimatedMenu utilises a few plugins for stuff like commands. These are the ones included in the project:
 
-- (Craft)Bukkit (1.11)
+- (Craft)Bukkit (1.12.2)
 - [AnimationLib](https://www.spigotmc.org/resources/22295/)
 - [Essentials](https://www.spigotmc.org/resources/9089/)
 - [Vault](https://dev.bukkit.org/bukkit-plugins/vault/)

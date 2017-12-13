@@ -81,7 +81,7 @@ public class ClickHandler {
         if (values != null) {
             values.forEach((key, value) -> {
                 if (value instanceof ConfigSection) {
-                    String path = key + "_" + item + "_" + menu;
+                    String path = key + '_' + item + '_' + menu;
                     Entry entry = loader.parseClickHandler(path, (ConfigSection) value);
                     if (entry != null) {
                         entries.add(entry);
@@ -111,6 +111,7 @@ public class ClickHandler {
         public Entry(String path, AnimatedMenuPlugin plugin, ConfigMenuProvider provider, ConfigSection section, Purchase<?>... purchases) {
             click = new ClickPredicate(section);
             (clickExecutor = new CommandExecutor(plugin)).load(plugin, section, "commands");
+
             permission = StringBundle.parse(plugin, section.getString("permission"));
             permissionMessage = StringBundle.parse(plugin, section.getString("permission-message", PERMISSION_MESSAGE)).colorAmpersands();
             bypassPermission = StringBundle.parse(plugin, section.getString("bypass-permission"));

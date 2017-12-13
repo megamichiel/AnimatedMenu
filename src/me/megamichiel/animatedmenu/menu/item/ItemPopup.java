@@ -20,7 +20,7 @@ public abstract class ItemPopup {
         return new ItemPopup(plugin) {
             @Override
             protected ItemStack load(Player player, MenuSession session) {
-                return info.getItem(player, session, null);
+                return info.getItem(player, session, null, -1);
             }
 
             @Override

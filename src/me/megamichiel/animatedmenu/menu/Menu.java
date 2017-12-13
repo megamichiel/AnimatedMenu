@@ -248,8 +248,10 @@ public class Menu extends AbstractMenu implements CommandExecutor {
         String[] args = ctx.getArgs();
         CommandExecutor fallback = getSettings().getFallbackExecutor();
         if (sender instanceof Player) {
-            if (args.length == 0 || fallback == null) {
+            if (fallback == null || args.length == 0) {
                 open((Player) sender);
+            } else {
+                fallback.onCommand(ctx);
             }
         } else if (fallback != null) {
             fallback.onCommand(ctx);

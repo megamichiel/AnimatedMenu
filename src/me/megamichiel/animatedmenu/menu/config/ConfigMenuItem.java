@@ -108,12 +108,14 @@ public class ConfigMenuItem implements IMenuItem {
             slot = clampSlot(type.getSize(), section.getInt("slot")) - 1;
         } else if (section.isString("slot")) {
             String[] split = section.getString("slot").split(",");
-            if (split.length == 2) try {
-                int x = clampSlot(type.getWidth(), parseInt(split[0].trim())) - 1,
-                    y = clampSlot(type.getHeight(), parseInt(split[1].trim())) - 1;
-                slot = y * type.getWidth() + x;
-            } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("Unknown slot for item " + name + " in menu " + menu.getName() + ": " + section.getString("slot") + "!");
+            if (split.length == 2) {
+                try {
+                    int x = clampSlot(type.getWidth(), parseInt(split[0].trim())) - 1,
+                            y = clampSlot(type.getHeight(), parseInt(split[1].trim())) - 1;
+                    slot = y * type.getWidth() + x;
+                } catch (NumberFormatException ex) {
+                    throw new IllegalArgumentException("Unknown slot for item " + name + " in menu " + menu.getName() + ": " + section.getString("slot") + "!");
+                }
             } else {
                 throw new IllegalArgumentException("Unknown slot for item " + name + " in menu " + menu.getName() + ": " + section.getString("slot") + "!");
             }
@@ -233,7 +235,7 @@ public class ConfigMenuItem implements IMenuItem {
     }
 
     @Override
-    public ItemStack getItem(Player player, MenuSession session, ItemStack item) {
+    public ItemStack getItem(Player player, MenuSession session, ItemStack item, int tick) {
         if (!viewPredicate.test(player)) {
             return null;
         }

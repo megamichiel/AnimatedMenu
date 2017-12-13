@@ -26,9 +26,9 @@
     <orderEntry type="library" name="Essentials-2.x-SNAPSHOT" level="project" />
     <orderEntry type="library" name="GemsEconomy" level="project" />
     <orderEntry type="library" name="TokenManager" level="project" />
-    <orderEntry type="library" name="1.12" level="project" />
     <orderEntry type="library" name="HeadDatabaseAPI" level="project" />
     <orderEntry type="library" name="ActionAPI" level="project" />
     <orderEntry type="library" name="Coins" level="project" />
+    <orderEntry type="library" name="1.12" level="project" />
   </component>
 </module>

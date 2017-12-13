@@ -48,7 +48,7 @@ public class SimpleMenuItem extends TimedMenuItem {
     }
 
     @Override
-    public ItemStack getItem(Player player, MenuSession session, ItemStack item) {
+    public ItemStack getItem(Player player, MenuSession session, ItemStack item, int tick) {
         return item == null ? this.item.apply(player) : item;
     }
 

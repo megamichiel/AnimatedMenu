@@ -33,7 +33,9 @@ public class BannerPattern implements MaterialSpecific.Action<BannerMeta> {
     public BannerPattern(Nagger nagger, String pattern) throws IllegalArgumentException {
         List<Pattern> patterns = new ArrayList<>();
         char[] array = pattern.toCharArray();
-        if (array.length % 2 != 0) throw new IllegalArgumentException("Banner pattern length must be a multiple of 2!");
+        if (array.length % 2 != 0) {
+            throw new IllegalArgumentException("Banner pattern length must be a multiple of 2!");
+        }
         for (int length = array.length, index = 0; index < length; index += 2) {
             char color = array[index], type = array[index + 1];
             if (color < 'a' || color > 'p') {

@@ -31,8 +31,8 @@ public abstract class ChildMenuItem implements IMenuItem {
     }
 
     @Override
-    public ItemStack getItem(Player player, MenuSession session, ItemStack item) {
-        return parent.getItem(player, session, item);
+    public ItemStack getItem(Player player, MenuSession session, ItemStack item, int tick) {
+        return parent.getItem(player, session, item, tick);
     }
 
     @Override

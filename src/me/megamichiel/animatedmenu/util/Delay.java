@@ -13,10 +13,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class Delay implements Runnable {
+public class Delay implements Runnable, ParsingNagger, ParsingContext {
 
+    private final Nagger nagger;
     private final String id;
 
     private final Map<UUID, Long> delays = new HashMap<>();
@@ -25,11 +25,14 @@ public class Delay implements Runnable {
     private long result;
 
     public Delay(AnimatedMenuPlugin plugin, String id, String delayMessage, long delay) {
+        nagger = plugin;
         this.id = id;
 
         if (delayMessage != null) {
-            this.delayMessage = StringBundle.parse(new MessageNagger(plugin), delayMessage).colorAmpersands();
-        } else this.delayMessage = null;
+            this.delayMessage = StringBundle.parse(this, delayMessage).colorAmpersands();
+        } else {
+            this.delayMessage = null;
+        }
         this.delay = delay;
 
         // Remove expired delays every minute to keep the map at a reasonable size
@@ -86,39 +89,52 @@ public class Delay implements Runnable {
         delays.values().removeIf(timer -> time >= timer);
     }
 
-    private class MessageNagger implements ParsingNagger, ParsingContext {
+    @Override
+    public ParsingContext context() {
+        return this;
+    }
 
-        private final Nagger nagger;
+    @Override
+    public ParsingContext parent() {
+        return nagger instanceof ParsingNagger ? ((ParsingNagger) nagger).context() : null;
+    }
 
-        private MessageNagger(Nagger nagger) {
-            this.nagger = nagger;
+    @Override
+    public void nag(String s) {
+        nagger.nag(s);
+    }
+
+    @Override
+    public void nag(Throwable throwable) {
+        nagger.nag(throwable);
+    }
+
+    @Override
+    public IPlaceholder<?> parse(String s) {
+        switch (s) {
+            case "delay_ticks_total":
+                return (n, p) -> result /         50;
+            case "delay_ticks": case "ticksleft":
+                return (n, p) -> result /         50 % 20;
+            case "delay_seconds_total":
+                return (n, p) -> result /      1_000;
+            case "delay_seconds": case "secondsleft":
+                return (n, p) -> result /      1_000 % 60;
+            case "delay_minutes_total":
+                return (n, p) -> result /     60_000;
+            case "delay_minutes": case "minutesleft":
+                return (n, p) -> result /     60_000 % 60;
+            case "delay_hours_total": case "hoursleft":
+                return (n, p) -> result /   3600_000;
+            case "delay_hours":
+                return (n, p) -> result /   3600_000 % 24;
+            case "delay_days_total":
+                return (n, p) -> result /  86400_000;
+            case "delay_days":
+                return (n, p) -> result /  86400_000 % 7;
+            case "delay_weeks":
+                return (n, p) -> result / 604800_000;
         }
-
-        @Override
-        public ParsingContext context() {
-            return this;
-        }
-
-        @Override
-        public void nag(String s) {
-            nagger.nag(s);
-        }
-
-        @Override
-        public void nag(Throwable throwable) {
-            nagger.nag(throwable);
-        }
-
-        @Override
-        public IPlaceholder<?> parse(String s) {
-            switch (s) {
-                case "hoursleft":   return (n, p) ->  result / 3600_000;
-                case "minutesleft": return (n, p) -> (result /   60_000) % 60;
-                case "secondsleft": return (n, p) -> (result /    1_000) % 60;
-                case "ticksleft":   return (n, p) -> (result /       50) % 20;
-                default:
-                    return nagger instanceof ParsingNagger ? ((ParsingNagger) nagger).context().parse(s) : null;
-            }
-        }
+        return null;
     }
 }

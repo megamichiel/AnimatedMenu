@@ -240,46 +240,58 @@ public class MenuSession implements InventoryHolder, Nagger {
         }
     }
 
-    int getSlot(IMenuItem item, ItemStack stack, boolean updateWeight) {
-        this.stack = stack;
+    int getSlot(IMenuItem item, ItemStack stack, int tick) {
+        boolean updateWeight = (tick & IMenuItem.UPDATE_WEIGHT) != 0,
+                  updateSlot = (tick & IMenuItem.UPDATE_SLOT) != 0;
+
         int slot;
-        if (updateWeight) {
-            try {
-                weight = item.getWeight(player, MenuSession.this);
-            } catch (Exception ex) {
-                nagger.nag("Failed to update weight of " + item + " in menu " + menu.getName() + "!", ex);
-                this.stack = null;
-                return -1;
-            }
-        }
-        try {
-            slot = item.getSlot(player, MenuSession.this);
-        } catch (Exception ex) {
-            nagger.nag("Failed to update slot of " + item + " in menu " + menu.getName() + "!", ex);
-            return -1;
-        } finally {
-            this.stack = null;
-        }
-
         GridEntry[] entries = this.entries;
-        if (slot < 0 || slot >= entries.length) {
+
+        int old = slots.getOrDefault(item, -1);
+
+        this.stack = stack;
+        try {
+            weight = updateWeight || old == -1 ? item.getWeight(player, MenuSession.this) : entries[old].weight;
+        } catch (Exception ex) {
+            nagger.nag("Failed to update weight of " + item + " in menu " + menu.getName() + "!", ex);
+            this.stack = null;
             return -1;
         }
 
-        Integer old = slots.put(item, slot);
-
-        GridEntry entry;
-        if (old == null) {
-            entry = entries[slot] = new GridEntry(item);
-        } else if (slot == old){
-            entry = entries[slot];
+        if (updateSlot || old == -1) {
+            try {
+                if ((slot = item.getSlot(player, MenuSession.this)) < 0 || slot >= entries.length) {
+                    if (old >= 0) {
+                        slots.remove(item);
+                        entries[old] = null;
+                    }
+                    return -1;
+                }
+            } catch (Exception ex) {
+                nagger.nag("Failed to update slot of " + item + " in menu " + menu.getName() + "!", ex);
+                return -1;
+            } finally {
+                this.stack = null;
+            }
         } else {
-            entry = entries[slot] = entries[old];
-            entries[old] = null;
+            slot = old;
         }
-        entry.stack = stack;
-        if (updateWeight) {
-            entry.weight = weight;
+
+        slots.put(item, slot);
+
+        if (old == -1) {
+            entries[slot] = new GridEntry(item, stack, weight);
+        } else {
+            GridEntry entry = entries[old];
+            if (slot != old) {
+                entries[slot] = entry;
+                entries[old] = null;
+            }
+
+            entry.stack = stack;
+            if (updateWeight) {
+                entry.weight = weight;
+            }
         }
 
         return slot;
@@ -303,8 +315,10 @@ public class MenuSession implements InventoryHolder, Nagger {
         ItemStack stack;
         double weight;
 
-        private GridEntry(IMenuItem item) {
+        private GridEntry(IMenuItem item, ItemStack stack, double weight) {
             this.item = item;
+            this.stack = stack;
+            this.weight = weight;
         }
 
         public IMenuItem getItem() {
