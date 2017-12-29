@@ -14,9 +14,6 @@ import java.util.Map;
 public class MaterialParser {
     
     private static final Method ITEM_BY_NAME, ITEM_TO_MATERIAL, BLOCK_BY_NAME, BLOCK_TO_MATERIAL;
-    private static final Map<String, Material> cache = new HashMap<>();
-
-    private static boolean usingIds = false;
     
     static {
         Method[] methods = new Method[4];
@@ -46,65 +43,68 @@ public class MaterialParser {
     }
     
     public static Material parse(String value) {
-        return cache.computeIfAbsent(value.toLowerCase(Locale.ENGLISH).replace('-', '_'), id -> {
-            try {
-                Object o = ITEM_BY_NAME.invoke(null, id);
-                Material m;
-                if (o != null && (m = (Material) ITEM_TO_MATERIAL.invoke(null, o)) != Material.AIR ||
-                        ((o = BLOCK_BY_NAME.invoke(null, id))) != null && (m = (Material) BLOCK_TO_MATERIAL.invoke(null, o)) != null && m != Material.AIR) {
-                    return m;
-                }
-            } catch (Exception ex) {
-                // Failed to load in <clinit>
+        String id = value.toLowerCase(Locale.ENGLISH).replace('-', '_');
+        try {
+            Object o; Material m;
+            if (((o =  ITEM_BY_NAME.invoke(null, id)) != null && (m = (Material)  ITEM_TO_MATERIAL.invoke(null, o)) != null && m != Material.AIR) ||
+                ((o = BLOCK_BY_NAME.invoke(null, id)) != null && (m = (Material) BLOCK_TO_MATERIAL.invoke(null, o)) != null && m != Material.AIR)) {
+                return m;
             }
-            return Material.matchMaterial(id);
-        });
+        } catch (Exception ex) {
+            // Failed to load in <clinit>
+        }
+        return Material.matchMaterial(id);
     }
     
     private static final Map<String, Enchantment> enchantments = new HashMap<>();
 
     static {
-        enchantments.put("protection",            Enchantment.PROTECTION_ENVIRONMENTAL);
-        enchantments.put("fire_protection",       Enchantment.PROTECTION_FIRE);
-        enchantments.put("feather_falling",       Enchantment.PROTECTION_FALL);
-        enchantments.put("blast_protection",      Enchantment.PROTECTION_EXPLOSIONS);
-        enchantments.put("projectile_protection", Enchantment.PROTECTION_PROJECTILE);
-        enchantments.put("respiration",           Enchantment.OXYGEN);
-        enchantments.put("aqua_affinity",         Enchantment.WATER_WORKER);
-        enchantments.put("thorns",                Enchantment.THORNS);
-        enchantments.put("depth_strider",         Enchantment.DEPTH_STRIDER);
+        Map<String, Enchantment> map = enchantments;
+
+        map.put("protection",            Enchantment.PROTECTION_ENVIRONMENTAL);
+        map.put("fire_protection",       Enchantment.PROTECTION_FIRE);
+        map.put("feather_falling",       Enchantment.PROTECTION_FALL);
+        map.put("blast_protection",      Enchantment.PROTECTION_EXPLOSIONS);
+        map.put("projectile_protection", Enchantment.PROTECTION_PROJECTILE);
+        map.put("respiration",           Enchantment.OXYGEN);
+        map.put("aqua_affinity",         Enchantment.WATER_WORKER);
+        map.put("thorns",                Enchantment.THORNS);
+        map.put("depth_strider",         Enchantment.DEPTH_STRIDER);
         try {
-            enchantments.put("frost_walker",      Enchantment.FROST_WALKER);  // 1.9
-            enchantments.put("binding_curse",     Enchantment.BINDING_CURSE); // 1.11
+            map.put("frost_walker",      Enchantment.FROST_WALKER);  // 1.9
+            map.put("binding_curse",     Enchantment.BINDING_CURSE); // 1.11
         } catch (NoSuchFieldError err) {
             // Nop
         }
-        enchantments.put("sharpness",             Enchantment.DAMAGE_ALL);
-        enchantments.put("smite",                 Enchantment.DAMAGE_UNDEAD);
-        enchantments.put("bane_of_arthropods",    Enchantment.DAMAGE_ARTHROPODS);
-        enchantments.put("knockback",             Enchantment.KNOCKBACK);
-        enchantments.put("fire_aspect",           Enchantment.FIRE_ASPECT);
-        enchantments.put("looting",               Enchantment.LOOT_BONUS_MOBS);
-        enchantments.put("efficiency",            Enchantment.DIG_SPEED);
-        enchantments.put("silk_touch",            Enchantment.SILK_TOUCH);
-        enchantments.put("unbreaking",            Enchantment.DURABILITY);
-        enchantments.put("fortune",               Enchantment.LOOT_BONUS_BLOCKS);
-        enchantments.put("power",                 Enchantment.ARROW_DAMAGE);
-        enchantments.put("punch",                 Enchantment.ARROW_KNOCKBACK);
-        enchantments.put("flame",                 Enchantment.ARROW_FIRE);
-        enchantments.put("infinity",              Enchantment.ARROW_INFINITE);
-        enchantments.put("luck_of_the_sea",       Enchantment.LUCK);
-        enchantments.put("lure",                  Enchantment.LURE);
+        map.put("sharpness",             Enchantment.DAMAGE_ALL);
+        map.put("smite",                 Enchantment.DAMAGE_UNDEAD);
+        map.put("bane_of_arthropods",    Enchantment.DAMAGE_ARTHROPODS);
+        map.put("knockback",             Enchantment.KNOCKBACK);
+        map.put("fire_aspect",           Enchantment.FIRE_ASPECT);
+        map.put("looting",               Enchantment.LOOT_BONUS_MOBS);
+        map.put("efficiency",            Enchantment.DIG_SPEED);
+        map.put("silk_touch",            Enchantment.SILK_TOUCH);
+        map.put("unbreaking",            Enchantment.DURABILITY);
+        map.put("fortune",               Enchantment.LOOT_BONUS_BLOCKS);
+        map.put("power",                 Enchantment.ARROW_DAMAGE);
+        map.put("punch",                 Enchantment.ARROW_KNOCKBACK);
+        map.put("flame",                 Enchantment.ARROW_FIRE);
+        map.put("infinity",              Enchantment.ARROW_INFINITE);
+        map.put("luck_of_the_sea",       Enchantment.LUCK);
+        map.put("lure",                  Enchantment.LURE);
         try {
-            enchantments.put("mending",           Enchantment.MENDING);         // 1.9
-            enchantments.put("vanishing_curse",   Enchantment.VANISHING_CURSE); // 1.11
+            map.put("mending",           Enchantment.MENDING);         // 1.9
+            map.put("vanishing_curse",   Enchantment.VANISHING_CURSE); // 1.11
         } catch (NoSuchFieldError err) {
             // Nop
         }
 
+        String name;
         for (Enchantment ench : Enchantment.values()) {
-            enchantments.put(Integer.toString(ench.getId()), ench);
-            enchantments.putIfAbsent(ench.getName().toLowerCase(Locale.ENGLISH), ench);
+            if (ench != null && (name = ench.getName()) != null) { // Weird, I know. Some person apparently had issues
+                map.put(Integer.toString(ench.getId()), ench);
+                map.putIfAbsent(name.toLowerCase(Locale.ENGLISH), ench);
+            }
         }
     }
     

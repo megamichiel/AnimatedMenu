@@ -1,7 +1,7 @@
 # Welcome to the official AnimatedMenu repository! #
 
 <!-- Format used by old versions to check for update, will be removed sometime -->
-Current Version: <b>3.2.1</b><br>
+Current Version: <b>3.2.2</b><br>
 Feel free to have a look around or use the code for private use.
 
 ### Used Dependencies ###

@@ -141,7 +141,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             }
         });
 
-        menuTask = Flag.parseBoolean(config.getConfig().getString("run-sync")) ? getServer().getScheduler().runTaskTimer(this, menuRegistry, 0, 0) : getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
+        menuTask = Flag.parseBoolean(config.getConfig().getString("run-sync"), true) ? getServer().getScheduler().runTaskTimer(this, menuRegistry, 0, 0) : getServer().getScheduler().runTaskTimerAsynchronously(this, menuRegistry, 0, 0);
     }
 
     @Override

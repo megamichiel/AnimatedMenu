@@ -85,6 +85,7 @@ public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
      * @return the menu by name, or null if none was found
      */
     public AbstractMenu getMenu(String name) {
+        name = name.toLowerCase(Locale.ENGLISH);
         AbstractMenu menu;
         for (IMenuProvider<?> provider : providers) {
             if ((menu = provider.getMenu(name)) != null) {

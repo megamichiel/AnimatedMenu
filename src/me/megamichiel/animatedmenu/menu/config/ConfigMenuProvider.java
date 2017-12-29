@@ -123,7 +123,7 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
                 }
                 if (Flag.parseBoolean(config.getString("enable"), true)) {
                     Menu menu = loadMenu(name.substring(0, index).replace(' ', '-'), config);
-                    menus.put(menu.getName(), menu);
+                    menus.put(menu.getName().toLowerCase(Locale.ENGLISH), menu);
                 }
             }
         }
@@ -331,10 +331,10 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
             String fileName = file.getName();
             int index = fileName.lastIndexOf('.');
             if (index >= 0 && file.toPath().startsWith(directory.toPath()) && fileName.regionMatches(index, ".yml", 0, 4)) {
-                String name = fileName.substring(0, index).replace(" ", "_");
+                String name = fileName.substring(0, index).replace(" ", "_"), lower = name.toLowerCase(Locale.ENGLISH);
                 switch (action) {
                     case CREATE:
-                        Menu menu = menus.remove(name);
+                        Menu menu = menus.remove(lower);
                         if (menu != null) {
                             plugin.getLogger().warning("A new menu file was created, but a menu already existed with its name! Beware!");
 
@@ -350,7 +350,7 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
                             return;
                         }
                         if (Flag.parseBoolean(config.getString("enable"), true)) {
-                            menus.put(name, menu = loadMenu(name, config));
+                            menus.put(lower, menu = loadMenu(name, config));
                             menu.registerCommand(plugin.getName());
 
                             plugin.getLogger().info("Loaded " + fileName);
@@ -362,7 +362,7 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
                             return;
                         }
 
-                        if ((menu = menus.remove(name)) != null) {
+                        if ((menu = menus.remove(lower)) != null) {
                             for (Player viewer : menu.getViewers()) {
                                 viewer.sendMessage(ChatColor.RED + "Menu reloaded");
                                 viewer.closeInventory();
@@ -378,14 +378,14 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
                             return;
                         }
                         if (Flag.parseBoolean(config.getString("enable"), true)) {
-                            menus.put(name, menu = loadMenu(name, config));
+                            menus.put(lower, menu = loadMenu(name, config));
                             menu.registerCommand(plugin.getName());
                             
                             plugin.getLogger().info("Updated " + fileName);
                         }
                         break;
                     case DELETE:
-                        if ((menu = menus.remove(name)) != null) {
+                        if ((menu = menus.remove(lower)) != null) {
                             menu.closeAll(ChatColor.RED + "Menu removed");
                             menu.unregisterCommand();
 

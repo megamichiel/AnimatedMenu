@@ -3,6 +3,7 @@ package me.megamichiel.animatedmenu.menu;
 import org.bukkit.ChatColor;
 
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,7 +55,7 @@ public interface IMenuProvider<M extends AbstractMenu> extends Iterable<M> {
         }
 
         public AbstractMenu add(AbstractMenu menu) {
-            AbstractMenu old = menus.put(menu.getName(), menu);
+            AbstractMenu old = menus.put(menu.getName().toLowerCase(Locale.ENGLISH), menu);
             if (old instanceof Menu) {
                 ((Menu) old).closeAll(ChatColor.RED + "Menu reloaded");
                 ((Menu) old).unregisterCommand();
@@ -66,7 +67,7 @@ public interface IMenuProvider<M extends AbstractMenu> extends Iterable<M> {
         }
 
         public boolean remove(AbstractMenu menu) {
-            if (menus.remove(menu.getName(), menu)) {
+            if (menus.remove(menu.getName().toLowerCase(Locale.ENGLISH), menu)) {
                 if (menu instanceof Menu) {
                     ((Menu) menu).closeAll(ChatColor.RED + "Menu removed");
                     ((Menu) menu).unregisterCommand();

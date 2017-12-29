@@ -28,11 +28,7 @@ public class Delay implements Runnable, ParsingNagger, ParsingContext {
         nagger = plugin;
         this.id = id;
 
-        if (delayMessage != null) {
-            this.delayMessage = StringBundle.parse(this, delayMessage).colorAmpersands();
-        } else {
-            this.delayMessage = null;
-        }
+        this.delayMessage = delayMessage == null ? null : StringBundle.parse(this, delayMessage).colorAmpersands();
         this.delay = delay;
 
         // Remove expired delays every minute to keep the map at a reasonable size

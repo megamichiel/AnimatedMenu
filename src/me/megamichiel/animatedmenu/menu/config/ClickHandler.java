@@ -140,15 +140,14 @@ public class ClickHandler {
         }
 
         void click(Player player, ClickType type) {
-            if (!click.test(type)) {
-                return;
-            }
-            boolean click = canClick(player);
-            if (click) {
-                clickExecutor.accept(player);
-            }
-            if (click ? closeAction.onSuccess : closeAction.onFailure) {
-                player.closeInventory();
+            if (click.test(type)) {
+                boolean click = canClick(player);
+                if (click) {
+                    clickExecutor.accept(player);
+                }
+                if (click ? closeAction.onSuccess : closeAction.onFailure) {
+                    player.closeInventory();
+                }
             }
         }
 
@@ -157,21 +156,21 @@ public class ClickHandler {
                 player.sendMessage(permissionMessage.toString(player));
                 return false;
             }
-            if (delay != null && !delay.test(player)) {
-                return false;
-            }
-
-            if (bypassPermission == null || !player.hasPermission(bypassPermission.toString(player))) {
-                for (PurchaseData<?> purchase : purchases) {
-                    if (!purchase.test(player)) {
-                        return false;
+            if (delay == null || delay.test(player)) {
+                if (bypassPermission == null || !player.hasPermission(bypassPermission.toString(player))) {
+                    for (PurchaseData<?> purchase : purchases) {
+                        if (!purchase.test(player)) {
+                            return false;
+                        }
+                    }
+                    for (PurchaseData<?> purchase : purchases) {
+                        purchase.perform(player);
                     }
                 }
-                for (PurchaseData<?> purchase : purchases) {
-                    purchase.perform(player);
-                }
+                return true;
             }
-            return true;
+
+            return false;
         }
     }
 
