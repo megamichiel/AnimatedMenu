@@ -189,23 +189,15 @@ public class Menu extends AbstractMenu implements CommandExecutor {
             if (settings.saveNavigation()) {
                 session.set(ORIGIN, this);
             }
-            Player player = session.getPlayer();
-            Inventory inventory = player.getOpenInventory().getTopInventory();
-            if (inventory != null) {
-                InventoryHolder holder = inventory.getHolder();
-                if (holder instanceof MenuSession) {
-                    AbstractMenu menu = ((MenuSession) holder).getMenu();
-                    if (menu instanceof Menu) {
-                        ((Menu) menu).handleMenuClose(who, session);
-                    }
+            InventoryHolder holder;
+            if ((holder = who.getOpenInventory().getTopInventory().getHolder()) instanceof MenuSession) {
+                AbstractMenu menu = ((MenuSession) holder).getMenu();
+                if (menu instanceof Menu) {
+                    ((Menu) menu).handleMenuClose(who, session);
                 }
             }
-            InventoryHolder holder;
-            if ((holder = player.getOpenInventory().getTopInventory().getHolder()) instanceof MenuSession) {
-                ((Menu) ((MenuSession) holder).getMenu()).handleMenuClose(who, session);
-            }
             for (BiConsumer<? super Player, ? super MenuSession> listener : settings.openListeners) {
-                listener.accept(player, session);
+                listener.accept(who, session);
             }
             if (ready != null) {
                 ready.accept(session);
@@ -233,9 +225,9 @@ public class Menu extends AbstractMenu implements CommandExecutor {
     @Override
     public void tick() {
         if (titleAnimatable && title.tick()) {
-            plugin.getServer().getScheduler().runTask(plugin, () -> forEachSession(session -> {
-                String title = this.title.get().invoke(session, session.getPlayer());
-                session.setTitle(title.length() > 32 ? title.substring(0, 32) : title);
+            plugin.getServer().getScheduler().runTask(plugin, () -> forEach((player, session) -> {
+                String title = this.title.get().invoke(session, player);
+                session.setTitle(player, title.length() > 32 ? title.substring(0, 32) : title);
             }));
         }
         super.tick();

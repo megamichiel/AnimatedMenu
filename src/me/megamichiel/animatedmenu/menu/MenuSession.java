@@ -13,9 +13,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -24,8 +22,6 @@ import java.util.function.Supplier;
 public class MenuSession implements InventoryHolder, Nagger {
 
     private static final InventoryTitleUpdater TITLE_UPDATER;
-
-    public static final long ONCE = -1L;
 
     static {
         InventoryTitleUpdater updater;
@@ -39,28 +35,26 @@ public class MenuSession implements InventoryHolder, Nagger {
 
     private final AbstractMenu menu;
     private final Nagger nagger;
-    private final Player player;
-    private final Inventory inventory;
+    final Inventory inventory;
 
     private final Map<Property, Object> properties = new ConcurrentHashMap<>();
-    private final Queue<Task> tasks = new ConcurrentLinkedQueue<>();
 
     private String title;
-    private BooleanSupplier openAnimation;
+    BooleanSupplier openAnimation;
 
     /* Grid fields */
 
-    final Map<IMenuItem, Integer> slots = new HashMap<>();
+    final Map<IMenuItem, GridEntry> slots = new HashMap<>();
     final GridEntry[] entries;
     boolean updateInventory = false;
 
-    private ItemStack stack;
-    private double weight;
+    GridEntry entry;
 
-    MenuSession(AbstractMenu menu, Nagger nagger, Player player, Function<MenuSession, Inventory> inventory) {
+    ItemStack emptyStack;
+
+    MenuSession(AbstractMenu menu, Nagger nagger, Function<MenuSession, Inventory> inventory) {
         this.menu = menu;
         this.nagger = nagger;
-        this.player = player;
         this.entries = new GridEntry[menu.getType().getSize()];
 
         this.inventory = inventory.apply(this);
@@ -71,15 +65,7 @@ public class MenuSession implements InventoryHolder, Nagger {
         return inventory;
     }
 
-    public void setOpenAnimation(BooleanSupplier openAnimation) {
-        this.openAnimation = openAnimation;
-    }
-
-    public Player getPlayer() {
-        return player;
-    }
-
-    public void setTitle(String title) {
+    public void setTitle(Player player, String title) {
         if (title == null ? this.title != null : !title.equals(this.title)) {
             this.title = title;
             if (TITLE_UPDATER != null && player.getOpenInventory().getTopInventory() == inventory) {
@@ -94,16 +80,15 @@ public class MenuSession implements InventoryHolder, Nagger {
 
     public IMenuItem getItem(int slot) {
         GridEntry entry;
-        return slot >= 0 && slot < entries.length ? (entry = entries[slot]) == null ? null : entry.item : null;
+        return slot < 0 || slot >= entries.length || (entry = entries[slot]) == null ? null : entry.item;
     }
 
     public boolean isEmpty(int slot) {
-        return entries[slot] == null;
+        return getItem(slot) == null;
     }
 
-    public boolean click(int slot, ClickType type) {
-        GridEntry entry;
-        IMenuItem item;
+    public boolean click(Player player, int slot, ClickType type) {
+        GridEntry entry; IMenuItem item;
         if (slot < 0 || slot >= entries.length || (item = (entry = entries[slot]) == null ? menu.getEmptyItem() : entry.item) == null) {
             return false;
         }
@@ -145,34 +130,6 @@ public class MenuSession implements InventoryHolder, Nagger {
         return openAnimation != null;
     }
 
-    public Task schedule(Runnable task, long delay, long period) {
-        if (task == null) {
-            throw new IllegalArgumentException("Task is null!");
-        }
-        if (delay < 0L) {
-            throw new IllegalArgumentException("Delay must be >= 0!");
-        }
-        if (period < ONCE) {
-            throw new IllegalArgumentException("Period must be >= -1");
-        }
-
-        Task t = new Task(task, delay, period);
-        tasks.add(t);
-        return t;
-    }
-
-    boolean tick() {
-        tasks.removeIf(Task::tick);
-        if (openAnimation != null) {
-            if (openAnimation.getAsBoolean()) {
-                openAnimation = null;
-            } else {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /* Grid methods */
 
     public int getItemCount() {
@@ -193,20 +150,18 @@ public class MenuSession implements InventoryHolder, Nagger {
         return entry == null ? null : entry.weight;
     }
 
-    public ItemStack getItemStack() {
-        return stack;
+    public GridEntry getEntry() {
+        return entry;
     }
 
-    public double getItemWeight() {
-        return weight;
-    }
-
-    public void shiftRight(int slot) {
-        if (stack == null) {
+    public void shiftRight(IMenuItem item, int slot) {
+        if (entry == null) {
             throw new IllegalStateException("Cannot call this method right now!");
         }
+        GridEntry them;
+
         GridEntry[] entries = this.entries;
-        if (entries[slot] == null) {
+        if ((them = entries[slot]) == null || them.item == item) {
             return;
         }
 
@@ -216,7 +171,7 @@ public class MenuSession implements InventoryHolder, Nagger {
                 break;
             }
         }
-        Map<IMenuItem, Integer> slots = this.slots;
+        Map<IMenuItem, GridEntry> slots = this.slots;
         if (end == len) {
             slots.remove(entries[--end].item); // Decrease end to prevent out of bounds
         }
@@ -225,11 +180,8 @@ public class MenuSession implements InventoryHolder, Nagger {
         Inventory inv = update ? inventory : null;
 
         /* Shift items right */
-        for (GridEntry left; end > slot; ) {
-            if ((left = entries[end - 1]) == null) {
-                break;
-            }
-            slots.put((entries[end] = left).item, end--);
+        for (GridEntry left; end > slot && (left = entries[end - 1]) != null; ) {
+            (entries[end] = left).slot = end--;
             if (update) {
                 inv.setItem(end, inv.getItem(end + 1));
             }
@@ -238,63 +190,6 @@ public class MenuSession implements InventoryHolder, Nagger {
         if (update) {
             inv.setItem(slot, null);
         }
-    }
-
-    int getSlot(IMenuItem item, ItemStack stack, int tick) {
-        boolean updateWeight = (tick & IMenuItem.UPDATE_WEIGHT) != 0,
-                  updateSlot = (tick & IMenuItem.UPDATE_SLOT) != 0;
-
-        int slot;
-        GridEntry[] entries = this.entries;
-
-        int old = slots.getOrDefault(item, -1);
-
-        this.stack = stack;
-        try {
-            weight = updateWeight || old == -1 ? item.getWeight(player, MenuSession.this) : entries[old].weight;
-        } catch (Exception ex) {
-            nagger.nag("Failed to update weight of " + item + " in menu " + menu.getName() + "!", ex);
-            this.stack = null;
-            return -1;
-        }
-
-        if (updateSlot || old == -1) {
-            try {
-                if ((slot = item.getSlot(player, MenuSession.this)) < 0 || slot >= entries.length) {
-                    if (old >= 0) {
-                        slots.remove(item);
-                        entries[old] = null;
-                    }
-                    return -1;
-                }
-            } catch (Exception ex) {
-                nagger.nag("Failed to update slot of " + item + " in menu " + menu.getName() + "!", ex);
-                return -1;
-            } finally {
-                this.stack = null;
-            }
-        } else {
-            slot = old;
-        }
-
-        slots.put(item, slot);
-
-        if (old == -1) {
-            entries[slot] = new GridEntry(item, stack, weight);
-        } else {
-            GridEntry entry = entries[old];
-            if (slot != old) {
-                entries[slot] = entry;
-                entries[old] = null;
-            }
-
-            entry.stack = stack;
-            if (updateWeight) {
-                entry.weight = weight;
-            }
-        }
-
-        return slot;
     }
 
     /* Nagger stuff */
@@ -312,13 +207,12 @@ public class MenuSession implements InventoryHolder, Nagger {
     public static class GridEntry {
 
         final IMenuItem item;
+        int slot = IMenuItem.NO_SLOT;
         ItemStack stack;
         double weight;
 
-        private GridEntry(IMenuItem item, ItemStack stack, double weight) {
+        GridEntry(IMenuItem item) {
             this.item = item;
-            this.stack = stack;
-            this.weight = weight;
         }
 
         public IMenuItem getItem() {
@@ -354,36 +248,6 @@ public class MenuSession implements InventoryHolder, Nagger {
         @Override
         public int hashCode() {
             return hash;
-        }
-    }
-
-    public static class Task {
-
-        private final Runnable task;
-        private final long period;
-
-        private boolean cancelled;
-        private long tick;
-
-        Task(Runnable task, long delay, long period) {
-            this.task = task;
-            this.period = period;
-            tick = delay;
-        }
-
-        boolean tick() {
-            if (cancelled) {
-                return true;
-            }
-            if (tick-- == 0L) {
-                task.run();
-                return (tick = period) == ONCE;
-            }
-            return false;
-        }
-
-        public void cancel() {
-            cancelled = true;
         }
     }
 }

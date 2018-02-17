@@ -48,14 +48,14 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
         File menus = directory = new File(plugin.getDataFolder(), "menus");
         if (!menus.exists()) {
             if (menus.mkdirs()) {
-                saveDefaultMenus();
+                saveDefaultMenus(plugin);
             } else {
                 plugin.nag("Failed to create menus folder!");
             }
         }
     }
 
-    protected void saveDefaultMenus() {
+    protected void saveDefaultMenus(AnimatedMenuPlugin plugin) {
         plugin.saveResource("menus/example.yml", false);
     }
 
@@ -174,25 +174,30 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
         long delay = parseTime(config, "click-delay", 0) * 50L;
         menu.setClickDelay(delay <= 0 ? null : plugin.addPlayerDelay("menu_" + menu.getName(), config.getString("delay-message"), delay));
         Map<String, ConfigSection> items = new HashMap<>();
-        if (config.isSection("items")) {
-            ConfigSection cfg = config.getSection("items");
-            cfg.values().forEach((key, value) -> {
+        Object o = config.get("items");
+        if (o instanceof ConfigSection) {
+            ((ConfigSection) o).values().forEach((key, value) -> {
                 if (value instanceof ConfigSection) {
                     items.put(key, (ConfigSection) value);
                 }
             });
-        } else if (config.isList("items")) {
-            List<ConfigSection> list = config.getSectionList("items");
+        } else if (o instanceof List<?>) {
+            List<?> list = (List<?>) o;
             for (int i = 0; i < list.size(); i++) {
-                items.put(Integer.toString(i + 1), list.get(i));
+                if ((o = list.get(i)) instanceof ConfigSection) {
+                    items.put(Integer.toString(i + 1), (ConfigSection) o);
+                }
             }
         }
         if (items.isEmpty() && menu.getEmptyItem() == null) {
             plugin.nag("No items specified for " + menu.getName() + "!");
             return;
         }
-        Consumer<IMenuItem> add = menu.getGrid()::add;
+        List<IMenuItem> list = new ArrayList<>();
+        Consumer<IMenuItem> add = list::add;
         items.forEach((key, value) -> loadItem(menu, key, value, true, add));
+
+        menu.getGrid().addAll(list);
     }
 
     protected void loadSettings(Menu menu, Menu.Settings settings, ConfigSection config) {
@@ -380,7 +385,7 @@ public class ConfigMenuProvider implements IMenuProvider<Menu>, DirectoryListene
                         if (Flag.parseBoolean(config.getString("enable"), true)) {
                             menus.put(lower, menu = loadMenu(name, config));
                             menu.registerCommand(plugin.getName());
-                            
+
                             plugin.getLogger().info("Updated " + fileName);
                         }
                         break;

@@ -1,31 +1,157 @@
 package me.megamichiel.animatedmenu.menu;
 
-import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
+import me.megamichiel.animatedmenu.menu.item.IMenuItem;
 import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
 
-    private final AnimatedMenuPlugin plugin;
     private final Set<IMenuProvider<?>> providers = Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-    public MenuRegistry(AnimatedMenuPlugin plugin) {
-        this.plugin = plugin;
-    }
     
     @Override
     public void run() {
+        AbstractMenu.GridEntry[] gridEntries;
+        AbstractMenu.GridEntry head = null, gridEntry = null, empty;
+        int slot, value, i;
+
+        MenuSession session;
+        BooleanSupplier open;
+        MenuSession.GridEntry[] entries;
+        Map<IMenuItem, MenuSession.GridEntry> slots;
+
+        MenuSession.GridEntry entry, current;
+
+        Player player;
+        Inventory inv;
+        ItemStack stack;
+
         for (IMenuProvider<?> provider : providers) {
             for (AbstractMenu menu : provider) {
                 try {
                     menu.tick();
                 } catch (Exception ex) {
-                    plugin.nag("An error occured on ticking " + menu.getName() + ":");
-                    plugin.nag(ex);
+                    menu.nagger.nag("An error occurred on ticking " + menu.getName() + ":");
+                    menu.nagger.nag(ex);
+                }
+
+                for (i = value = (gridEntries = menu.grid.entries).length; --i >= 0; ) {
+                    switch ((gridEntry = gridEntries[i]).tick = gridEntry.item.tick()) {
+                        case IMenuItem.REMOVE: // Remove item
+                            System.arraycopy(value == gridEntries.length ? (gridEntries = gridEntries.clone()) : gridEntries, i + 1, gridEntries, i, --value - i); // Shift items to the right 1 position left
+                        default:
+                            gridEntry.next = head;
+                            head = gridEntry;
+                        case 0: // Nothing needs updating
+                    }
+                }
+
+                if ((i = menu.grid.add.size()) > 0 || value != gridEntries.length) { // Items have been removed or added
+                    for (System.arraycopy(gridEntries, 0, gridEntries = new AbstractMenu.GridEntry[value + i], 0, value); --i >= 0; gridEntries[slot] = new AbstractMenu.GridEntry(gridEntry.item, 0)) {
+                        System.arraycopy(gridEntries, slot = (gridEntry = menu.grid.add.poll()).tick == 0 ? value : gridEntry.tick - 1, gridEntries, slot + 1, value++ - slot);
+                    }
+                    menu.grid.entries = gridEntries;
+                }
+
+                if ((i = (empty = menu.emptyItem) == null ? 0 : (empty.tick = empty.item.tick())) == IMenuItem.REMOVE) {
+                    empty = menu.emptyItem = null;
+                }
+
+                for (Map.Entry<Player, MenuSession> mapEntry : menu.sessions.entrySet()) {
+                    if ((open = (session = mapEntry.getValue()).openAnimation) != null) {
+                        if (!open.getAsBoolean()) {
+                            return;
+                        }
+                        session.openAnimation = null;
+                    }
+
+                    player = mapEntry.getKey();
+                    entries = session.entries;
+                    slots = session.slots;
+                    inv = session.inventory;
+
+                    if (((stack = session.emptyStack) != null && empty == null) || (i & IMenuItem.UPDATE_ITEM) != 0) { // Empty item change
+                        try {
+                            stack = session.emptyStack = empty == null ? null : empty.item.getItem(player, session, stack, stack == null ? 0 : i);
+                        } catch (Exception ex) {
+                            menu.nagger.nag("Failed to update empty item in menu " + menu.getName() + "!");
+                            menu.nagger.nag(ex);
+                        }
+                        for (slot = entries.length; slot > 0; ) {
+                            if (entries[--slot] == null) {
+                                inv.setItem(slot, stack);
+                            }
+                        }
+                    }
+
+                    for (gridEntry = head; gridEntry != null; gridEntry = gridEntry.next) {
+                        if ((value = gridEntry.tick) == IMenuItem.REMOVE) { // Item has requested remove
+                            if ((entry = session.slots.remove(gridEntry.item)) != null && (slot = entry.slot) != IMenuItem.NO_SLOT) {
+                                entries[slot] = null;
+                                inv.setItem(slot, session.emptyStack);
+                            }
+                            continue;
+                        }
+
+                        slot = (entry = session.entry = slots.computeIfAbsent(gridEntry.item, MenuSession.GridEntry::new)).slot;
+                        if ((value & IMenuItem.UPDATE_ITEM) != 0) {
+                            try {
+                                entry.stack = gridEntry.item.getItem(player, session, entry.stack, value);
+                            } catch (Exception ex) {
+                                menu.nagger.nag("Failed to get item of " + gridEntry.item + " in menu " + menu.getName() + "!");
+                                menu.nagger.nag(ex);
+                            }
+                            if (slot != IMenuItem.NO_SLOT) {
+                                inv.setItem(slot, entry.stack);
+                            }
+                        }
+                        if ((value & IMenuItem.UPDATE_WEIGHT) != 0) {
+                            try {
+                                entry.weight = gridEntry.item.getWeight(player, session);
+                            } catch (Exception ex) {
+                                menu.nagger.nag("Failed to update weight of " + gridEntry.item + " in menu " + menu.getName() + "!");
+                                menu.nagger.nag(ex);
+                            }
+                        }
+                        if ((value & IMenuItem.UPDATE_SLOT) != 0) {
+                            try {
+                                slot = (slot = gridEntry.item.getSlot(player, session)) < 0 || (slot & IMenuItem.NO_SLOT) >= entries.length ? IMenuItem.NO_SLOT : slot;
+                            } catch (Exception ex) {
+                                menu.nagger.nag("Failed to update slot of " + gridEntry.item + " in menu " + menu.getName() + "!");
+                                menu.nagger.nag(ex);
+                            }
+
+                            if (slot != entry.slot && entry.slot != IMenuItem.NO_SLOT) {
+                                entries[entry.slot] = null;
+                                inv.setItem(entry.slot, session.emptyStack);
+                            }
+                            if ((entry.slot = slot) != IMenuItem.NO_SLOT && (stack = entry.stack) != null) {
+                                current = entries[value = slot & IMenuItem.NO_SLOT];
+                                (entries[value] = entry).slot = value;
+
+                                if ((slot & IMenuItem.SLOT_SHIFT_RIGHT) != 0) {
+                                    for (entry = current; ++value < entries.length && entry != null; (entries[value] = entry).slot = value, entry = current) {
+                                        current = entries[value];
+                                    }
+                                } else if ((slot & IMenuItem.SLOT_SHIFT_LEFT) != 0) {
+                                    for (entry = current; --value >= 0 && entry != null; (entries[value] = entry).slot = value, entry = current) {
+                                        current = entries[value];
+                                    }
+                                }
+
+                                inv.setItem(entry == null ? slot : slot & (entry.slot = IMenuItem.NO_SLOT), stack);
+                            }
+                        }
+                    }
+
+                    session.entry = null;
                 }
             }
         }

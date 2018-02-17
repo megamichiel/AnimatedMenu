@@ -51,7 +51,7 @@ public class AnimatedMenuPlaceholders implements BiFunction<Player, String, Stri
             case "motd": case "motd1": case "motd2":
                 RemoteConnections.IServerInfo info = connections.get(arg.substring(index), true);
                 return info == null ? "<invalid>" : info.isOnline() ? index == 5 ? info.getMotd() : (index = (arg = info.getMotd()).indexOf('\n')) >= 0 ?
-                        (arg.charAt(4) == '1' ? arg.substring(0, index) : arg) : (arg.charAt(4) == '1' ? arg.substring(index + 1) : "") : info.get("offline", player, "offline");
+                        (arg.charAt(4) == '1' ? arg.substring(0, index) : arg.substring(index + 1)) : (arg.charAt(4) == '1' ? arg : "") : info.get("offline", player, "offline");
 
             case "onlineplayers":
                 return (info = connections.get(arg.substring(index), true)) == null ? "<invalid>" : info.isOnline() ? Integer.toString(info.getOnlinePlayers()) : "0";

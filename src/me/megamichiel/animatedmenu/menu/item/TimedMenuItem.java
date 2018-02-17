@@ -7,6 +7,7 @@ public abstract class TimedMenuItem implements IMenuItem {
     public static final int UPDATE_FRAME = IMenuItem.UPDATE_WEIGHT << 1;
 
     private final int[] values = new int[8];
+    private boolean remove;
 
     public TimedMenuItem() {
         Arrays.fill(values, -1);
@@ -24,10 +25,18 @@ public abstract class TimedMenuItem implements IMenuItem {
         values[6] = values[7] = Math.max(frameDelay, -1);
     }
 
+    public void remove() {
+        remove = true;
+    }
+
     protected void nextFrame() { }
 
     @Override
     public int tick() {
+        if (remove) {
+            return REMOVE;
+        }
+
         int[] values = this.values;
         if (values[6] >= 0 && values[6]-- == 0) {
             nextFrame();

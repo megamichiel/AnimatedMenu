@@ -1,7 +1,6 @@
 package me.megamichiel.animatedmenu.menu.config;
 
 import me.megamichiel.animatedmenu.AnimatedMenuPlugin;
-import me.megamichiel.animatedmenu.animation.AnimatedLore;
 import me.megamichiel.animatedmenu.menu.AbstractMenu;
 import me.megamichiel.animatedmenu.menu.MenuSession;
 import me.megamichiel.animatedmenu.menu.item.IMenuItem;
@@ -16,7 +15,7 @@ import me.megamichiel.animationlib.config.ConfigSection;
 import me.megamichiel.animationlib.placeholder.IPlaceholder;
 import me.megamichiel.animationlib.placeholder.PlaceholderContext;
 import me.megamichiel.animationlib.placeholder.StringBundle;
-import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Material;
@@ -28,12 +27,13 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.*;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -44,6 +44,25 @@ import static java.lang.Integer.parseInt;
 import static java.lang.Integer.parseUnsignedInt;
 
 public class ConfigMenuItem implements IMenuItem {
+
+    private static final int[] COLORS = {
+            0x000000,    // BLACK
+            0x0000AA,    // DARK_BLUE
+            0x00AA00,    // DARK_GREEN
+            0x00AAAA,    // DARK_AQUA
+            0xAA0000,    // DARK_RED
+            0xAA00AA,    // DARK_PURPLE
+            0xFFAA00,    // GOLD
+            0xAAAAAA,    // GRAY
+            0x555555,    // DARK_GRAY
+            0x5555FF,    // BLUE
+            0x55FF55,    // GREEN
+            0x55FFFF,    // AQUA
+            0xFF5555,    // RED
+            0xFF55FF,    // LIGHT_PURPLE
+            0xFFFF55,    // YELLOW
+            0xFFFFFF     // WHITE
+    };
 
     private static final Consumer<ItemMeta> UNBREAKABLE;
 
@@ -86,7 +105,7 @@ public class ConfigMenuItem implements IMenuItem {
 
     private final AbsAnimatable<IPlaceholder<ItemStack>> material;
     private final AbsAnimatable<StringBundle> displayName = AbsAnimatable.ofText(true);
-    private final AnimatedLore lore;
+    private final AbsAnimatable<StringBundle[]> lore;
 
     private final Map<Enchantment, Integer> enchantments = new HashMap<>();
     private final MaterialSpecific specific = new MaterialSpecific();
@@ -131,7 +150,45 @@ public class ConfigMenuItem implements IMenuItem {
         if (displayName.load(plugin, section, "name").addDefault(new StringBundle(plugin, name))) {
             plugin.nag("Item " + name + " in menu " + menu.getName() + " doesn't contain Name!");
         }
-        (lore = new AnimatedLore(plugin)).load(plugin, section, "lore").addDefault(new StringBundle[0]);
+        (lore = AbsAnimatable.of((nagger, o) -> {
+            if (o instanceof List<?>) {
+                List<StringBundle> frame = new ArrayList<>();
+                for (Object item : (List<?>) o) {
+                    String str = item.toString();
+                    if (str.toLowerCase(Locale.ENGLISH).startsWith("file:")) {
+                        File file = new File(plugin.getDataFolder(), "images" + File.separator + str.substring(5).trim());
+                        if (file.isFile()) {
+                            try {
+                                BufferedImage img = ImageIO.read(file);
+                                int height = img.getHeight(), width = img.getWidth();
+                                for (int y = 0; y < height; ++y) {
+                                    StringBuilder sb = new StringBuilder();
+                                    ChatColor previous = null, color;
+                                    for (int x = 0, match = 0; x < width; sb.append(StringBundle.BOX), match = 0) {
+                                        for (int rgb = img.getRGB(x++, y), i = COLORS.length; --i >= 0; ) {
+                                            if (Math.abs(COLORS[i] - rgb) < Math.abs(COLORS[match] - rgb)) {
+                                                match = i;
+                                            }
+                                        }
+                                        if ((color = ChatColor.values()[match]) != previous) {
+                                            sb.append((previous = color).toString());
+                                        }
+                                    }
+                                    frame.add(new StringBundle(null, sb.toString()));
+                                }
+                            } catch (IOException ex) {
+                                nagger.nag("Failed to read file " + file.getName() + "!");
+                                nagger.nag(ex);
+                            }
+                            continue;
+                        }
+                    }
+                    frame.add(StringBundle.parse(nagger, str).colorAmpersands());
+                }
+                return frame.toArray(new StringBundle[0]);
+            }
+            return null;
+        })).load(plugin, section, "lore").addDefault(new StringBundle[0]);
 
         int i = provider.parseTime(section, "refresh-delay", provider.parseTime(section, "frame-delay", 20));
 
@@ -169,7 +226,7 @@ public class ConfigMenuItem implements IMenuItem {
             Class.forName("org.bukkit.inventory.meta.SpawnEggMeta");
             EntityType eggType = EntityType.valueOf(section.getString("egg-type").toUpperCase(Locale.ENGLISH).replace('-', '_'));
             specific.add(SpawnEggMeta.class, (player, meta, context) -> meta.setSpawnedType(eggType));
-        } catch (NullPointerException | ClassNotFoundException ex) {
+        } catch (ClassNotFoundException | NullPointerException ex) {
             // No egg type ;c
         } catch (IllegalArgumentException ex) {
             plugin.nag("Unknown egg type: " + section.getStringList("egg-type"));
@@ -302,22 +359,11 @@ public class ConfigMenuItem implements IMenuItem {
     private static final Pattern COLOR_PATTERN = Pattern.compile("([0-9]+),\\s*([0-9]+),\\s*([0-9]+)");
 
     private static Color getColor(String val) {
-        if(val == null) {
+        Matcher matcher;
+        try {
+            return val == null ? null : (matcher = COLOR_PATTERN.matcher(val)).matches() ? Color.fromRGB(parseInt(matcher.group(1)), parseInt(matcher.group(2)), parseInt(matcher.group(3))) : Color.fromRGB(parseUnsignedInt(val, 16));
+        } catch (NumberFormatException ex) {
             return null;
         }
-        Matcher matcher = COLOR_PATTERN.matcher(val);
-        Color color;
-        if (matcher.matches()) {
-            color = Color.fromRGB(parseInt(matcher.group(1)),
-                                  parseInt(matcher.group(2)),
-                                  parseInt(matcher.group(3)));
-        } else {
-            try {
-                color = Color.fromRGB(parseUnsignedInt(val, 16));
-            } catch (NumberFormatException ex) {
-                return null;
-            }
-        }
-        return color.equals(Bukkit.getItemFactory().getDefaultLeatherColor()) ? null : color;
     }
 }

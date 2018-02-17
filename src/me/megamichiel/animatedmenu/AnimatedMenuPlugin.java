@@ -59,7 +59,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
     protected final Map<String, Command<?, ?>> commands = new HashMap<>();
     protected final AnimatedMenuCommand command = new AnimatedMenuCommand(this);
 
-    private final MenuRegistry menuRegistry = new MenuRegistry(this);
+    private final MenuRegistry menuRegistry = new MenuRegistry();
     private ConfigMenuProvider configMenuProvider;
     private BukkitTask menuTask;
 
@@ -128,7 +128,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
             String current = getDescription().getVersion();
             try {
-                String version = AnimLib.getVersion(4690);
+                String version = AnimLib.getVersion("AnimatedMenu");
                 if ((update = current.equals(version) ? null : version) != null) {
                     getLogger().info("A new version is available! (Current version: " + current + ", new version: " + update + ")");
                     update = String.format(
@@ -441,7 +441,7 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
             e.setCancelled(true);
             int slot = e.getRawSlot();
             if (slot >= 0 && slot < inventory.getSize()) {
-                ((MenuSession) holder).click(e.getSlot(), e.getClick());
+                ((MenuSession) holder).click((Player) e.getWhoClicked(), e.getSlot(), e.getClick());
             }
         }
     }

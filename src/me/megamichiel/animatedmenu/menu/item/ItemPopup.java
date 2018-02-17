@@ -42,7 +42,7 @@ public abstract class ItemPopup {
 
     protected abstract void refresh();
 
-    public ItemStack apply(MenuSession session, ItemStack item, Function<ItemStack, ItemStack> func) {
+    public ItemStack apply(Player player, MenuSession session, ItemStack item, Function<ItemStack, ItemStack> func) {
         State state = session.get(property);
         if (state != null) {
             if (state.changed) {
@@ -53,12 +53,12 @@ public abstract class ItemPopup {
                     item.setItemMeta(meta);
                     return item;
                 }
-                return load(session.getPlayer(), session);
+                return load(player, session);
             } else if (state.type != null) {
                 return item;
             }
         }
-        return item == null ? load(session.getPlayer(), session) : func.apply(item);
+        return item == null ? load(player, session) : func.apply(item);
     }
 
     public void showError(MenuSession session, String message) {

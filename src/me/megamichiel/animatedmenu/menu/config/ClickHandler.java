@@ -218,10 +218,9 @@ public class ClickHandler {
             return new Purchase<N>(cfg, "&cYou don't have enough " + name + " for that!") {
                 @Override
                 protected N parse(AnimatedMenuPlugin plugin, String value) {
-                    if (!currency.isAvailable()) return null;
+                    N number;
                     try {
-                        N number = parser.apply(value);
-                        return number.compareTo(zero) > 0 ? number : null;
+                        return currency.isAvailable() && (number = parser.apply(value)).compareTo(zero) > 0 ? number : null;
                     } catch (NumberFormatException ex) {
                         return null;
                     }

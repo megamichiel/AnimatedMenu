@@ -1,11 +1,9 @@
 package me.megamichiel.animatedmenu.menu;
 
 import com.google.common.collect.ImmutableMap;
-import me.megamichiel.animatedmenu.animation.OpenAnimation;
 import me.megamichiel.animatedmenu.menu.item.IMenuItem;
 import me.megamichiel.animatedmenu.util.Delay;
 import me.megamichiel.animationlib.Nagger;
-import me.megamichiel.animationlib.util.collect.ConcurrentArrayList;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
@@ -14,26 +12,27 @@ import org.bukkit.inventory.ItemStack;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
-import static me.megamichiel.animatedmenu.menu.item.IMenuItem.*;
+import static java.lang.Math.min;
+import static org.bukkit.util.NumberConversions.floor;
 
 public abstract class AbstractMenu {
 
-    private final Nagger nagger;
-    private final Grid grid = new Grid();
+    final Nagger nagger;
+    final Grid grid = new Grid();
 
     private final String name;
     private final Type type;
 
-    private final Map<Player, MenuSession> sessions = new ConcurrentHashMap<>();
+    final Map<Player, MenuSession> sessions = new ConcurrentHashMap<>();
 
     private Function<? super Player, ? extends OpenAnimation> openAnimation;
 
-    private IMenuItem emptyItem;
-    private boolean emptyItemRemoved, singleEmptyItem;
+    GridEntry emptyItem;
 
     private Delay clickDelay;
 
@@ -56,17 +55,12 @@ public abstract class AbstractMenu {
     }
 
     public IMenuItem getEmptyItem() {
-        return emptyItem;
+        GridEntry entry = emptyItem;
+        return entry == null ? null : entry.item;
     }
 
     public void setEmptyItem(IMenuItem info) {
-        if (emptyItem != (emptyItem = info) && info == null) {
-            emptyItemRemoved = true;
-        }
-    }
-
-    public void setSingleEmptyItem(boolean singleEmptyItem) {
-        this.singleEmptyItem = singleEmptyItem;
+        emptyItem = info == null ? null : new GridEntry(info, 0);
     }
 
     public String getName() {
@@ -85,83 +79,102 @@ public abstract class AbstractMenu {
         return sessions.remove(player);
     }
 
-    private void setup(Player who, MenuSession session) {
-        Inventory inv = session.getInventory();
+    private void setup(Player player, MenuSession session) {
+        Inventory inv = session.inventory;
         MenuSession.GridEntry[] entries = session.entries;
-        int size = entries.length;
 
-        IMenuItem emptyItem = this.emptyItem;
-        ItemStack emptyStack;
-        if (emptyItem == null || !singleEmptyItem) {
-            emptyStack = null;
+        GridEntry emptyItem = this.emptyItem;
+        ItemStack emptyStack = null;
+        if (emptyItem != null) {
+            try {
+                emptyStack = session.emptyStack = emptyItem.item.getItem(player, session, null, emptyItem.tick);
+            } catch (Exception ex) {
+                nagger.nag("Failed to load empty item " + emptyItem + " in menu " + getName() + "!");
+                nagger.nag(ex);
+            }
+        }
+
+        int slot, value;
+
+        for (GridEntry gridEntry : grid.entries) {
+            MenuSession.GridEntry entry = session.entry = new MenuSession.GridEntry(gridEntry.item);
+            try {
+                entry.stack = gridEntry.item.getItem(player, session, null, gridEntry.tick);
+            } catch (Exception ex) {
+                nagger.nag("Failed to load item of " + gridEntry.item + " in menu " + getName() + "!");
+                nagger.nag(ex);
+            }
+            try {
+                entry.weight = gridEntry.item.getWeight(player, session);
+            } catch (Exception ex) {
+                nagger.nag("Failed to load weight of " + gridEntry.item + " in menu " + getName() + "!");
+                nagger.nag(ex);
+            }
+            try {
+                entry.slot = (slot = gridEntry.item.getSlot(player, session)) < 0 || (slot & IMenuItem.NO_SLOT) >= entries.length ? IMenuItem.NO_SLOT : slot;
+            } catch (Exception ex) {
+                nagger.nag("Failed to load slot of " + gridEntry.item + " in menu " + getName() + "!");
+                nagger.nag(ex);
+            }
+            session.entry = null;
+            session.slots.put(gridEntry.item, entry);
+
+            if (entry.stack != null && (slot = entry.slot) != IMenuItem.NO_SLOT) {
+                MenuSession.GridEntry current = entries[value = slot & IMenuItem.NO_SLOT];
+                (entries[value] = entry).slot = value;
+
+                if ((slot & IMenuItem.SLOT_SHIFT_RIGHT) != 0) {
+                    for (; ++slot < entries.length && entry != null; (entries[value] = entry).slot = value, entry = current) {
+                        current = entries[value];
+                    }
+                } else if ((slot & IMenuItem.SLOT_SHIFT_LEFT) != 0) {
+                    for (; --slot >= 0 && entry != null; (entries[value] = entry).slot = value, entry = current) {
+                        current = entries[value];
+                    }
+                }
+                if (current != null) {
+                    current.slot = IMenuItem.NO_SLOT;
+                }
+            }
+        }
+
+        Function<? super Player, ? extends OpenAnimation> func = this.openAnimation;
+        OpenAnimation anim;
+
+        if (func == null || (anim = func.apply(player)) == null) {
+            MenuSession.GridEntry entry;
+            for (int i = 0; i < entries.length; i++) {
+                inv.setItem(i, (entry = entries[i]) == null ? emptyStack : entry.stack);
+            }
         } else {
-            ItemStack itemStack = null;
-            try {
-                itemStack = emptyItem.getItem(who, session, null, -1);
-            } catch (Exception ex) {
-                nagger.nag("Failed to load empty item " + emptyItem + " in menu " + name + "!");
-                nagger.nag(ex);
-            }
-            emptyStack = itemStack;
-        }
+            ItemStack empty = emptyStack;
+            session.openAnimation = new BooleanSupplier() {
+                final byte[][] frames = anim.getFrames();
+                double speed = anim.getSpeed(), frame;
 
-        Function<? super Player, ? extends OpenAnimation> openAnimation = this.openAnimation;
-        OpenAnimation anim = openAnimation == null ? null : openAnimation.apply(who);
-
-        int slot;
-        for (IMenuItem item : this.grid) {
-            ItemStack stack = null;
-            try {
-                stack = item.getItem(who, session, null, -1);
-            } catch (Exception ex) {
-                nagger.nag("Failed to load item " + item + " in menu " + name + "!");
-                nagger.nag(ex);
-            }
-            if (stack != null && (slot = session.getSlot(item, stack, -1)) >= 0 && slot < size && anim == null) {
-                inv.setItem(slot, stack);
-            }
-        }
-
-        if (anim != null) {
-            session.setOpenAnimation(() -> anim.tick(i -> {
-                MenuSession.GridEntry entry = entries[i];
-                if (entry != null) {
-                    inv.setItem(i, entry.stack);
-                } else if (emptyStack != null) {
-                    inv.setItem(i, emptyStack);
-                } else if (emptyItem != null) {
-                    try {
-                        inv.setItem(i, emptyItem.getItem(who, session, null, -1));
-                    } catch (Exception ex) {
-                        nagger.nag("Failed to load empty item " + emptyItem + "in menu " + name + "!");
-                        nagger.nag(ex);
-                    }
-                }
-            }));
-        } else if (emptyItem != null) {
-            for (int i = 0; i < size; ++i) {
-                if (entries[i] == null) {
-                    if (emptyStack == null) {
-                        try {
-                            inv.setItem(i, emptyItem.getItem(who, session, null, -1));
-                        } catch (Exception ex) {
-                            nagger.nag("Failed to load empty item " + emptyItem + " in menu " + name + "!");
-                            nagger.nag(ex);
+                @Override
+                public boolean getAsBoolean() {
+                    int i = floor(frame), to = min(floor(frame += speed), frames.length);
+                    MenuSession.GridEntry entry;
+                    while (i < to) {
+                        for (int j : frames[i++]) {
+                            if (j >= 0) {
+                                inv.setItem(j, (entry = entries[j]) == null ? empty : entry.stack);
+                            }
                         }
-                    } else {
-                        inv.setItem(i, emptyStack);
                     }
+                    return i >= frames.length;
                 }
-            }
+            };
         }
 
         session.updateInventory = true;
 
-        sessions.put(who, session);
+        sessions.put(player, session);
     }
 
     protected MenuSession setup(Player who, Function<MenuSession, Inventory> inventory, Consumer<? super MenuSession> action) {
-        MenuSession session = new MenuSession(this, nagger, who, inventory);
+        MenuSession session = new MenuSession(this, nagger, inventory);
         if (action != null) {
             action.accept(session);
         }
@@ -181,6 +194,10 @@ public abstract class AbstractMenu {
         return sessions.containsKey(player);
     }
 
+    public void forEach(BiConsumer<? super Player, ? super MenuSession> action) {
+        sessions.forEach(action);
+    }
+
     public void forEachSession(Consumer<? super MenuSession> action) {
         sessions.values().forEach(action);
     }
@@ -189,127 +206,12 @@ public abstract class AbstractMenu {
         sessions.keySet().forEach(action);
     }
 
-    public void tick() {
-        IMenuItem emptyItem = this.emptyItem; // Consistency!
-
-        List<ItemTick> items = new ArrayList<>();
-
-        boolean gridChanged = false, emptyRemoved = emptyItemRemoved;
-        int emptyTick = emptyItem == null ? -1 : emptyItem.tick();
-        for (IMenuItem item; (item = grid.removed.poll()) != null; ) {
-            items.add(new ItemTick(item, -1));
-        }
-        {
-            int tick;
-            for (IMenuItem item : grid.items) {
-                items.add(new ItemTick(item, tick = item.tick() & 0x7FFFFFFF));
-                gridChanged |= tick != 0;
-            }
-        }
-
-        if (!gridChanged && emptyTick == 0 && !emptyRemoved) { // Nothing's changed, only update open animations
-            sessions.values().forEach(MenuSession::tick);
-            return;
-        }
-
-        sessions.forEach((player, session) -> {
-            if (session.tick()) {
-                return;
-            }
-            MenuSession.GridEntry[] entries = session.entries;
-            Inventory inv = session.getInventory();
-            Map<IMenuItem, Integer> slots = session.slots;
-
-            ItemStack stack, newStack;
-            int slot;
-            for (ItemTick frame : items) {
-                IMenuItem item = frame.item;
-                int tick = frame.tick;
-                Integer old;
-                if (tick == -1) {
-                    if ((old = slots.remove(item)) != null) {
-                        entries[old] = null;
-                        try {
-                            inv.setItem(old, emptyItem == null ? null : emptyItem.getItem(player, session, null, -1));
-                        } catch (Exception ex) {
-                            nagger.nag("Failed to load empty item " + emptyItem + " in menu " + name + "!");
-                        }
-                    }
-                } else if ((old = slots.get(item)) != null && (stack = inv.getItem(slot = old)) != null) { // Item exists in the inventory
-
-                    try {
-                        newStack = (tick & UPDATE_ITEM) == 0 ? stack : item.getItem(player, session, stack, tick);
-                    } catch (Exception ex) {
-                        nagger.nag("Failed to tick item " + item + " in menu " + name + "!");
-                        nagger.nag(ex);
-                        newStack = stack;
-                    }
-
-                    if (newStack == null) {
-                        inv.setItem(slot, null);
-                        slots.remove(item);
-                        entries[slot] = null;
-                    } else if (slot == (slot = session.getSlot(item, stack, tick))) {
-                        if (newStack != stack) {
-                            inv.setItem(slot, newStack);
-                        }
-                    } else {
-                        inv.setItem(old, null);
-                        if (slot != -1) {
-                            inv.setItem(slot, newStack);
-                        } else if ((old = slots.remove(item)) != null) {
-                            entries[old] = null;
-                        }
-                    }
-                } else {
-                    try {
-                        stack = item.getItem(player, session, null, tick);
-                    } catch (Exception ex) {
-                        nagger.nag("Failed to load item " + item + " in menu " + name + "!");
-                        nagger.nag(ex);
-                        continue;
-                    }
-                    if (stack != null && (slot = session.getSlot(item, stack, tick)) != -1) {
-                        inv.setItem(slot, stack);
-                    }
-                }
-            }
-            if (emptyItem != null) {
-                for (int i = inv.getSize(); --i >= 0; ) {
-                    if (entries[i] == null) {
-                        if ((stack = inv.getItem(i)) != null) {
-                            try {
-                                if (emptyTick > 0 && stack != emptyItem.getItem(player, session, stack, emptyTick)) {
-                                    inv.setItem(i, stack);
-                                }
-                            } catch (Exception ex) {
-                                nagger.nag("Failed to update empty item in menu " + name + "!");
-                                nagger.nag(ex);
-                            }
-                        } else {
-                            try {
-                                inv.setItem(i, emptyItem.getItem(player, session, null, -1));
-                            } catch (Exception ex) {
-                                nagger.nag("Failed to load empty item in menu " + name + "!");
-                                nagger.nag(ex);
-                            }
-                        }
-                    }
-                }
-            } else if (emptyRemoved) {
-                for (int i = inv.getSize(); --i >= 0; ) {
-                    if (entries[i] == null) {
-                        inv.setItem(i, null);
-                    }
-                }
-            }
-        });
-    }
+    public void tick() { }
 
     public static final class Grid implements Iterable<IMenuItem> {
 
-        private final List<IMenuItem> items = new ConcurrentArrayList<>();
-        private final Queue<IMenuItem> removed = new ConcurrentLinkedQueue<>();
+        GridEntry[] entries = new GridEntry[0];
+        final Queue<GridEntry> add = new ConcurrentLinkedQueue<>();
 
         private Grid() { }
 
@@ -317,154 +219,102 @@ public abstract class AbstractMenu {
          * Returns the size of this menu grid
          */
         public int size() {
-            return items.size();
+            return entries.length;
         }
 
         /**
          * Returns whether this menu grid has no items in it
          */
         public boolean isEmpty() {
-            return items.isEmpty();
+            return entries.length == 0;
         }
 
         /**
          * Adds an item to the end of this grid
          *
-         * @param info The info of the item to add
+         * @param item The info of the item to add
          */
-        public void add(IMenuItem info) {
-            items.add(info);
+        public void add(IMenuItem item) {
+            add.add(new GridEntry(item, 0));
         }
 
         /**
          * Adds an item at a specific index in this menu grid
          *
          * @param index the index to add the item at
-         * @param info The info of the item to add
+         * @param item The info of the item to add
          */
-        public void add(int index, IMenuItem info) {
-            items.add(index, info);
-        }
-
-        /**
-         * Adds an item to the front of this menu grid
-         *
-         * @param info The info of the item to add
-         */
-        public void addFirst(IMenuItem info) {
-            items.add(0, info);
-        }
-
-        /**
-         * Adds an item relative to another item.<br/>
-         * If the target item is not in the menu, <i>false</i> will be returned
-         *
-         * @param base The item to add the item relative to
-         * @param after If true, <i>info</i> will be added after <i>base</i>. Otherwise, it will be added before it.
-         * @param info The item to add
-         */
-        public boolean add(IMenuItem base, boolean after, IMenuItem info) {
-            int index = items.indexOf(base);
-            if (index == -1) {
-                return false;
+        public void add(int index, IMenuItem item) {
+            if (index < 0) {
+                throw new IndexOutOfBoundsException("index < 0");
             }
-            items.add(after ? index + 1 : index, info);
-            return true;
+
+            add.add(new GridEntry(item, index + 1));
         }
 
-        /**
-         * Adds an item relative to another item.<br/>
-         * If the predicate did not find any matching item, <i>false</i> is returned
-         *
-         * @param predicate The Predicate used to match the item to find
-         * @param after If true, <i>info</i> will be added after <i>base</i>. Otherwise, it will be added before it.
-         * @param info The item to add
-         */
-        public boolean add(Predicate<? super IMenuItem> predicate, boolean after, IMenuItem info) {
-            List<IMenuItem> items = this.items;
-            for (int i = 0, size = items.size(); i < size; ++i) {
-                if (predicate.test(items.get(i))) {
-                    items.add(after ? i + 1 : i, info);
-                    return true;
-                }
+        public void addAll(Collection<? extends IMenuItem> items) {
+            for (IMenuItem item : items) {
+                add.add(new GridEntry(item, 0));
             }
-            return false;
-        }
-
-        /**
-         * Removes an item from this menu grid
-         *
-         * @param info The info of the item to remove from this grid
-         * @return True if this menu grid contained <i>info</i>. False otherwise
-         */
-        public boolean remove(IMenuItem info) {
-            if (items.remove(info)) {
-                removed.add(info);
-            }
-            return false;
-        }
-
-        /**
-         * Checks if this menu grid contains an item
-         *
-         * @param info The info to find
-         * @return True if this menu grid contains <i>info</i>. False otherwise
-         */
-        public boolean contains(IMenuItem info) {
-            return items.contains(info);
         }
 
         /**
          * Clears this Grid, removing all of its items
          */
         public void clear() {
-            removed.addAll(items);
-            items.clear();
+            for (GridEntry entry : entries) {
+                entry.tick = IMenuItem.REMOVE;
+            }
         }
 
         @Override
         public Iterator<IMenuItem> iterator() {
-            Iterator<IMenuItem> it = items.iterator();
             return new Iterator<IMenuItem>() {
-                IMenuItem next;
+                final GridEntry[] entries = Grid.this.entries;
+                int index; GridEntry current;
 
                 @Override
                 public boolean hasNext() {
-                    return it.hasNext();
+                    return index < entries.length;
                 }
 
                 @Override
                 public IMenuItem next() {
-                    return next = it.next();
+                    if (index >= entries.length) {
+                        throw new NoSuchElementException();
+                    }
+                    return (current = entries[index++]).item;
                 }
 
                 @Override
                 public void remove() {
-                    it.remove();
-                    removed.add(next);
-                    next = null;
+                    if (current == null) {
+                        throw new IllegalStateException();
+                    }
+                    current.tick = IMenuItem.REMOVE;
+                    current = null;
                 }
             };
         }
 
         @Override
         public void forEach(Consumer<? super IMenuItem> action) {
-            items.forEach(action);
+            for (GridEntry entry : entries) {
+                if (entry.tick != IMenuItem.REMOVE) {
+                    action.accept(entry.item);
+                }
+            }
         }
-
-        @Override
-        public Spliterator<IMenuItem> spliterator() {
-            return items.spliterator();
-        }
-
     }
 
-    static class ItemTick {
+    static class GridEntry {
 
         final IMenuItem item;
-        final int tick;
+        int tick;
 
-        ItemTick(IMenuItem item, int tick) {
+        GridEntry next;
+
+        GridEntry(IMenuItem item, int tick) {
             this.item = item;
             this.tick = tick;
         }
