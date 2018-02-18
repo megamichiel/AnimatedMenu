@@ -81,7 +81,7 @@ public abstract class AbstractMenu {
 
     private void setup(Player player, MenuSession session) {
         Inventory inv = session.inventory;
-        MenuSession.GridEntry[] entries = session.entries;
+        MenuSession.GridEntry[] sessEntries = session.entries;
 
         GridEntry emptyItem = this.emptyItem;
         ItemStack emptyStack = null;
@@ -97,39 +97,40 @@ public abstract class AbstractMenu {
         int slot, value;
 
         for (GridEntry gridEntry : grid.entries) {
-            MenuSession.GridEntry entry = session.entry = new MenuSession.GridEntry(gridEntry.item);
+            MenuSession.GridEntry sessEntry = session.entry = new MenuSession.GridEntry(gridEntry.item);
             try {
-                entry.stack = gridEntry.item.getItem(player, session, null, gridEntry.tick);
+                sessEntry.stack = gridEntry.item.getItem(player, session, null, gridEntry.tick);
             } catch (Exception ex) {
                 nagger.nag("Failed to load item of " + gridEntry.item + " in menu " + getName() + "!");
                 nagger.nag(ex);
             }
             try {
-                entry.weight = gridEntry.item.getWeight(player, session);
+                sessEntry.weight = gridEntry.item.getWeight(player, session);
             } catch (Exception ex) {
                 nagger.nag("Failed to load weight of " + gridEntry.item + " in menu " + getName() + "!");
                 nagger.nag(ex);
             }
             try {
-                entry.slot = (slot = gridEntry.item.getSlot(player, session)) < 0 || (slot & IMenuItem.NO_SLOT) >= entries.length ? IMenuItem.NO_SLOT : slot;
+                sessEntry.slot = (slot = gridEntry.item.getSlot(player, session)) < 0 || (slot & IMenuItem.NO_SLOT) >= sessEntries.length ? IMenuItem.NO_SLOT : slot;
             } catch (Exception ex) {
                 nagger.nag("Failed to load slot of " + gridEntry.item + " in menu " + getName() + "!");
                 nagger.nag(ex);
             }
-            session.entry = null;
-            session.slots.put(gridEntry.item, entry);
 
-            if (entry.stack != null && (slot = entry.slot) != IMenuItem.NO_SLOT) {
-                MenuSession.GridEntry current = entries[value = slot & IMenuItem.NO_SLOT];
-                (entries[value] = entry).slot = value;
+            session.entry = null;
+            session.slots.put(gridEntry.item, sessEntry);
+
+            if (sessEntry.stack != null && (slot = sessEntry.slot) != IMenuItem.NO_SLOT) {
+                MenuSession.GridEntry current = sessEntries[value = slot & IMenuItem.NO_SLOT];
+                (sessEntries[value] = sessEntry).slot = value;
 
                 if ((slot & IMenuItem.SLOT_SHIFT_RIGHT) != 0) {
-                    for (; ++slot < entries.length && entry != null; (entries[value] = entry).slot = value, entry = current) {
-                        current = entries[value];
+                    for (; ++slot < sessEntries.length && sessEntry != null; (sessEntries[value] = sessEntry).slot = value, sessEntry = current) {
+                        current = sessEntries[value];
                     }
                 } else if ((slot & IMenuItem.SLOT_SHIFT_LEFT) != 0) {
-                    for (; --slot >= 0 && entry != null; (entries[value] = entry).slot = value, entry = current) {
-                        current = entries[value];
+                    for (; --slot >= 0 && sessEntry != null; (sessEntries[value] = sessEntry).slot = value, sessEntry = current) {
+                        current = sessEntries[value];
                     }
                 }
                 if (current != null) {
@@ -143,8 +144,8 @@ public abstract class AbstractMenu {
 
         if (func == null || (anim = func.apply(player)) == null) {
             MenuSession.GridEntry entry;
-            for (int i = 0; i < entries.length; i++) {
-                inv.setItem(i, (entry = entries[i]) == null ? emptyStack : entry.stack);
+            for (int i = 0; i < sessEntries.length; i++) {
+                inv.setItem(i, (entry = sessEntries[i]) == null ? emptyStack : entry.stack);
             }
         } else {
             ItemStack empty = emptyStack;
@@ -159,7 +160,7 @@ public abstract class AbstractMenu {
                     while (i < to) {
                         for (int j : frames[i++]) {
                             if (j >= 0) {
-                                inv.setItem(j, (entry = entries[j]) == null ? empty : entry.stack);
+                                inv.setItem(j, (entry = sessEntries[j]) == null ? empty : entry.stack);
                             }
                         }
                     }

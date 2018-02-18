@@ -214,8 +214,11 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                             p.performCommand(value);
                         } else {
                             p.setOp(true);
-                            p.performCommand(value);
-                            p.setOp(false);
+                            try {
+                                p.performCommand(value);
+                            } finally {
+                                p.setOp(false);
+                            }
                         }
                     }),
                     TextCommand.of("broadcast", true, getServer()::broadcastMessage),

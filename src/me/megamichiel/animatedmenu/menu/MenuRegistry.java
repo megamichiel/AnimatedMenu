@@ -24,10 +24,10 @@ public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
 
         MenuSession session;
         BooleanSupplier open;
-        MenuSession.GridEntry[] entries;
+        MenuSession.GridEntry[] sessEntries;
         Map<IMenuItem, MenuSession.GridEntry> slots;
 
-        MenuSession.GridEntry entry, current;
+        MenuSession.GridEntry sessEntry, current;
 
         Player player;
         Inventory inv;
@@ -73,7 +73,7 @@ public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
                     }
 
                     player = mapEntry.getKey();
-                    entries = session.entries;
+                    sessEntries = session.entries;
                     slots = session.slots;
                     inv = session.inventory;
 
@@ -84,8 +84,8 @@ public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
                             menu.nagger.nag("Failed to update empty item in menu " + menu.getName() + "!");
                             menu.nagger.nag(ex);
                         }
-                        for (slot = entries.length; slot > 0; ) {
-                            if (entries[--slot] == null) {
+                        for (slot = sessEntries.length; slot > 0; ) {
+                            if (sessEntries[--slot] == null) {
                                 inv.setItem(slot, stack);
                             }
                         }
@@ -93,28 +93,34 @@ public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
 
                     for (gridEntry = head; gridEntry != null; gridEntry = gridEntry.next) {
                         if ((value = gridEntry.tick) == IMenuItem.REMOVE) { // Item has requested remove
-                            if ((entry = session.slots.remove(gridEntry.item)) != null && (slot = entry.slot) != IMenuItem.NO_SLOT) {
-                                entries[slot] = null;
+                            if ((sessEntry = session.slots.remove(gridEntry.item)) != null && (slot = sessEntry.slot) != IMenuItem.NO_SLOT) {
+                                sessEntries[slot] = null;
                                 inv.setItem(slot, session.emptyStack);
                             }
                             continue;
                         }
 
-                        slot = (entry = session.entry = slots.computeIfAbsent(gridEntry.item, MenuSession.GridEntry::new)).slot;
+                        slot = (sessEntry = session.entry = slots.computeIfAbsent(gridEntry.item, MenuSession.GridEntry::new)).slot;
                         if ((value & IMenuItem.UPDATE_ITEM) != 0) {
                             try {
-                                entry.stack = gridEntry.item.getItem(player, session, entry.stack, value);
+                                sessEntry.stack = gridEntry.item.getItem(player, session, sessEntry.stack, value);
                             } catch (Exception ex) {
                                 menu.nagger.nag("Failed to get item of " + gridEntry.item + " in menu " + menu.getName() + "!");
                                 menu.nagger.nag(ex);
                             }
                             if (slot != IMenuItem.NO_SLOT) {
-                                inv.setItem(slot, entry.stack);
+                                if (sessEntry.stack != null) {
+                                    sessEntries[slot] = sessEntry;
+                                    inv.setItem(slot, sessEntry.stack);
+                                } else if (sessEntries[slot] == sessEntry) {
+                                    sessEntries[slot] = null;
+                                    inv.setItem(slot, null);
+                                }
                             }
                         }
                         if ((value & IMenuItem.UPDATE_WEIGHT) != 0) {
                             try {
-                                entry.weight = gridEntry.item.getWeight(player, session);
+                                sessEntry.weight = gridEntry.item.getWeight(player, session);
                             } catch (Exception ex) {
                                 menu.nagger.nag("Failed to update weight of " + gridEntry.item + " in menu " + menu.getName() + "!");
                                 menu.nagger.nag(ex);
@@ -122,31 +128,31 @@ public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
                         }
                         if ((value & IMenuItem.UPDATE_SLOT) != 0) {
                             try {
-                                slot = (slot = gridEntry.item.getSlot(player, session)) < 0 || (slot & IMenuItem.NO_SLOT) >= entries.length ? IMenuItem.NO_SLOT : slot;
+                                slot = (slot = gridEntry.item.getSlot(player, session)) < 0 || (slot & IMenuItem.NO_SLOT) >= sessEntries.length ? IMenuItem.NO_SLOT : slot;
                             } catch (Exception ex) {
                                 menu.nagger.nag("Failed to update slot of " + gridEntry.item + " in menu " + menu.getName() + "!");
                                 menu.nagger.nag(ex);
                             }
 
-                            if (slot != entry.slot && entry.slot != IMenuItem.NO_SLOT) {
-                                entries[entry.slot] = null;
-                                inv.setItem(entry.slot, session.emptyStack);
+                            if (slot != sessEntry.slot && sessEntry.slot != IMenuItem.NO_SLOT && sessEntries[sessEntry.slot] == sessEntry) {
+                                sessEntries[sessEntry.slot] = null;
+                                inv.setItem(sessEntry.slot, session.emptyStack);
                             }
-                            if ((entry.slot = slot) != IMenuItem.NO_SLOT && (stack = entry.stack) != null) {
-                                current = entries[value = slot & IMenuItem.NO_SLOT];
-                                (entries[value] = entry).slot = value;
+                            if ((sessEntry.slot = slot) != IMenuItem.NO_SLOT && (stack = sessEntry.stack) != null) {
+                                current = sessEntries[value = slot & IMenuItem.NO_SLOT];
+                                (sessEntries[value] = sessEntry).slot = value;
 
                                 if ((slot & IMenuItem.SLOT_SHIFT_RIGHT) != 0) {
-                                    for (entry = current; ++value < entries.length && entry != null; (entries[value] = entry).slot = value, entry = current) {
-                                        current = entries[value];
+                                    for (sessEntry = current; ++value < sessEntries.length && sessEntry != null; (sessEntries[value] = sessEntry).slot = value, sessEntry = current) {
+                                        current = sessEntries[value];
                                     }
                                 } else if ((slot & IMenuItem.SLOT_SHIFT_LEFT) != 0) {
-                                    for (entry = current; --value >= 0 && entry != null; (entries[value] = entry).slot = value, entry = current) {
-                                        current = entries[value];
+                                    for (sessEntry = current; --value >= 0 && sessEntry != null; (sessEntries[value] = sessEntry).slot = value, sessEntry = current) {
+                                        current = sessEntries[value];
                                     }
                                 }
 
-                                inv.setItem(entry == null ? slot : slot & (entry.slot = IMenuItem.NO_SLOT), stack);
+                                inv.setItem(sessEntry == null ? slot : slot & (sessEntry.slot = IMenuItem.NO_SLOT), stack);
                             }
                         }
                     }
