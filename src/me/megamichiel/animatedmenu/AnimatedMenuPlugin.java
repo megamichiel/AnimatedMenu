@@ -42,7 +42,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.*;
-import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -183,14 +182,13 @@ public class AnimatedMenuPlugin extends JavaPlugin implements Listener, LoggerNa
                 String ip = sec.getString("ip");
                 if (ip != null) {
                     int index = ip.indexOf(':');
-                    connections.add(section.getOriginalKey(key), new InetSocketAddress(
-                            index == -1 ? ip : ip.substring(0, index),
-                            index == -1 ? 25565 : Integer.parseInt(ip.substring(index + 1))
-                    ), sec);
+                    String address = index == -1 ? ip : ip.substring(0, index);
+                    connections.add(section.getOriginalKey(key), address, index == -1 ? 25565 : Integer.parseInt(ip.substring(index + 1)), sec);
                 }
             });
-            connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L));
         }
+        connections.schedule(config.getLong("connection-refresh-delay", 10 * 20L), Flag.parseBoolean(config.getString("warn-offline-servers")));
+
         detailedErrors = Flag.parseBoolean(config.getString("detailed-errors"));
 
         if (!reload) {

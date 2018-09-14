@@ -18,16 +18,13 @@ public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
     
     @Override
     public void run() {
-        AbstractMenu.GridEntry[] gridEntries;
-        AbstractMenu.GridEntry head = null, gridEntry = null, empty;
+        AbstractMenu.GridEntry gridEntries[], head = null, gridEntry = null, empty;
         int slot, value, i;
 
         MenuSession session;
         BooleanSupplier open;
-        MenuSession.GridEntry[] sessEntries;
+        MenuSession.GridEntry sessEntries[], sessEntry, current;
         Map<IMenuItem, MenuSession.GridEntry> slots;
-
-        MenuSession.GridEntry sessEntry, current;
 
         Player player;
         Inventory inv;
@@ -232,7 +229,7 @@ public final class MenuRegistry implements Iterable<AbstractMenu>, Runnable {
      * @param player The player to get the session of
      * @return The player's current menu session, or <i>null</i> if they don't have a menu open
      */
-    public MenuSession getSession(HumanEntity player) {
+    public static MenuSession getSession(HumanEntity player) {
         InventoryHolder holder;
         return (holder = player.getOpenInventory().getTopInventory().getHolder()) instanceof MenuSession ? (MenuSession) holder : null;
     }

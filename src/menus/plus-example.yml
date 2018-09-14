@@ -44,13 +44,13 @@ Empty-Item:
   #When this is set to 'yes', the same item will be put in all slots.
   #In other cases, the item is loaded for each slot which is a bit less efficient, especially with a lot of empty slots
   Single: yes
-  Material: stained-glass-pane:1:7
+  Material: stained-glass-pane:1:gray
   Name: ''
 
 #Items that should go in the menu
 Items:
 - Slot: '{random_empty}'
-  Material: skull:1:3
+  Material: skull:1:player
   Name: '&aStats of &6%menuadmin_player_name%'
   SkullOwner: '%menuadmin_player_name%'
   Lore:
@@ -65,8 +65,8 @@ Items:
   State: '%menuadmin_player_is_op%'
   States:
     'yes':
-      Material: wool:1:5
+      Material: wool:1:red
       Name: '&a%menuadmin_player_name% is op!'
     'no':
-      Material: wool:1:14
+      Material: wool:1:green
       Name: '&c%menuadmin_player_name% is not op!'

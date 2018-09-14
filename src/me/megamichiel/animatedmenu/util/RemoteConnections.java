@@ -27,9 +27,10 @@ public class RemoteConnections implements Runnable {
     private static final byte[] PING = new byte[] { 9, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
     
     private final AnimatedMenuPlugin plugin;
+    private boolean warnOfflineServers;
 
     private final Map<String, IServerInfo> statuses = new ConcurrentHashMap<>();
-    private final Map<InetSocketAddress, Connection> connections = new ConcurrentHashMap<>();
+    private final Map<AddressInfo, Connection> connections = new ConcurrentHashMap<>();
 
     private long delay;
     private boolean running = false;
@@ -39,10 +40,12 @@ public class RemoteConnections implements Runnable {
         this.plugin = plugin;
     }
 
-    public void schedule(long delay) {
+    public void schedule(long delay, boolean warnOfflineServers) {
+        this.warnOfflineServers = warnOfflineServers;
         running = true;
         this.delay = delay * 50;
-        (runningThread = new Thread(this)).start();
+        (runningThread = new Thread(this)).setDaemon(true);
+        runningThread.start();
     }
     
     public void cancel() {
@@ -58,7 +61,7 @@ public class RemoteConnections implements Runnable {
     public void run() {
         while (running) {
             connections.forEach((address, connection) -> {
-                try (Socket socket = new Socket(address.getAddress(), address.getPort())) {
+                try (Socket socket = new Socket(address.address.getAddress(), address.address.getPort())) {
                     OutputStream output = socket.getOutputStream();
                     InputStream input = socket.getInputStream();
 
@@ -99,7 +102,7 @@ public class RemoteConnections implements Runnable {
                     }
 
                     connection.online = true;
-                    connection.failed = false;
+                    connection.warn = warnOfflineServers;
                     connection.motd = motd;
                     connection.onlinePlayers = online;
                     connection.maxPlayers = max;
@@ -108,11 +111,11 @@ public class RemoteConnections implements Runnable {
 
                     // input.skip(10); // Length (9) + ID (1) + Keep Alive ID (eight 0s)
                 } catch (Exception ex) {
-                    if (!connection.failed) {
-                        plugin.nag("Failed to connect to " + address.getHostName() + ':' + address.getPort() + '!');
+                    if (connection.warn) {
+                        plugin.nag("Failed to connect to " + address.ip + ':' + address.address.getPort() + '!');
                         plugin.nag(ex);
 
-                        connection.failed = true;
+                        connection.warn = false;
                     }
                     connection.online = false;
                 }
@@ -159,20 +162,18 @@ public class RemoteConnections implements Runnable {
         return value;
     }
     
-    public void add(String name, InetSocketAddress address, ConfigSection config) {
-        statuses.put(name, new ServerInfo(connections.computeIfAbsent(address, Connection::new), config));
+    public void add(String name, String ip, int port, ConfigSection config) {
+        statuses.put(name, new ServerInfo(connections.computeIfAbsent(new AddressInfo(ip, new InetSocketAddress(ip, port)), Connection::new), config));
     }
     
     public IServerInfo get(String name, boolean create) {
         return statuses.computeIfAbsent(name, $name -> {
             if (create) {
                 int index = name.lastIndexOf(':');
-                InetSocketAddress address;
+                AddressInfo address;
                 try {
-                    address = new InetSocketAddress(
-                            InetAddress.getByName(index == -1 ? name : name.substring(0, index)),
-                            index == -1 ? 25565 : Integer.parseInt(name.substring(index + 1))
-                    );
+                    String ip = index == -1 ? name : name.substring(0, index);
+                    address = new AddressInfo(ip, new InetSocketAddress(InetAddress.getByName(ip), index == -1 ? 25565 : Integer.parseInt(name.substring(index + 1))));
                 } catch (UnknownHostException | NumberFormatException ex) {
                     return null;
                 }
@@ -212,17 +213,19 @@ public class RemoteConnections implements Runnable {
 
     private class Connection {
 
-        private final byte[] handshake;
+        final byte[] handshake;
 
-        private boolean online, failed;
-        private String motd = ChatColor.RED + "Offline";
-        private int onlinePlayers, maxPlayers;
+        boolean online, warn;
+        String motd = ChatColor.RED + "Offline";
+        int onlinePlayers, maxPlayers;
 
-        Connection(InetSocketAddress address) {
-            byte[] addressBytes = address.getHostString().getBytes(Charsets.UTF_8);
+        Connection(AddressInfo address) {
+            warn = warnOfflineServers;
+
+            byte[] addressBytes = address.address.getHostString().getBytes(Charsets.UTF_8);
 
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            int port = address.getPort();
+            int port = address.address.getPort();
 
             // Handshake
 
@@ -241,6 +244,17 @@ public class RemoteConnections implements Runnable {
         }
     }
 
+    private static class AddressInfo {
+
+        final String ip;
+        final InetSocketAddress address;
+
+        AddressInfo(String ip, InetSocketAddress address) {
+            this.ip = ip;
+            this.address = address;
+        }
+    }
+
     public interface IServerInfo {
 
         String get(String key, Player player, String def);
@@ -256,9 +270,9 @@ public class RemoteConnections implements Runnable {
 
     private class ServerInfo implements IServerInfo {
 
-        private final Connection connection;
-        private final Map<String, IPlaceholder<String>> fastValues = new HashMap<>();
-        private final Map<StringBundle, IPlaceholder<String>> values = new HashMap<>();
+        final Connection connection;
+        final Map<String, IPlaceholder<String>> fastValues = new HashMap<>();
+        final Map<StringBundle, IPlaceholder<String>> values = new HashMap<>();
 
         ServerInfo(Connection connection, ConfigSection config) {
             this.connection = connection;

@@ -40,11 +40,7 @@ public enum PluginPermission implements Predicate<Permissible> {
     }
 
     PluginPermission(String desc, PermissionDefault def) {
-        String name = name();
-        if (premium = name().startsWith("PLUS_"))
-            name = name.substring(5);
-        permission = new Permission("animatedmenu." +
-                name.toLowerCase(Locale.ENGLISH).replace('_', '.'), desc, def);
+        permission = new Permission("animatedmenu." + ((premium = name().startsWith("PLUS_")) ? name().substring(5) : name()).toLowerCase(Locale.ENGLISH).replace('_', '.'), desc, def);
     }
 
     public boolean isPremium() {

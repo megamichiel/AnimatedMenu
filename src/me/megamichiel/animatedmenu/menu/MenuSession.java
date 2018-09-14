@@ -69,7 +69,12 @@ public class MenuSession implements InventoryHolder, Nagger {
         if (title == null ? this.title != null : !title.equals(this.title)) {
             this.title = title;
             if (TITLE_UPDATER != null && player.getOpenInventory().getTopInventory() == inventory) {
-                TITLE_UPDATER.update(player, inventory, menu.getType().getNmsName(), title);
+                try {
+                    TITLE_UPDATER.update(player, inventory, menu.getType().getNmsName(), title);
+                } catch (ReflectClass.ReflectException ex) {
+                    nagger.nag("Couldn't update menu title!");
+                    nagger.nag(ex);
+                }
             }
         }
     }

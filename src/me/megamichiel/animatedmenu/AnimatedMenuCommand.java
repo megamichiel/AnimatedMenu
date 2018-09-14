@@ -27,7 +27,6 @@ public class AnimatedMenuCommand implements TabExecutor {
     private final Map<String, SubCommand> subCommands = new LinkedHashMap<>();
     private final AnimatedMenuPlugin plugin;
 
-    @SuppressWarnings("deprecation")
     AnimatedMenuCommand(AnimatedMenuPlugin plugin) {
         this.plugin = plugin;
         addHandler("help", USAGE__HELP, DESC__HELP, COMMAND_HELP, (sender, label, args) -> {
@@ -118,7 +117,7 @@ public class AnimatedMenuCommand implements TabExecutor {
                 return plugin.format(COMMAND__NO_MENU);
             }
             AbstractMenu menu = plugin.getMenuRegistry().getMenu(args[1]);
-            if (menu == null || !(menu instanceof Menu)) {
+            if (!(menu instanceof Menu)) {
                 return plugin.format(MENU__NOT_FOUND, "menu", args[1]);
             }
             Player target;

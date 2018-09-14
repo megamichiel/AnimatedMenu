@@ -2,11 +2,7 @@ package me.megamichiel.animatedmenu.util;
 
 import me.megamichiel.animationlib.util.ReflectClass;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class InventoryTitleUpdater {
 
@@ -30,7 +26,7 @@ public class InventoryTitleUpdater {
         updateInventory = getHandle.getReflectType().getMethod("updateInventory", activeContainer.getType());
     }
 
-    public void update(Player player, Inventory inventory, String type, String title) {
+    public void update(Player player, Inventory inventory, String type, String title) throws ReflectClass.ReflectException {
         Object handle = getHandle.invoke(player),
             container = activeContainer.get(handle);
         sendPacket.invoke(playerConnection.get(handle), openWindow.newInstance(

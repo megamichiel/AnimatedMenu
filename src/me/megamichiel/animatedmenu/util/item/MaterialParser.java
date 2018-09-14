@@ -1,22 +1,30 @@
 package me.megamichiel.animatedmenu.util.item;
 
+import me.megamichiel.animationlib.bukkit.AnimLibPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-@SuppressWarnings("deprecation")
+//@SuppressWarnings("deprecation")
 public class MaterialParser {
     
-    private static final Method ITEM_BY_NAME, ITEM_TO_MATERIAL, BLOCK_BY_NAME, BLOCK_TO_MATERIAL;
+    private static final Method ITEM_BY_NAME, ITEM_TO_MATERIAL, BLOCK_BY_NAME, BLOCK_TO_MATERIAL, LEGACY_MATCH, GET_KEY;
+    private static final Constructor<?> MINECRAFT_KEY;
+    private static final Field REGISTRY_BLOCK;
     
     static {
         Method[] methods = new Method[4];
+        Constructor<?> minecraftKey = null;
+        Field registryBlock = null;
         try {
             String version = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
             Class<?> item = Class.forName("net.minecraft.server." + version + ".Item");
@@ -31,7 +39,14 @@ public class MaterialParser {
             Class<?> cmn = Class.forName("org.bukkit.craftbukkit." + version + ".util.CraftMagicNumbers");
             methods[1] = cmn.getDeclaredMethod("getMaterial", item);
             Class<?> block = Class.forName("net.minecraft.server." + version + ".Block");
-            methods[2] = block.getDeclaredMethod("getByName", String.class);
+            try {
+                methods[2] = block.getDeclaredMethod("getByName", String.class);
+            } catch (Exception ex) {
+                Class<?> registry = Class.forName("net.minecraft.server." + version + ".IRegistry");
+                minecraftKey = Class.forName("net.minecraft.server." + version + ".MinecraftKey").getDeclaredConstructor(String.class);
+                registryBlock = registry.getDeclaredField("BLOCK");
+                methods[2] = registry.getDeclaredMethod("getOrDefault", minecraftKey.getDeclaringClass());
+            }
             methods[3] = cmn.getDeclaredMethod("getMaterial", block);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -40,23 +55,53 @@ public class MaterialParser {
         ITEM_TO_MATERIAL = methods[1];
         BLOCK_BY_NAME = methods[2];
         BLOCK_TO_MATERIAL = methods[3];
+
+        MINECRAFT_KEY = minecraftKey;
+        REGISTRY_BLOCK = registryBlock;
+
+        Method legacy = null, getKey = null;
+        try {
+            legacy = Material.class.getDeclaredMethod("matchMaterial", String.class, boolean.class);
+            getKey = Enchantment.class.getDeclaredMethod("getKey");
+        } catch (Exception ex) {
+            //
+        }
+        LEGACY_MATCH = legacy;
+        GET_KEY = getKey;
     }
     
     public static Material parse(String value) {
         String id = value.toLowerCase(Locale.ENGLISH).replace('-', '_');
         try {
             Object o; Material m;
-            if (((o =  ITEM_BY_NAME.invoke(null, id)) != null && (m = (Material)  ITEM_TO_MATERIAL.invoke(null, o)) != null && m != Material.AIR) ||
-                ((o = BLOCK_BY_NAME.invoke(null, id)) != null && (m = (Material) BLOCK_TO_MATERIAL.invoke(null, o)) != null && m != Material.AIR)) {
-                return m;
+            if (((o =  ITEM_BY_NAME.invoke(null, id)) != null && (m = (Material) ITEM_TO_MATERIAL.invoke(null, o)) != null && m != Material.AIR)) {
+                return m; // an item by the name was found
+            }
+            if (MINECRAFT_KEY != null) {
+                o = BLOCK_BY_NAME.invoke(REGISTRY_BLOCK.get(null), MINECRAFT_KEY.newInstance(id));
+            } else {
+                o = BLOCK_BY_NAME.invoke(null, id);
+            }
+            if ((o != null && (m = (Material) BLOCK_TO_MATERIAL.invoke(null, o)) != null && m != Material.AIR)) {
+                return m; // a block by the name was found
             }
         } catch (Exception ex) {
             // Failed to load in <clinit>
         }
-        return Material.matchMaterial(id);
+
+        Material m = Material.matchMaterial(id);
+        if (m == null && LEGACY_MATCH != null) {
+            try {
+                return (Material) LEGACY_MATCH.invoke(null, id, Boolean.TRUE);
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+        return m;
     }
     
     private static final Map<String, Enchantment> enchantments = new HashMap<>();
+    private static final Method GET_ID;
 
     static {
         Map<String, Enchantment> map = enchantments;
@@ -99,12 +144,42 @@ public class MaterialParser {
             // Nop
         }
 
+        Method getId = null;
+        if (AnimLibPlugin.IS_LEGACY) {
+            try {
+                getId = Enchantment.class.getDeclaredMethod("getId");
+            } catch (Exception ex) {
+                // idk man
+            }
+        }
+        GET_ID = getId;
         String name;
         for (Enchantment ench : Enchantment.values()) {
-            if (ench != null && (name = ench.getName()) != null) { // Weird, I know. Some person apparently had issues
-                map.put(Integer.toString(ench.getId()), ench);
-                map.putIfAbsent(name.toLowerCase(Locale.ENGLISH), ench);
+            if (ench != null) { // Weird, I know. Some person apparently had issues
+                try {
+                    name = GET_KEY == null ? ench.getName() : ((NamespacedKey) GET_KEY.invoke(ench)).getKey();
+                } catch (Exception ex) {
+                    continue;
+                }
+                if (name != null) {
+                    if (getId != null) {
+                        try {
+                            map.put(getId.invoke(ench).toString(), ench);
+                        } catch (Exception ex) {
+                            // D:
+                        }
+                    }
+                    map.putIfAbsent(name.toLowerCase(Locale.ENGLISH), ench);
+                }
             }
+        }
+    }
+
+    public static int getId(Enchantment enchantment) {
+        try {
+            return (Integer) GET_ID.invoke(enchantment);
+        } catch (Exception ex) {
+            return -1;
         }
     }
     

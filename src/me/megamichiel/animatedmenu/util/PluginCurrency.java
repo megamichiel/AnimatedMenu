@@ -1,5 +1,6 @@
 package me.megamichiel.animatedmenu.util;
 
+import me.BukkitPVP.PointsAPI.PointsAPI;
 import me.JohnCrafted.gemseconomy.economy.GemMethods;
 import me.realized.tm.api.TMAPI;
 import net.milkbowl.vault.economy.Economy;
@@ -176,6 +177,36 @@ public abstract class PluginCurrency<N extends Number & Comparable<N>> {
         public boolean take(Player player, Double amount) {
             if (CoinsAPI.getCoins(player.getUniqueId()) >= amount) {
                 CoinsAPI.takeCoins(player.getUniqueId(), amount);
+                return true;
+            }
+            return false;
+        }
+    };
+    public static final PluginCurrency<Integer> POINTS_API = new PluginCurrency<Integer>() {
+        @Override
+        boolean init() {
+            try {
+                Class.forName("me.BukkitPVP.PointsAPI");
+                return true;
+            } catch (ClassNotFoundException ex) {
+                return false;
+            }
+        }
+
+        @Override
+        public Integer get(Player player) {
+            return PointsAPI.getPoints(player);
+        }
+
+        @Override
+        public void give(Player player, Integer amount) {
+            PointsAPI.addPoints(player, amount);
+        }
+
+        @Override
+        public boolean take(Player player, Integer amount) {
+            if (PointsAPI.getPoints(player) >= amount) {
+                PointsAPI.removePoints(player, amount);
                 return true;
             }
             return false;

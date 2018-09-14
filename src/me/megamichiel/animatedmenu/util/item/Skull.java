@@ -8,6 +8,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import me.arcaniax.hdb.api.HeadDatabaseAPI;
 import me.megamichiel.animationlib.Nagger;
+import me.megamichiel.animationlib.bukkit.AnimLibPlugin;
 import me.megamichiel.animationlib.bukkit.nbt.NBTUtil;
 import me.megamichiel.animationlib.placeholder.PlaceholderContext;
 import me.megamichiel.animationlib.placeholder.StringBundle;
@@ -40,6 +41,8 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
     private static final char[] USERNAME_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_".toCharArray();
 
     private static final Map<String, GameProfile> cachedProfiles = new ConcurrentHashMap<>();
+
+    private static final Material SKULL = Material.valueOf(AnimLibPlugin.IS_LEGACY ? "SKULL_ITEM" : "SKELETON_SKULL");
 
     private static final Field skullProfile;
     private static final Method getProfile, fillProfile, serializeProfile, deserializeProfile;
@@ -129,7 +132,7 @@ public class Skull implements MaterialSpecific.Action<SkullMeta> {
     }
 
     public ItemStack toItemStack(Player player, int amount, Consumer<ItemMeta> meta, PlaceholderContext context) {
-        ItemStack item = new ItemStack(Material.SKULL_ITEM, amount, (short) 3);
+        ItemStack item = new ItemStack(SKULL, amount, (short) 3);
         ItemMeta im = item.getItemMeta();
         apply(player, (SkullMeta) im, context);
         meta.accept(im);

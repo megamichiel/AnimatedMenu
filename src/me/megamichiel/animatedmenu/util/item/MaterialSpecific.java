@@ -27,11 +27,9 @@ public class MaterialSpecific {
             }
             return null;
         });
-        if (type != null) {
-            Action action = actions.get(type);
-            if (action != null) {
-                action.apply(player, meta, context);
-            }
+        Action action;
+        if (type != null && (action = actions.get(type)) != null) {
+            action.apply(player, meta, context);
         }
     }
 

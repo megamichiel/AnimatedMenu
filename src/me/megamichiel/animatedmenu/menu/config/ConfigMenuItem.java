@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.Integer.parseInt;
 import static java.lang.Integer.parseUnsignedInt;
+import static me.megamichiel.animationlib.bukkit.AnimLibPlugin.IS_LEGACY;
 
 public class ConfigMenuItem implements IMenuItem {
 
@@ -222,14 +223,16 @@ public class ConfigMenuItem implements IMenuItem {
         if (str != null) {
             specific.add(SkullMeta.class, new Skull(plugin, str));
         }
-        try {
-            Class.forName("org.bukkit.inventory.meta.SpawnEggMeta");
-            EntityType eggType = EntityType.valueOf(section.getString("egg-type").toUpperCase(Locale.ENGLISH).replace('-', '_'));
-            specific.add(SpawnEggMeta.class, (player, meta, context) -> meta.setSpawnedType(eggType));
-        } catch (ClassNotFoundException | NullPointerException ex) {
-            // No egg type ;c
-        } catch (IllegalArgumentException ex) {
-            plugin.nag("Unknown egg type: " + section.getStringList("egg-type"));
+        if (IS_LEGACY) {
+            try {
+                Class.forName("org.bukkit.inventory.meta.SpawnEggMeta");
+                EntityType eggType = EntityType.valueOf(section.getString("egg-type").toUpperCase(Locale.ENGLISH).replace('-', '_'));
+                specific.add(SpawnEggMeta.class, (player, meta, context) -> meta.setSpawnedType(eggType));
+            } catch (ClassNotFoundException | NullPointerException ex) {
+                // No egg type ;c
+            } catch (IllegalArgumentException ex) {
+                plugin.nag("Unknown egg type: " + section.getStringList("egg-type"));
+            }
         }
 
         try {

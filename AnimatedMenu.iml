@@ -29,6 +29,7 @@
     <orderEntry type="library" name="HeadDatabaseAPI" level="project" />
     <orderEntry type="library" name="ActionAPI" level="project" />
     <orderEntry type="library" name="Coins" level="project" />
-    <orderEntry type="library" name="1.12" level="project" />
+    <orderEntry type="library" name="PointsAPI" level="project" />
+    <orderEntry type="library" name="craftbukkit-1.13" level="project" />
   </component>
 </module>

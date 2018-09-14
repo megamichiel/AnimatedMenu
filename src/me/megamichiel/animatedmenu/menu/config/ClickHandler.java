@@ -24,6 +24,7 @@ public class ClickHandler {
             Purchase.ofCurrency("gems", "gems", PluginCurrency.GEMS, Integer::valueOf, 0),
             Purchase.ofCurrency("tokens", "tokens", PluginCurrency.TOKENS, Integer::valueOf, 0),
             Purchase.ofCurrency("coins", "coins", PluginCurrency.COINS, Double::valueOf, 0D),
+            Purchase.ofCurrency("pointsapi", "points", PluginCurrency.POINTS_API, Integer::valueOf, 0),
 
             new ClickHandler.Purchase<Number>("exp", "&cYou don't have enough exp for that!") {
                 @Override
